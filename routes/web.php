@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -9,11 +10,16 @@ Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
-        'thedate' => date('l jS \of F Y h:i:s A'),
+        'thedate' => DB::table('migrations')->select(DB::raw('NOW() AS now'))->first(),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+Route::get('/current-time', function () {
+    return DB::table('migrations')->select(DB::raw('CONVERT_TZ(NOW(), \'SYSTEM\',\'America/Chicago\') AS now'))->first();
+});
+
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
@@ -25,4 +31,4 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
