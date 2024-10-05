@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Models\HouseDog;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -10,7 +11,9 @@ Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
+        'photoUri' => config('services.panther.uris.photo'),
         'thedate' => DB::table('migrations')->select(DB::raw('NOW() AS now'))->first(),
+        'dogList' => HouseDog::all(),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
@@ -19,7 +22,6 @@ Route::get('/', function () {
 Route::get('/current-time', function () {
     return DB::table('migrations')->select(DB::raw('NOW() AS now'))->first();
 });
-
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
@@ -32,3 +34,4 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__ . '/auth.php';
+

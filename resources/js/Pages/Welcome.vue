@@ -10,6 +10,12 @@ defineProps({
     canRegister: {
         type: Boolean,
     },
+    dogList: {
+        type: Array,
+    },
+    photoUri: {
+        type: String,
+    },
     laravelVersion: {
         type: String,
         required: true,
@@ -70,7 +76,15 @@ function handleImageError() {
                     <div class="grid gap-6 lg:grid-cols-2 lg:gap-8">
                         <h1>Hello, world. <ServerTime/></h1>
                     </div>
-
+                    <table>
+                        <tr v-for="dog in dogList" :key="dog.id">
+                            <td><img v-if="dog.photoUri" :src="photoUri + dog.photoUri" class="max-w-xs max-h-48" alt="Dog" /></td>
+                            <td>{{ dog.name }}</td>
+                            <td>{{ dog.size }}</td>
+                            <td>{{ dog.gender }}</td>
+                            <td>{{ dog.gender }}</td>
+                        </tr>
+                    </table>
                 </main>
 
                 <footer class="py-16 text-center text-sm dark:text-white/70">
