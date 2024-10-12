@@ -1,3 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+    font-family: 'Lato'; /* Define the font name */
+    src: url('/public/fonts/Lato/Lato-Regular.ttf') format('truetype'); /* TTF format */
+    font-weight: normal; /* Specify the weight */
+    font-style: normal; /* Specify the style */
+}
+
+@font-face {
+    font-family: 'Oswald'; /* Define the font name */
+    src: url('/public/fonts/Oswald-Regular.ttf') format('truetype'); /* TTF format */
+    font-weight: normal; /* Specify the weight */
+    font-style: normal; /* Specify the style */
+}
+
+@font-face {
+    font-family: 'Magnolia'; /* Define the font name */
+    src: url('/public/fonts/MissMagnolia-Script.otf') format('opentype'); /* TTF format */
+    font-weight: normal; /* Specify the weight */
+    font-style: normal; /* Specify the style */
+}

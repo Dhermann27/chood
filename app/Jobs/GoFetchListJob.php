@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Cabin;
 use App\Models\HouseDog;
 use App\Services\PantherService;
 use Illuminate\Bus\Queueable;
@@ -45,15 +46,18 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         $newIds = collect($data['rows'])->pluck('id')->toArray();
         $idsToDelete = array_diff($existingIds, $newIds);
         HouseDog::whereIn('id', $idsToDelete)->delete();
+        $cabins = Cabin::all();
 
         foreach ($data['rows'] as $row) {
             $petId = $row[$columns['petId']];
+            $cabin = $cabins->where('cabinName', $row[$columns['dateCabin']])->first();
+
             HouseDog::updateOrCreate(
                 ['id' => $petId],
                 [
                     'name' => $this->trimToNull($row[$columns['name']]),
                     'gender' => $this->trimToNull($row[$columns['gender']]),
-                    'cabinName' => $this->trimToNull($row[$columns['dateCabin']])
+                    'cabin_id' => $cabin ? $cabin->id : null,
                 ]
             );
             GoFetchDogJob::dispatch($petId, $pantherService);
