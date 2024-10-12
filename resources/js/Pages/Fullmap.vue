@@ -62,7 +62,7 @@ function handleImageError() {
     <div class="bg-gray-90 text-black/50 ">
         <div
             class="relative min-h-screen flex flex-col items-center justify-center selection:bg-[#FF2D20] selection:text-white">
-            <div class="relative w-full max-w-2xl px-6 lg:max-w-7xl">
+            <div class="relative w-full px-6 max-w-full">
                 <main>
                     <div class="w-full h-screen choodmap">
                         <template v-for="row in rows">
@@ -70,7 +70,7 @@ function handleImageError() {
                                 <div v-if="!isMissingCell(row, column)" :style="getBackgroundStyle(row, column)"
                                      :class="getCabinClass(row, column)">
                                     <div v-if="cabins[row] && cabins[row][column]">
-                                        <div v-if="dogList[cabins[row][column].id]">
+                                        <div v-if="dogList[cabins[row][column].id]" class="text-lg text-left">
                                             {{ dogList[cabins[row][column].id].name }}
                                         </div>
                                         <div v-else>
@@ -98,10 +98,12 @@ function handleImageError() {
 
 .mapitem {
     background-color: #f0f0f0;
-    border: 1px solid #ccc;
+    border: 2px solid #ccc;
     display: flex; /* Center content */
     align-items: center;
     justify-content: center;
+    font-size: 3vw; /* Adjust this value as necessary */
+    overflow: hidden; /* Hide overflow if text is too large */
 }
 
 
