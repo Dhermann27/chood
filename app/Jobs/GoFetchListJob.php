@@ -85,7 +85,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         }
 
         $stop = hrtime(true);
-        sleep(min(4 - (($stop - $start) / 1e9), 0));
+        sleep(max(4 - (($stop - $start) / 1e9), 0));
     }
 
     function trimToNull($value)
