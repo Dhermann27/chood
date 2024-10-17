@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Jobs\GoFetchListJob;
 use App\Models\Cabin;
-use App\Models\HouseDog;
+use App\Models\Dog;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -12,37 +14,57 @@ Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
-        'photoUri' => config('services.panther.uris.photo'),
         'thedate' => DB::table('migrations')->select(DB::raw('NOW() AS now'))->first(),
-        'dogList' => HouseDog::all(),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
 });
 
 Route::get('/fullmap{i}', function () {
-    $cabins = Cabin::all();
-    $cabinsByRow = $cabins->pluck('row')->mapWithKeys(function($index, $row) use ($cabins) {
-       return [$index => $cabins->where('row', $index)->mapWithKeys(function($cabin) {
-           $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
-           $cabin->cabinName = preg_replace('/\dx\d - Cabin /', '', $cabin->cabinName);
-           return [$cabin->column => $cabin];
-       })];
+    $cabins = Cabin::where('row', '>', '0')->where('column', '>', '0')->get()->map(function ($cabin) {
+        $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
+        $cabin->cabinName = preg_replace('/\dx\d - Cabin /', '', $cabin->cabinName);
+        return $cabin;
+    });
+
+    $dogs = Dog::whereNotNull('cabin_id')->with('services')->get()->mapWithKeys(function ($dog) {
+        return [$dog->cabin_id => $dog];
     });
 
     return Inertia::render('Fullmap', [
         'photoUri' => config('services.panther.uris.photo'),
-        'dogList' => HouseDog::all()->mapWithKeys(function ($dog) {
-            return [$dog->cabin_id => $dog];
-        }),
-        'rows' => range(0, 9),
-        'columns' => range(0, 26),
-        'cabins' => $cabinsByRow
+        'dogs' => $dogs,
+        'cabins' => $cabins,
+        'checksum' => md5($dogs->toJson())
     ]);
+});
+
+Route::prefix('api')->group(function () {
+    Route::get('/fullmap/{checksum}', function (string $checksum) {
+        $dogs = Dog::whereNotNull('cabin_id')->with('services')->get()->mapWithKeys(function ($dog) {
+            return [$dog->cabin_id => $dog];
+        });
+        $new_checksum = md5($dogs->toJson());
+//        if($checksum !== $new_checksum) {
+        $response = [
+            'dogs' => $dogs,         // The original collection of dogs
+            'checksum' => $new_checksum, // The computed checksum
+        ];
+
+        // Return the response as JSON
+        return Response::json($response);
+//        }
+//        return json_encode(false);
+    });
 });
 
 Route::get('/current-time', function () {
     return DB::table('migrations')->select(DB::raw('NOW() AS now'))->first();
+});
+
+// TODO: REMOVE Testing only
+Route::get('/fetchDogList', function () {
+    return GoFetchListJob::dispatchSync();
 });
 
 Route::get('/dashboard', function () {

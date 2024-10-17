@@ -3,7 +3,9 @@
 namespace App\Jobs;
 
 use App\Models\Cabin;
-use App\Models\HouseDog;
+use App\Models\Dog;
+use App\Models\DogService;
+use App\Models\Service;
 use App\Services\PantherService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -11,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
@@ -42,17 +45,19 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         $columns = collect($data['columns'])->pluck('index', 'filterKey');
 
 
-        $existingIds = HouseDog::pluck('id')->toArray();
+        $existingIds = Dog::pluck('id')->toArray();
         $newIds = collect($data['rows'])->pluck('id')->toArray();
-        $idsToDelete = array_diff($existingIds, $newIds);
-        HouseDog::whereIn('id', $idsToDelete)->delete();
+        $idsToDelete = array_diff($existingIds, $newIds); // TODO: Add ToClean logic
+        Dog::whereIn('id', $idsToDelete)->delete();
+
         $cabins = Cabin::all();
+        $services = Service::all()->pluck('id', 'code');
 
         foreach ($data['rows'] as $row) {
             $petId = $row[$columns['petId']];
             $cabin = $cabins->where('cabinName', $row[$columns['dateCabin']])->first();
 
-            HouseDog::updateOrCreate(
+            Dog::updateOrCreate(
                 ['id' => $petId],
                 [
                     'name' => $this->trimToNull($row[$columns['name']]),
@@ -60,14 +65,31 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
                     'cabin_id' => $cabin ? $cabin->id : null,
                 ]
             );
+
+            DogService::where('dog_id', $petId)->get();
+            $existingIds = DogService::where('dog_id', $petId)->get()->pluck('service_id')->toArray();
+            $newIds = explode(', ', $row[$columns['serviceCode']]);
+            $idsToDelete = array_diff($existingIds, $newIds);
+            DogService::where('dog_id', $petId)->whereIn('service_id', $idsToDelete)->delete();
+
+            foreach ($newIds as $serviceId) {
+                if ($services->has($serviceId)) {
+                    DogService::updateOrCreate(
+                        ['dog_id' => $petId, 'service_id' => $services[$serviceId]],
+                        ['dog_id' => $petId, 'service_id' => $services[$serviceId]]
+                    );
+                }
+            }
+
             GoFetchDogJob::dispatch($petId, $pantherService);
         }
 
         $stop = hrtime(true);
-        sleep(4 - (($stop - $start) / 1e9));
+        sleep(min(4 - (($stop - $start) / 1e9), 0));
     }
 
-    function trimToNull($value) {
+    function trimToNull($value)
+    {
         $trimmed = trim($value);
         return $trimmed === '' ? null : $trimmed;
     }

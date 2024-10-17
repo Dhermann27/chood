@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\HouseDog;
+use App\Models\Dog;
 use App\Services\PantherService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -43,7 +43,7 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
     {
         $data = $pantherService->fetchData(config('services.panther.uris.card') . $this->petId .
             config('services.panther.uris.cardSuffix'));
-        HouseDog::updateOrCreate(
+        Dog::updateOrCreate(
             ['id' => $this->petId],
             [
                 'photoUri' => $data['photoUrl'], // Comes from DD, do not change
