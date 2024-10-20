@@ -15,6 +15,9 @@ export default {
             fontFamily: {
                 sans: ['Lato', 'Helvetica', ...defaultTheme.fontFamily.sans],
             },
+            textColor: {
+                DEFAULT: '#373a36', // Set the default text color
+            },
         },
     },
 

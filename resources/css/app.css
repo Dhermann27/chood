@@ -22,3 +22,67 @@
     font-weight: normal; /* Specify the weight */
     font-style: normal; /* Specify the style */
 }
+
+.cabin {
+    background-color: #f0f0f0;
+    border-color: #373a36;
+    border-style: solid;
+    overflow: hidden;
+}
+
+.cabin-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3vw;
+    color: black;
+    overflow: hidden;
+}
+
+.cabin-boarder {
+    position: relative;
+    font-size: 1.5vw;
+    background-size: cover;
+    background-position: center;
+    color: #44687d;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+}
+
+.cabin-daycamper {
+    position: relative;
+    font-size: 1.5vw;
+    background-size: cover;
+    background-position: center;
+    color: #50C878;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+}
+
+.dog-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+
+}
+
+.dog-banner {
+    width: 100%;
+    font-size: 1vw;
+    line-height: 1vw;
+    padding: 0;
+    color: white;
+    text-align: center;
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.daycamper-banner {
+    background-color: #50C878;
+}
+
+.boarder-banner {
+    background-color: #44687d;
+}
+

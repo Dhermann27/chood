@@ -16,11 +16,9 @@ return new class extends Migration {
             $table->string('gender')->nullable();
             $table->string('size')->nullable();
             $table->string('photoUri')->nullable();
-            $table->unsignedBigInteger('cabin_id')->nullable();
+            $table->foreignId('cabin_id')->nullable()->constrained()->nullOnDelete();
+            $table->dateTime('checkout')->nullable();
             $table->timestamps();
-
-            $table->foreign('cabin_id')->references('id')->on('cabins')
-                ->onDelete('set null');
         });
 
 

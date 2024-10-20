@@ -55,7 +55,7 @@ function handleImageError() {
 </script>
 
 <template>
-    <Head title="Fullmap"/>
+    <Head title="Rowmap Lastrow"/>
     <div class="bg-gray-90 text-black/50 ">
         <div
             class="relative min-h-screen flex flex-col items-center justify-center selection:bg-[#FF2D20] selection:text-white">
@@ -73,11 +73,11 @@ function handleImageError() {
 <style>
 .choodmap {
     display: grid;
-    grid-template-columns: 1fr 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px 1fr;
+    grid-template-columns: repeat(2, 1fr) 40px repeat(2, 1fr) 40px 1fr;
     grid-template-rows: repeat(4, 1fr) 20px repeat(5, 1fr);
 }
 
 .choodmap > div {
-    border-width: 3px;
+    border-width: 5px;
 }
 </style>

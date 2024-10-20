@@ -7,13 +7,13 @@ use App\Models\Dog;
 use App\Models\DogService;
 use App\Models\Service;
 use App\Services\PantherService;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
@@ -47,7 +47,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
 
         $existingIds = Dog::pluck('id')->toArray();
         $newIds = collect($data['rows'])->pluck('id')->toArray();
-        $idsToDelete = array_diff($existingIds, $newIds); // TODO: Add ToClean logic
+        $idsToDelete = array_diff($existingIds, $newIds);
         Dog::whereIn('id', $idsToDelete)->delete();
 
         $cabins = Cabin::all();
@@ -63,6 +63,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
                     'name' => $this->trimToNull($row[$columns['name']]),
                     'gender' => $this->trimToNull($row[$columns['gender']]),
                     'cabin_id' => $cabin ? $cabin->id : null,
+                    'checkout' => Carbon::createFromFormat('m/d/Y g:i A', $row[$columns['checkOutDate']] . " " . $row[$columns['checkOutTime']])
                 ]
             );
 
