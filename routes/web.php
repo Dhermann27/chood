@@ -4,7 +4,9 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use App\Jobs\GoFetchListJob;
 use App\Jobs\MarkCabinsForCleaning;
+use App\Models\Cabin;
 use App\Models\Dog;
+use App\Models\Service;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
@@ -50,9 +52,30 @@ Route::get('/current-time', function () {
 Route::get('/fetchDogList', function () {
     return GoFetchListJob::dispatchSync();
 });
-// TODO: REMOVE Testing only
 Route::get('/markForCleaning', function () {
     return MarkCabinsForCleaning::dispatchSync();
+});
+Route::get('/assignDaycampers', function () {
+    $services = Service::where('id', '<=', '1002')->whereHas('dogs')->with('dogs')->get();
+    $emptycabins = Cabin::whereDoesntHave('dogs')->get();
+    foreach ($services as $service) {
+        $service->dogs->each(function ($dog) use ($emptycabins) {
+            if ($emptycabins->isNotEmpty()) {
+                // Pick a random cabin
+                $cabin = $emptycabins->random();
+
+                // Remove the selected cabin from the collection
+                $emptycabins = $emptycabins->reject(function ($c) use ($cabin) {
+                    return $c->id === $cabin->id;
+                });
+
+                // Assign the random cabin to the dog
+                $dog->cabin_id = $cabin->id;
+                $dog->save();
+            }
+
+        });
+    }
 });
 
 Route::get('/dashboard', function () {
