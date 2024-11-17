@@ -25,12 +25,29 @@ Route::get('/', function () {
 
 Route::get('/fullmap{i}', [MapController::class, 'fullmap']);
 Route::get('/rowmap{i}', [MapController::class, 'rowmap']);
+Route::get('/yardmap{i}', [MapController::class, 'yardmap']);
 
 Route::prefix('api')->group(function () {
     Route::get('/fullmap/{checksum}', function (string $checksum) {
-        $dogs = Dog::whereNotNull('cabin_id')->with('services')->get()->mapWithKeys(function ($dog) {
-            return [$dog->cabin_id => $dog];
-        });
+        $dogs = Dog::selectRaw('*, LEFT(name, 8) AS shortname')->whereNotNull('cabin_id')->with('services')->get()
+            ->mapWithKeys(function ($dog) {
+                return [$dog->cabin_id => $dog];
+            });
+        $new_checksum = md5($dogs->toJson());
+        if ($checksum !== $new_checksum) {
+            $response = [
+                'dogs' => $dogs,         // The original collection of dogs
+                'checksum' => $new_checksum, // The computed checksum
+            ];
+
+            return Response::json($response);
+        }
+        return json_encode(false);
+    });
+    Route::get('/yardmap{size}/{checksum}', function (string $size, string $checksum) {
+        $sizes = $size === 'small' ? ['Medium', 'Small', 'Extra Small'] : ['Medium', 'Large', 'Extra Large'];
+        $dogs = Dog::selectRaw('*, LEFT(name, 20) AS shortname')->whereIn('size', $sizes)->with('services')
+            ->orderBy('name')->get();
         $new_checksum = md5($dogs->toJson());
         if ($checksum !== $new_checksum) {
             $response = [
@@ -57,7 +74,7 @@ Route::get('/markForCleaning', function () {
 });
 Route::get('/assignDaycampers', function () {
     $services = Service::where('id', '<=', '1002')->whereHas('dogs')->with('dogs')->get();
-    $emptycabins = Cabin::whereDoesntHave('dogs')->get();
+    $emptycabins = Cabin::where('id', '<', '3000')->whereDoesntHave('dogs')->get();
     foreach ($services as $service) {
         $service->dogs->each(function ($dog) use ($emptycabins) {
             if ($emptycabins->isNotEmpty()) {

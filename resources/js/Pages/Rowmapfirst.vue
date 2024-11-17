@@ -55,7 +55,7 @@ function handleImageError() {
 </script>
 
 <template>
-    <Head title="Rowmap Lastrow"/>
+    <Head title="Rowmap Firstrow"/>
     <div class="bg-gray-90 text-black/50 ">
         <div
             class="relative min-h-screen flex flex-col items-center justify-center selection:bg-[#FF2D20] selection:text-white">

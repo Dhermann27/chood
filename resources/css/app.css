@@ -39,50 +39,38 @@
     overflow: hidden;
 }
 
-.cabin-boarder {
-    position: relative;
-    font-size: 1.5vw;
-    background-size: cover;
-    background-position: center;
-    color: #44687d;
-    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
-}
-
-.cabin-daycamper {
-    position: relative;
-    font-size: 1.5vw;
-    background-size: cover;
-    background-position: center;
-    color: #50C878;
-    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
-}
-
-.dog-name {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    margin: 0;
-
-}
-
-.dog-banner {
+.dog-boarder, .dog-daycamper {
+    display: flex;
+    flex-direction: column; /* Stack items vertically */
     width: 100%;
+    height: 100%;
     font-size: 1vw;
     line-height: 1vw;
     padding: 0;
     color: white;
     text-align: center;
     overflow: hidden;
-    position: absolute;
-    top: 0;
-    left: 0;
 }
 
-.daycamper-banner {
-    background-color: #50C878;
-}
-
-.boarder-banner {
+.dog-boarder {
     background-color: #44687d;
 }
 
+.dog-daycamper {
+    background-color: #50C878;
+}
+
+.dog-photo {
+    flex-grow: 1;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.dog-name {
+    font-size: 1.5vw;
+    line-height: 1.5vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

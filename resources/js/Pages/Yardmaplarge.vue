@@ -1,14 +1,12 @@
 <script setup>
 import {Head, Link} from '@inertiajs/vue3';
-import {ref, onMounted, onBeforeUnmount} from 'vue';
+import {ref, computed, onMounted, onBeforeUnmount} from 'vue';
 import Map from "@/Components/chood/Map.vue";
+import DogCard from "@/Components/chood/DogCard.vue";
 
 const props = defineProps({
     photoUri: {
         type: String,
-    },
-    cabins: {
-        type: Object,
     },
     dogs: {
         type: Object,
@@ -24,7 +22,7 @@ let refreshInterval = null;
 
 const fetchData = async () => {
     try {
-        const response = await fetch('/api/fullmap/' + local_checksum.value);
+        const response = await fetch('/api/yardmaplarge/' + local_checksum.value);
         const newData = await response.json();
         if (newData) {
             local_checksum.value = newData.checksum;
@@ -34,6 +32,24 @@ const fetchData = async () => {
         console.error('Error fetching data:', error);
     }
 };
+
+const isBoarder = (services) => {
+    if (services) return services.some(service => service.id === 1003 || service.id === 1004);
+    return false;
+}
+
+const gridStyle = computed(() => {
+    const columns = Math.ceil(Math.sqrt((16 / 9) * dogs.value.length));  // Example for 16:9 aspect ratio
+    const rows = Math.ceil(dogs.value.length / columns);
+
+    return {
+        display: 'grid',
+        'grid-template-columns': `repeat(${columns}, 1fr)`,
+        'grid-template-rows': `repeat(${rows}, 1fr)`,
+        gap: '10px',
+    };
+});
+
 
 // Fetch data when the component is mounted
 onMounted(() => {
@@ -55,14 +71,16 @@ function handleImageError() {
 </script>
 
 <template>
-    <Head title="Rowmap Midrow"/>
+    <Head title="Yardmap Large"/>
     <div class="bg-gray-90 text-black/50 ">
         <div
             class="relative min-h-screen flex flex-col items-center justify-center selection:bg-[#FF2D20] selection:text-white">
             <div class="relative w-full px-6 max-w-full">
                 <main>
-                    <div class="w-full h-screen choodmap">
-                        <Map :cabins="cabins" :dogs="dogs" :photoUri="photoUri"/>
+                    <div class="w-full h-screen" :style="gridStyle">
+                        <div v-for="dog in dogs">
+                            <DogCard :dog="dog" :photoUri="props.photoUri"/>
+                        </div>
                     </div>
                 </main>
             </div>
@@ -71,10 +89,23 @@ function handleImageError() {
 </template>
 
 <style>
-.choodmap {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr) 40px repeat(2, 1fr);
-    grid-template-rows: repeat(4, 1fr) 20px repeat(5, 1fr);
+.dog-card {
+    position: relative;
+    font-size: calc(1rem + 1vw);
+    background-size: cover;
+    background-position: center;
+    color: #44687d;
+    overflow: hidden;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+}
+
+.dog-banner {
+    font-size: calc(1rem + 1vw);
+}
+
+.boarder-banner, .daycamper-banner {
+    min-height: 1.5em;
+    line-height: 1.5em;
 }
 
 .choodmap > div {
