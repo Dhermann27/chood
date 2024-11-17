@@ -23,9 +23,9 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/fullmap{i}', [MapController::class, 'fullmap']);
-Route::get('/rowmap{i}', [MapController::class, 'rowmap']);
-Route::get('/yardmap{i}', [MapController::class, 'yardmap']);
+Route::get('/fullmap{i}', [MapController::class, 'fullmap'])->where('i', '1|2');
+Route::get('/rowmap{i}', [MapController::class, 'rowmap'])->where('i', 'first|mid|last');
+Route::get('/yardmap{i}', [MapController::class, 'yardmap'])->where('i', 'small|large');
 
 Route::prefix('api')->group(function () {
     Route::get('/fullmap/{checksum}', function (string $checksum) {
@@ -58,7 +58,10 @@ Route::prefix('api')->group(function () {
             return Response::json($response);
         }
         return json_encode(false);
-    });
+    })->where([
+        'size' => 'small|large',
+        'checksum' => '[a-f0-9]{32}'
+    ]);
 });
 
 Route::get('/current-time', function () {

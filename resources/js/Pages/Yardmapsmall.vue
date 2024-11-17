@@ -1,7 +1,6 @@
 <script setup>
 import {Head, Link} from '@inertiajs/vue3';
 import {ref, computed, onMounted, onBeforeUnmount} from 'vue';
-import Map from "@/Components/chood/Map.vue";
 import DogCard from "@/Components/chood/DogCard.vue";
 
 const props = defineProps({
@@ -17,6 +16,8 @@ const props = defineProps({
 });
 
 const dogs = ref({});
+const currentGif = ref('/images/doggifs/dog1.webp');
+const randomPosition = ref({ top: 0, left: 0 });
 let local_checksum = ref(props.checksum);
 let refreshInterval = null;
 
@@ -33,11 +34,6 @@ const fetchData = async () => {
     }
 };
 
-const isBoarder = (services) => {
-    if (services) return services.some(service => service.id === 1003 || service.id === 1004);
-    return false;
-}
-
 const gridStyle = computed(() => {
     const columns = Math.ceil(Math.sqrt((16 / 9) * dogs.value.length));  // Example for 16:9 aspect ratio
     const rows = Math.ceil(dogs.value.length / columns);
@@ -50,11 +46,30 @@ const gridStyle = computed(() => {
     };
 });
 
+const changeGifAndPosition = () => {
+    // Select a random GIF
+    const randomGifIndex = Math.floor(Math.random() * 11) + 1;
+    currentGif.value = '/images/doggifs/dog' + randomGifIndex + '.webp';
+
+    // Get the full screen container's dimensions
+    const container = document.querySelector('#yardmap');
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    // Generate random positions within the container
+    randomPosition.value = {
+        top: Math.random() * (containerHeight - 480),
+        left: Math.random() * (containerWidth - 480),
+    };
+};
+
 
 // Fetch data when the component is mounted
 onMounted(() => {
     dogs.value = props.dogs;
     refreshInterval = setInterval(fetchData, 5000); // Refresh data every 5 seconds
+    setInterval(changeGifAndPosition, 60000);
+    changeGifAndPosition();
 });
 
 // Clear the interval when the component is unmounted
@@ -80,6 +95,11 @@ function handleImageError() {
                     <div class="w-full h-screen" :style="gridStyle">
                         <div v-for="dog in dogs">
                             <DogCard :dog="dog" :photoUri="props.photoUri"/>
+                        </div>
+                        <div v-if="dogs.length === 0">
+                            <img :src="currentGif" alt="Dancing Doggo"
+                                 :style="{ top: randomPosition.top + 'px', left: randomPosition.left + 'px', position: 'absolute' }"
+                            />
                         </div>
                     </div>
                 </main>
