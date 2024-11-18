@@ -1,5 +1,5 @@
 <script setup>
-import {Head, Link} from '@inertiajs/vue3';
+import {Head} from '@inertiajs/vue3';
 import {ref, computed, onMounted, onBeforeUnmount} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
 
@@ -53,8 +53,8 @@ const changeGifAndPosition = () => {
 
     // Get the full screen container's dimensions
     const container = document.querySelector('#yardmap');
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
+    const containerWidth = container.clientWidth > 0 ? container.clientWidth : container.offsetWidth;
+    const containerHeight = container.clientHeight > 0 ? container.clientHeight : container.offsetHeight;
 
     // Generate random positions within the container
     randomPosition.value = {
@@ -68,7 +68,7 @@ const changeGifAndPosition = () => {
 onMounted(() => {
     dogs.value = props.dogs;
     refreshInterval = setInterval(fetchData, 5000); // Refresh data every 5 seconds
-    setInterval(changeGifAndPosition, 60000);
+    setInterval(changeGifAndPosition, 1000);
     changeGifAndPosition();
 });
 
@@ -92,7 +92,7 @@ function handleImageError() {
             class="relative min-h-screen flex flex-col items-center justify-center selection:bg-[#FF2D20] selection:text-white">
             <div class="relative w-full px-6 max-w-full">
                 <main>
-                    <div class="w-full h-screen" :style="gridStyle">
+                    <div id="yardmap" class="w-full h-screen" :style="gridStyle">
                         <div v-for="dog in dogs">
                             <DogCard :dog="dog" :photoUri="props.photoUri"/>
                         </div>

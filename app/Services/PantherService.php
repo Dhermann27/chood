@@ -5,7 +5,6 @@ namespace App\Services;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\BrowserKit\Cookie;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Panther\Client;
 use Symfony\Component\Panther\Cookie\CookieJar;
@@ -22,7 +21,12 @@ class PantherService
 
     public function __construct()
     {
-        $this->client = Client::createChromeClient(null, null, [
+        $this->client = Client::createChromeClient(null, [
+            '--no-sandbox',
+            '--disable-gpu',  // Other flags as needed
+            '--headless',
+            '--disable-dev-shm-usage'
+        ], [
             'port' => intval(config('services.panther.port')),
         ]);
     }

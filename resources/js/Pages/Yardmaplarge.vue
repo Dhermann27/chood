@@ -1,5 +1,5 @@
 <script setup>
-import {Head, Link} from '@inertiajs/vue3';
+import {Head} from '@inertiajs/vue3';
 import {ref, computed, onMounted, onBeforeUnmount} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
 
@@ -53,8 +53,8 @@ const changeGifAndPosition = () => {
 
     // Get the full screen container's dimensions
     const container = document.querySelector('#yardmap');
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
+    const containerWidth = container.clientWidth > 0 ? container.clientWidth : container.offsetWidth;
+    const containerHeight = container.clientHeight > 0 ? container.clientHeight : container.offsetHeight;
 
     // Generate random positions within the container
     randomPosition.value = {
