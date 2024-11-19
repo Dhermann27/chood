@@ -30,7 +30,7 @@ const fetchData = async () => {
             dogs.value = newData.dogs;
         }
     } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching data: ', error);
     }
 };
 
@@ -68,7 +68,7 @@ const changeGifAndPosition = () => {
 onMounted(() => {
     dogs.value = props.dogs;
     refreshInterval = setInterval(fetchData, 5000); // Refresh data every 5 seconds
-    setInterval(changeGifAndPosition, 1000);
+    setInterval(changeGifAndPosition, 60000);
     changeGifAndPosition();
 });
 

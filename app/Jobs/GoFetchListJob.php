@@ -46,7 +46,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
 
 
         $existingIds = Dog::pluck('id')->toArray();
-        $newIds = collect($data['rows'])->pluck('id')->toArray();
+        $newIds = collect($data['rows'])->pluck(1)->toArray();
         $idsToDelete = array_diff($existingIds, $newIds);
         Dog::whereIn('id', $idsToDelete)->delete();
 
