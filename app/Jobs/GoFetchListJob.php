@@ -8,6 +8,7 @@ use App\Models\Dog;
 use App\Models\DogService;
 use App\Models\Service;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -36,12 +37,13 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
      * @throws ServerExceptionInterface
      * @throws RedirectionExceptionInterface
      * @throws ClientExceptionInterface
+     * @throws Exception
      */
     public function handle(NodeController $nodeController): void
     {
         $output = $nodeController->fetchData(config('services.puppeteer.uris.inHouseList'))->getData(true);
-        if(!$output['data'] || count($output['data']) == 0 ) {
-            throw new \Exception("No data found: " . $output);
+        if (!isset($output['data']) || !is_array($output['data']) || count($output['data']) == 0) {
+            throw new Exception("No data found: " . json_encode($output));
         }
         $data = $output['data'][0];
         $columns = collect($data['columns'])->pluck('index', 'filterKey');
