@@ -1,12 +1,8 @@
 import puppeteer from 'puppeteer';
-import path from 'path';
-
-const SUBMIT_BUTTON_CSS = 'button[type=submit]'; // Login
 
 const baseuri = process.argv[2];
 const username = process.argv[3];
 const password = process.argv[4];
-const posturi = process.argv[5];
 
 async function waitForOneOfTwoElements(page, selector1, selector2) {
     try {
@@ -27,14 +23,16 @@ async function waitForOneOfTwoElements(page, selector1, selector2) {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
 
-    await page.goto(baseuri);
-
-    await page.$eval(SUBMIT_BUTTON_CSS, el => el.textContent);
-    await page.type('input[name="username"]', username);
-    await page.type('input[name="password"]', password);
-    await page.click('button[type="submit"]');
 
     try {
+        await page.goto(baseuri, {
+            waitUntil: 'networkidle0',
+        });
+
+        await page.type('input[name="username"]', username);
+        await page.type('input[name="password"]', password);
+        await page.click('button[type="submit"]');
+
         const element = await waitForOneOfTwoElements(page, '.cbw-messaging-error', 'div#in-house');
         if (element) {
             const idValue = await element.getProperty('id');

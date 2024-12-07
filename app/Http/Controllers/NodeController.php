@@ -15,9 +15,8 @@ class NodeController extends Controller
         $baseUri = config('services.puppeteer.uris.base');
         $ddUser = config('services.puppeteer.username');
         $ddPass = config('services.puppeteer.password');
-        $appUri = config('app.url');
 
-        $command = "{$nodePath} {$scraperJs} {$baseUri} {$ddUser} {$ddPass} {$appUri} 2>&1";
+        $command = "{$nodePath} {$scraperJs} {$baseUri} {$ddUser} {$ddPass} 2>&1";
         $output = exec($command, $output, $resultCode);
 
         if ($resultCode === 0) {
