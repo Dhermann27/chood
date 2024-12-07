@@ -51,6 +51,7 @@ async function waitForOneOfTwoElements(page, selector1, selector2) {
         }
     } catch (error) {
         console.error('Error: ' + error);
+        await page.screenshot({path: `scraper.png` });
     } finally {
         await browser.close();
     }
