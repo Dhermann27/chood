@@ -13,7 +13,6 @@
         "laravel/telescope": "^5.1",
         "laravel/tinker": "^2.9",
         "nesbot/carbon": "^3.8",
-        "symfony/panther": "^2.1",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

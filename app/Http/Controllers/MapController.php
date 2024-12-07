@@ -8,8 +8,8 @@ use Inertia\Inertia;
 
 class MapController extends Controller
 {
-    const rowviews = ['last' => [2054, 2099, -20],
-        'mid' => [2019, 2053, -14],
+    const rowviews = ['last' => [2055, 2099, -20],
+        'mid' => [2019, 2054, -14],
         'first' => [0, 2018, 0]
 
     ];
@@ -24,7 +24,7 @@ class MapController extends Controller
             });
 
         return Inertia::render('Fullmap', [
-            'photoUri' => config('services.panther.uris.photo'),
+            'photoUri' => config('services.puppeteer.uris.photo'),
             'dogs' => $dogs,
             'cabins' => $cabins,
             'checksum' => md5($dogs->toJson())
@@ -41,7 +41,7 @@ class MapController extends Controller
             });
 
         return Inertia::render('Rowmap' . $row, [
-            'photoUri' => config('services.panther.uris.photo'),
+            'photoUri' => config('services.puppeteer.uris.photo'),
             'dogs' => $dogs,
             'cabins' => $cabins,
             'checksum' => md5($dogs->toJson())
@@ -55,7 +55,7 @@ class MapController extends Controller
             ->orderBy('name')->get();
 
         return Inertia::render('Yardmap' . $size, [
-            'photoUri' => config('services.panther.uris.photo'),
+            'photoUri' => config('services.puppeteer.uris.photo'),
             'dogs' => $dogs,
             'checksum' => md5($dogs->toJson())
         ]);
@@ -66,7 +66,7 @@ class MapController extends Controller
      */
     public function getCabins($start = 0, $end = 9999, $subtractor = 0)
     {
-        $cabins = Cabin::where('row', '>', '0')->where('column', '>', '0')->whereBetween('id', [$start, $end])
+        $cabins = Cabin::where('rho', '>', '0')->where('kappa', '>', '0')->whereBetween('id', [$start, $end])
             ->with('cleaning_status')->get()->map(function ($cabin) use ($subtractor) {
                 $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
                 $cabin->cabinName = preg_replace('/\dx\d - Cabin /', '', $cabin->cabinName);

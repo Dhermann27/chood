@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Http\Controllers\NodeController;
 use App\Models\Dog;
-use App\Services\PantherService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -29,7 +29,8 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
         $this->petId = $petId;
     }
 
-    public function uniqueId() {
+    public function uniqueId()
+    {
         return $this->petId;
     }
 
@@ -39,10 +40,10 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
      * @throws RedirectionExceptionInterface
      * @throws ClientExceptionInterface
      */
-    public function handle(PantherService $pantherService): void
+    public function handle(NodeController $nodeController): void
     {
-        $data = $pantherService->fetchData(config('services.panther.uris.card') . $this->petId .
-            config('services.panther.uris.cardSuffix'));
+        $data = $nodeController->fetchData(config('services.puppeteer.uris.card') . $this->petId .
+            config('services.puppeteer.uris.cardSuffix'))->getData(true)['data'][0];
         Dog::updateOrCreate(
             ['id' => $this->petId],
             [
@@ -51,7 +52,6 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
             ]
         );
 
-        sleep(4);
     }
 
 }

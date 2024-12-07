@@ -35,7 +35,7 @@ return [
         ],
     ],
 
-    'panther' => [
+    'puppeteer' => [
         'uris' => [
             'base' => env('BASE_URI'),
             'inHouseList' => env('BASE_URI') . env('IN_HOUSE_LIST_URI'),
@@ -43,9 +43,9 @@ return [
             'cardSuffix' => env('CARD_URI_SUFFIX'),
             'photo' => env('BASE_URI') . env('PHOTO_URI'),
         ],
-            'port' => env('PANTHER_PORT'),
-            'username' => env('DD_USERNAME'),
-            'password' => env('DD_PASSWORD'),
+        'nodepath' => env('NODE_PATH'),
+        'username' => env('DD_USERNAME'),
+        'password' => env('DD_PASSWORD'),
     ]
 
 ];

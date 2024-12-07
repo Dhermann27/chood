@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\NodeController;
 use App\Http\Controllers\ProfileController;
 use App\Jobs\GoFetchListJob;
 use App\Jobs\MarkCabinsForCleaning;
@@ -29,7 +30,7 @@ Route::get('/yardmap{i}', [MapController::class, 'yardmap'])->where('i', 'small|
 
 Route::prefix('api')->group(function () {
     Route::get('/fullmap/{checksum}', function (string $checksum) {
-        $dogs = Dog::selectRaw('*, LEFT(name, 8) AS shortname')->whereNotNull('cabin_id')->with('services')->get()
+        $dogs = Dog::selectRaw('*, LEFT(name, 12) AS shortname')->whereNotNull('cabin_id')->with('services')->get()
             ->mapWithKeys(function ($dog) {
                 return [$dog->cabin_id => $dog];
             });
@@ -62,6 +63,7 @@ Route::prefix('api')->group(function () {
         'size' => 'small|large',
         'checksum' => '[a-f0-9]{32}'
     ]);
+
 });
 
 Route::get('/current-time', function () {
@@ -70,8 +72,9 @@ Route::get('/current-time', function () {
 
 // TODO: REMOVE Testing only
 Route::get('/fetchDogList', function () {
-    return GoFetchListJob::dispatchSync();
+    return GoFetchListJob::dispatchSync(new NodeController());
 });
+
 Route::get('/markForCleaning', function () {
     return MarkCabinsForCleaning::dispatchSync();
 });

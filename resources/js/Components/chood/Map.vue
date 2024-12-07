@@ -24,8 +24,8 @@ const isBoarder = (services) => {
 
 const cabinStyle = (cabin) => {
     return {
-        gridRow: `${cabin.row} / span ${cabin.rowspan}`,
-        gridColumn: cabin.column,
+        gridRow: `${cabin.rho} / span ${cabin.rowspan}`,
+        gridColumn: cabin.kappa,
         borderColor: cabin.cleaning_status
             ? cabin.cleaning_status.cleaning_type === 'deep'
                 ? '#dd454f'

@@ -2,11 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Http\Controllers\NodeController;
 use App\Models\Cabin;
 use App\Models\Dog;
 use App\Models\DogService;
 use App\Models\Service;
-use App\Services\PantherService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -37,11 +37,9 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
      * @throws RedirectionExceptionInterface
      * @throws ClientExceptionInterface
      */
-    public function handle(PantherService $pantherService): void
+    public function handle(NodeController $nodeController): void
     {
-        $start = hrtime(true);
-
-        $data = $pantherService->fetchData(config('services.panther.uris.inHouseList'));
+        $data = $nodeController->fetchData(config('services.puppeteer.uris.inHouseList'))->getData(true)['data'][0];
         $columns = collect($data['columns'])->pluck('index', 'filterKey');
 
 
@@ -82,14 +80,11 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
                 }
             }
 
-            GoFetchDogJob::dispatch($petId, $pantherService);
+            GoFetchDogJob::dispatch($petId, $nodeController);
         }
-
-        $stop = hrtime(true);
-        sleep(max(4 - (($stop - $start) / 1e9), 0));
     }
 
-    function trimToNull($value)
+    function trimToNull($value): ?string
     {
         $trimmed = trim($value);
         return $trimmed === '' ? null : $trimmed;

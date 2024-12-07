@@ -13,8 +13,8 @@ return new class extends Migration {
         Schema::create('cabins', function (Blueprint $table) {
             $table->id();
             $table->string('cabinName');
-            $table->integer('row');
-            $table->integer('column');
+            $table->integer('rho');
+            $table->integer('kappa');
             $table->integer('rowspan')->default(1);
         });
 
