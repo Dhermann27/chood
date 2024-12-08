@@ -43,7 +43,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
     {
         $output = $nodeController->fetchData(config('services.puppeteer.uris.inHouseList'))->getData(true);
         if (!isset($output['data']) || !is_array($output['data']) || count($output['data']) == 0) {
-            throw new Exception("No data found: " . json_encode($output));
+            throw new Exception("No data found: " . $output);
         }
         $data = $output['data'][0];
         $columns = collect($data['columns'])->pluck('index', 'filterKey');

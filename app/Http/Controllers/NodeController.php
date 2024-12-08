@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 
@@ -21,6 +22,8 @@ class NodeController extends Controller
 
         if ($resultCode === 0) {
             $this->storeCookie(json_decode($output, true));
+        } else {
+            throw new Exception("Scraping failed: " . $output);
         }
     }
 
@@ -45,7 +48,7 @@ class NodeController extends Controller
         }
 
         return response()->json([
-            'error' => 'Scraping failed',
+            'error' => 'Fetching failed',
             'output' => $output,
             'resultCode' => $resultCode
         ], 500);
