@@ -23,10 +23,13 @@ class NodeController extends Controller
         if ($resultCode === 0) {
             $this->storeCookie(json_decode($output, true));
         } else {
-            throw new Exception("Scraping failed: " . $output);
+            throw new Exception("Scraping failed: " . $resultCode . "\n". $command . "\n\n" . $output);
         }
     }
 
+    /**
+     * @throws Exception
+     */
     public function fetchData(string $url): JsonResponse
     {
         $cookies = Cache::get('puppeteer_cookie');
@@ -49,6 +52,7 @@ class NodeController extends Controller
 
         return response()->json([
             'error' => 'Fetching failed',
+            'command' => $command,
             'output' => $output,
             'resultCode' => $resultCode
         ], 500);
