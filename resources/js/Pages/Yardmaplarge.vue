@@ -2,6 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {ref, computed, onMounted, onBeforeUnmount} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
+import textFit from "textfit";
 
 const props = defineProps({
     photoUri: {
@@ -28,6 +29,8 @@ const fetchData = async () => {
         if (newData) {
             local_checksum.value = newData.checksum;
             dogs.value = newData.dogs;
+            const elements = document.querySelectorAll('.dog-name');
+            textFit(elements, {alignVert: true, alignHoriz: true});
         }
     } catch (error) {
         console.error('Error fetching data:', error);
@@ -63,8 +66,6 @@ const changeGifAndPosition = () => {
     };
 };
 
-
-// Fetch data when the component is mounted
 onMounted(() => {
     dogs.value = props.dogs;
     refreshInterval = setInterval(fetchData, 5000); // Refresh data every 5 seconds

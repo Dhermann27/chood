@@ -18,6 +18,7 @@
         "vue": "^3.4.0"
     },
     "dependencies": {
-        "puppeteer": "^23.9.0"
+        "puppeteer": "^23.9.0",
+        "textfit": "^2.4.0"
     }
 }

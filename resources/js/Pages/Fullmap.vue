@@ -2,6 +2,7 @@
 import {Head, Link} from '@inertiajs/vue3';
 import {ref, onMounted, onBeforeUnmount} from 'vue';
 import Map from "@/Components/chood/Map.vue";
+import textFit from "textfit";
 
 const props = defineProps({
     photoUri: {
@@ -30,6 +31,8 @@ const fetchData = async () => {
             local_checksum.value = newData.checksum;
             dogs.value = newData.dogs;
         }
+        const elements = document.querySelectorAll('.dog-name');
+        textFit(elements, {alignVert: true, alignHoriz: true});
     } catch (error) {
         console.error('Error fetching data:', error);
     }

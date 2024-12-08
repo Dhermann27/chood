@@ -70,7 +70,7 @@ class MapController extends Controller
             ->with('cleaning_status')->get()->map(function ($cabin) use ($subtractor) {
                 $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
                 $cabin->cabinName = preg_replace('/\dx\d - Cabin /', '', $cabin->cabinName);
-                $cabin->column = $cabin->column + $subtractor;
+                $cabin->kappa = $cabin->kappa + $subtractor;
                 return $cabin;
             });
         return $cabins;

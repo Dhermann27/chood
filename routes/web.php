@@ -71,9 +71,6 @@ Route::get('/current-time', function () {
 });
 
 // TODO: REMOVE Testing only
-Route::get('/loginCookie', [NodeController::class, 'loginAndStoreCookie']);
-
-
 Route::get('/fetchDogList', function () {
     return GoFetchListJob::dispatchSync(new NodeController());
 });
