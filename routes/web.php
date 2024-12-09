@@ -101,6 +101,10 @@ Route::get('/assignDaycampers', function () {
     }
 });
 
+Route::get('/note', function () {
+    return view('note');
+});
+
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
