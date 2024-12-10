@@ -1,16 +1,15 @@
 <?php
 
+use App\Http\Controllers\ApiController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\NodeController;
 use App\Http\Controllers\ProfileController;
 use App\Jobs\GoFetchListJob;
 use App\Jobs\MarkCabinsForCleaning;
 use App\Models\Cabin;
-use App\Models\Dog;
 use App\Models\Service;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -29,37 +28,9 @@ Route::get('/rowmap{i}', [MapController::class, 'rowmap'])->where('i', 'first|mi
 Route::get('/yardmap{i}', [MapController::class, 'yardmap'])->where('i', 'small|large');
 
 Route::prefix('api')->group(function () {
-    Route::get('/fullmap/{checksum}', function (string $checksum) {
-        $dogs = Dog::selectRaw('*, LEFT(name, 12) AS shortname')->whereNotNull('cabin_id')->with('services')->get()
-            ->mapWithKeys(function ($dog) {
-                return [$dog->cabin_id => $dog];
-            });
-        $new_checksum = md5($dogs->toJson());
-        if ($checksum !== $new_checksum) {
-            $response = [
-                'dogs' => $dogs,         // The original collection of dogs
-                'checksum' => $new_checksum, // The computed checksum
-            ];
-
-            return Response::json($response);
-        }
-        return json_encode(false);
-    });
-    Route::get('/yardmap{size}/{checksum}', function (string $size, string $checksum) {
-        $sizes = $size === 'small' ? ['Medium', 'Small', 'Extra Small'] : ['Medium', 'Large', 'Extra Large'];
-        $dogs = Dog::selectRaw('*, LEFT(name, 20) AS shortname')->whereIn('size', $sizes)->with('services')
-            ->orderBy('name')->get();
-        $new_checksum = md5($dogs->toJson());
-        if ($checksum !== $new_checksum) {
-            $response = [
-                'dogs' => $dogs,         // The original collection of dogs
-                'checksum' => $new_checksum, // The computed checksum
-            ];
-
-            return Response::json($response);
-        }
-        return json_encode(false);
-    })->where([
+    Route::get('/fullmap/{checksum}', [ApiController::class, 'fullmap'])
+        ->where('checksum', '[a-f0-9]{32}');
+    Route::get('/yardmap{size}/{checksum}', [ApiController::class, 'yardmap'])->where([
         'size' => 'small|large',
         'checksum' => '[a-f0-9]{32}'
     ]);

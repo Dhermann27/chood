@@ -65,7 +65,7 @@ function handleImageError() {
             <div class="relative w-full px-6 max-w-full">
                 <main>
                     <div class="w-full h-screen choodmap">
-                        <Map :cabins="cabins" :dogs="dogs" :photoUri="photoUri"/>
+                        <Map :cabins="cabins" :dogs="dogs" :photoUri="photoUri" :maxlength="12"/>
                     </div>
                 </main>
             </div>

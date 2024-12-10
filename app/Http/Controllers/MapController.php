@@ -2,57 +2,52 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Cabin;
-use App\Models\Dog;
+use App\Traits\ChoodTrait;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class MapController extends Controller
 {
+    use ChoodTrait;
+
     const rowviews = ['last' => [2055, 2099, -20],
         'mid' => [2019, 2054, -14],
         'first' => [0, 2018, 0]
 
     ];
 
-    public function fullmap()
+    public function fullmap(): Response
     {
-        $cabins = $this->getCabins();
-
-        $dogs = Dog::selectRaw('*, LEFT(name, 8) AS shortname')->whereNotNull('cabin_id')->with('services')->get()
-            ->mapWithKeys(function ($dog) {
-                return [$dog->cabin_id => $dog];
-            });
+        $dogs = $this->getDogs(true)->mapWithKeys(function ($dog) {
+            return [$dog->cabin_id => $dog];
+        });
 
         return Inertia::render('Fullmap', [
             'photoUri' => config('services.puppeteer.uris.photo'),
             'dogs' => $dogs,
-            'cabins' => $cabins,
+            'cabins' => $this->getCabins(),
             'checksum' => md5($dogs->toJson())
         ]);
     }
 
-    public function rowmap($row)
+    public function rowmap($row): Response
     {
-        $cabins = $this->getCabins(self::rowviews[$row][0], self::rowviews[$row][1], self::rowviews[$row][2]);
-
-        $dogs = Dog::selectRaw('*, LEFT(name, 12) AS shortname')->whereNotNull('cabin_id')->with('services')->get()
-            ->mapWithKeys(function ($dog) {
-                return [$dog->cabin_id => $dog];
-            });
+        $dogs = $this->getDogs(true)->mapWithKeys(function ($dog) {
+            return [$dog->cabin_id => $dog];
+        });
 
         return Inertia::render('Rowmap' . $row, [
             'photoUri' => config('services.puppeteer.uris.photo'),
             'dogs' => $dogs,
-            'cabins' => $cabins,
+            'cabins' => $this->getCabins(self::rowviews[$row][0], self::rowviews[$row][1], self::rowviews[$row][2]),
             'checksum' => md5($dogs->toJson())
         ]);
     }
 
-    public function yardmap($size)
+    public function yardmap($size): Response
     {
         $sizes = $size === 'small' ? ['Medium', 'Small', 'Extra Small'] : ['Medium', 'Large', 'Extra Large'];
-        $dogs = Dog::selectRaw('*, LEFT(name, 25) AS shortname')->whereIn('size', $sizes)->with('services')
-            ->orderBy('name')->get();
+        $dogs = $this->getDogs(false, $sizes);
 
         return Inertia::render('Yardmap' . $size, [
             'photoUri' => config('services.puppeteer.uris.photo'),
@@ -61,18 +56,5 @@ class MapController extends Controller
         ]);
     }
 
-    /**
-     * @return mixed
-     */
-    public function getCabins($start = 0, $end = 9999, $subtractor = 0)
-    {
-        $cabins = Cabin::where('rho', '>', '0')->where('kappa', '>', '0')->whereBetween('id', [$start, $end])
-            ->with('cleaning_status')->get()->map(function ($cabin) use ($subtractor) {
-                $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
-                $cabin->cabinName = preg_replace('/\dx\d - Cabin /', '', $cabin->cabinName);
-                $cabin->kappa = $cabin->kappa + $subtractor;
-                return $cabin;
-            });
-        return $cabins;
-    }
+
 }

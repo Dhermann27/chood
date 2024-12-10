@@ -1,20 +1,12 @@
 <script setup>
-import {Head, Link} from '@inertiajs/vue3';
 import DogCard from "@/Components/chood/DogCard.vue";
 
 const props = defineProps({
-    photoUri: {
-        type: String,
-    },
-    cabins: {
-        type: Object,
-    },
-    dogs: {
-        type: Object,
-    },
-    checksum: {
-        type: String,
-    }
+    photoUri: String,
+    cabins: Object,
+    dogs: Object,
+    maxlength: Number,
+    checksum: String
 });
 
 const isBoarder = (services) => {
@@ -42,7 +34,7 @@ const cabinStyle = (cabin) => {
         :style="cabinStyle(cabin)"
     >
         <div v-if="dogs[cabin.id]" class="h-full w-full">
-            <DogCard :dog="dogs[cabin.id]" :photoUri="props.photoUri"/>
+            <DogCard :dog="dogs[cabin.id]" :photoUri="props.photoUri" :maxlength="maxlength"/>
         </div>
         <div v-else>{{ cabin.cabinName }}</div>
     </div>

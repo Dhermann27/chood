@@ -64,10 +64,10 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             $updateValues = [
                 'name' => $this->trimToNull($row[$columns['name']]),
                 'gender' => $this->trimToNull($row[$columns['gender']]),
-                'cabin_id' => $cabin ? $cabin->id : null,
+                'cabin_id' => $this->trimToNull($cabin) ? $cabin->id : null,
                 'checkout' => Carbon::createFromFormat('m/d/Y g:i A', $row[$columns['checkOutDate']] . " " . $row[$columns['checkOutTime']])
             ];
-            
+
             $filteredValues = array_filter($updateValues, function ($value) {
                 return !is_null($value);
             });
