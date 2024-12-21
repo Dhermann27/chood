@@ -23,7 +23,7 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/fullmap{i}', [MapController::class, 'fullmap'])->where('i', '1|2');
+Route::get('/fullmap{i}', [MapController::class, 'fullmap'])->where('i', '1|2|3');
 Route::get('/rowmap{i}', [MapController::class, 'rowmap'])->where('i', 'first|mid|last');
 Route::get('/yardmap{i}', [MapController::class, 'yardmap'])->where('i', 'small|large');
 
@@ -35,6 +35,9 @@ Route::prefix('api')->group(function () {
         'checksum' => '[a-f0-9]{32}'
     ]);
 
+    Route::post('/dog', [ApiController::class, 'storeAssignment']);
+    Route::put('/dog/{id}', [ApiController::class, 'updateAssignment']);
+    Route::delete('/dog', [ApiController::class, 'deleteAssignment']);
 });
 
 Route::get('/current-time', function () {

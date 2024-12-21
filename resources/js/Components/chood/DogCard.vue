@@ -5,20 +5,20 @@ const props = defineProps({
     dog: Object,
     maxlength: Number
 });
-
 const isBoarder = (dog) => {
-    if (dog.services.length > 0) return dog.services.some(service => service.id === 1003 || service.id === 1004);
-    if (dog.service_ids) return dog.service_ids.includes('1003') || dog.service_ids.includes('1004');
+    if (dog.services && dog.services.length > 0) return dog.services.some(service => service.id === 1000 || service.id === 1001);
+    if (dog.service_ids) return dog.service_ids.includes('1000') || dog.service_ids.includes('1001');
     return false;
 }
 
 </script>
 <template>
-    <div :class="isBoarder(dog) ? 'dog-boarder' : 'dog-daycamper'">
-        <div>{{ isBoarder(dog) ? 'Boarder' : 'Daycamper' }}</div>
+    <div :class="isBoarder(props.dog) ? 'dog-boarder' : 'dog-daycamper'">
+        <div>{{ isBoarder(props.dog) ? 'Boarder' : 'Daycamper' }}</div>
         <div class="dog-photo"
-             :style="{ backgroundImage: dog.photoUri ? `url(${props.photoUri}${dog.photoUri})` : 'none' }">&nbsp;
+             :style="{ backgroundImage: props.dog.photoUri ? `url(${props.photoUri}${props.dog.photoUri})` : 'none'}">
+            &nbsp;
         </div>
-        <div class="dog-name">{{ dog.name.slice(0, maxlength) }}</div>
+        <div v-if="props.dog.name" class="dog-name">{{ props.dog.name.slice(0, maxlength) }}</div>
     </div>
 </template>

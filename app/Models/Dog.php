@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -12,7 +11,7 @@ class Dog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['id', 'name', 'gender', 'photoUri', 'size', 'cabin_id', 'checkout'];
+    protected $fillable = ['pet_id', 'name', 'gender', 'photoUri', 'size', 'cabin_id', 'is_inhouse', 'checkout'];
 
     protected $casts = [
         'checkout' => 'datetime'

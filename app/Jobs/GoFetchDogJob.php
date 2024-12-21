@@ -45,12 +45,13 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
         $data = $nodeController->fetchData(config('services.puppeteer.uris.card') . $this->petId .
             config('services.puppeteer.uris.cardSuffix'))->getData(true)['data'][0];
         Dog::updateOrCreate(
-            ['id' => $this->petId],
+            ['pet_id' => $this->petId],
             [
                 'photoUri' => $data['photoUrl'], // Comes from DD, do not change
                 'size' => $data['size']
             ]
         );
+        sleep(mt_rand(0, 2000)/1000);
 
     }
 

@@ -5,18 +5,10 @@ import Map from "@/Components/chood/Map.vue";
 import textFit from "textfit";
 
 const props = defineProps({
-    photoUri: {
-        type: String,
-    },
-    cabins: {
-        type: Object,
-    },
-    dogs: {
-        type: Object,
-    },
-    checksum: {
-        type: String,
-    }
+    photoUri: String,
+    cabins: Array,
+    dogs: Object,
+    checksum: String
 });
 
 const dogs = ref({});
@@ -78,10 +70,6 @@ function handleImageError() {
     display: grid;
     grid-template-columns: 1fr 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr);
     grid-template-rows: repeat(2, 1fr) repeat(3, 20px) repeat(5, 1fr);
-    border-width: 5px;
-}
-
-.choodmap > div {
     border-width: 5px;
 }
 </style>

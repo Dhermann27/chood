@@ -1,13 +1,15 @@
 <script setup>
-import {Head, Link} from '@inertiajs/vue3';
+import {Head} from '@inertiajs/vue3';
 import {ref, onMounted, onBeforeUnmount} from 'vue';
 import Map from "@/Components/chood/Map.vue";
 import textFit from "textfit";
 
 const props = defineProps({
     photoUri: String,
-    cabins: Object,
+    cabins: Array,
+    services: Array,
     dogs: Object,
+    outhouseDogs: Array,
     checksum: String
 });
 
@@ -23,8 +25,7 @@ const fetchData = async () => {
             local_checksum.value = newData.checksum;
             dogs.value = newData.dogs;
         }
-        const elements = document.querySelectorAll('.dog-name');
-        textFit(elements, {alignVert: true, alignHoriz: true});
+        textFit(document.querySelectorAll('.dog-name'), {alignVert: true, alignHoriz: true});
     } catch (error) {
         console.error('Error fetching data:', error);
     }
@@ -57,7 +58,7 @@ function handleImageError() {
             <div class="relative w-full px-6 max-w-full">
                 <main>
                     <div class="w-full h-screen choodmap">
-                        <Map :cabins="cabins" :dogs="dogs" :photoUri="photoUri" :maxlength="8"/>
+                        <Map :cabins="cabins" :dogs="dogs" :outhouse-dogs="outhouseDogs" :services="services" :photoUri="photoUri" :maxlength="8"/>
                     </div>
                 </main>
             </div>
@@ -70,9 +71,5 @@ function handleImageError() {
     display: grid;
     grid-template-columns: 1fr 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px repeat(2, 1fr) 20px 1fr;
     grid-template-rows: repeat(4, 1fr) 20px repeat(5, 1fr);
-}
-
-.choodmap > div {
-    border-width: 3px;
 }
 </style>

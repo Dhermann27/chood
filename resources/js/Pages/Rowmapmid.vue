@@ -1,22 +1,14 @@
 <script setup>
-import {Head, Link} from '@inertiajs/vue3';
+import {Head} from '@inertiajs/vue3';
 import {ref, onMounted, onBeforeUnmount} from 'vue';
 import Map from "@/Components/chood/Map.vue";
 import textFit from "textfit";
 
 const props = defineProps({
-    photoUri: {
-        type: String,
-    },
-    cabins: {
-        type: Object,
-    },
-    dogs: {
-        type: Object,
-    },
-    checksum: {
-        type: String,
-    }
+    photoUri: String,
+    cabins: Array,
+    dogs: Object,
+    checksum: String
 });
 
 const dogs = ref({});
@@ -78,9 +70,5 @@ function handleImageError() {
     display: grid;
     grid-template-columns: repeat(2, 1fr) 40px repeat(2, 1fr);
     grid-template-rows: repeat(4, 1fr) 20px repeat(5, 1fr);
-}
-
-.choodmap > div {
-    border-width: 5px;
 }
 </style>

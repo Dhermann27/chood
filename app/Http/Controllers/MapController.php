@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Service;
 use App\Traits\ChoodTrait;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,23 +19,24 @@ class MapController extends Controller
 
     public function fullmap(): Response
     {
-        $dogs = $this->getDogs(true)->mapWithKeys(function ($dog) {
-            return [$dog->cabin_id => $dog];
-        });
+        $dogs = $this->getDogsByCabin();
+        $outhouseDogs = $dogs->flatten()->filter(function ($dog) {
+            return $dog->is_inhouse == 0;
+        })->values()->all();
 
         return Inertia::render('Fullmap', [
             'photoUri' => config('services.puppeteer.uris.photo'),
             'dogs' => $dogs,
+            'outhouseDogs' => $outhouseDogs,
             'cabins' => $this->getCabins(),
+            'services' => Service::all(),
             'checksum' => md5($dogs->toJson())
         ]);
     }
 
     public function rowmap($row): Response
     {
-        $dogs = $this->getDogs(true)->mapWithKeys(function ($dog) {
-            return [$dog->cabin_id => $dog];
-        });
+        $dogs = $this->getDogsByCabin();
 
         return Inertia::render('Rowmap' . $row, [
             'photoUri' => config('services.puppeteer.uris.photo'),
