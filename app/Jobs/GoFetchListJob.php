@@ -20,6 +20,9 @@ use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
+/**
+ *
+ */
 class GoFetchListJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -52,40 +55,65 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         $existingIds = Dog::pluck('pet_id')->toArray();
         $newIds = collect($data['rows'])->pluck(1)->toArray();
         $idsToDelete = array_diff($existingIds, $newIds);
-        Dog::whereIn('pet_id', $idsToDelete)->delete();
+        if (count($idsToDelete) > 0) {
+            Dog::whereIn('pet_id', $idsToDelete)->delete();
+        }
 
-        $cabins = Cabin::all();
+        $cabins = Cabin::all()->pluck('id', 'cabinName');
         $services = Service::all()->pluck('id', 'code');
 
         foreach ($data['rows'] as $row) {
-            $petId = $row[$columns['petId']];
-            $cabin = $cabins->where('cabinName', $row[$columns['dateCabin']])->first();
+            $updateValues = $this->getFilteredValues($row, $columns, $cabins);
 
-            $updateValues = [
-                'name' => $this->trimToNull($row[$columns['name']]),
-                'gender' => $this->trimToNull($row[$columns['gender']]),
-                'cabin_id' => $cabin ? $cabin->id : null,
-                'is_inhouse' => $cabin ? 1 : 0,
-                'checkout' => Carbon::createFromFormat('m/d/Y g:i A', $row[$columns['checkOutDate']] . " " . $row[$columns['checkOutTime']])
-            ];
-            $filteredValues = array_filter($updateValues, function ($value) {
-                return !is_null($value);
-            });
+            $dog = Dog::whereRaw('MATCH(name) AGAINST (? IN BOOLEAN MODE)', [$updateValues['name']]);
+            if(array_key_exists('cabin_id', $updateValues)) {
+                $dog = $dog->where('cabin_id', $updateValues['cabin_id']);
+            }
+            $dog = $dog->first();
 
-            $dog = Dog::updateOrCreate(['pet_id' => $petId], $filteredValues);
-
-            foreach (explode(',', $row[$columns['serviceCode']]) as $serviceId) {
-                $serviceId = trim($serviceId);
-                if ($services->has($serviceId)) {
-                    DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $services[$serviceId]]);
-                }
+            if ($dog) {
+                $dog->update(array_merge($updateValues, ['pet_id' => $row[$columns['petId']]]));
+            } else {
+                $dog = Dog::updateOrCreate(['pet_id' => $row[$columns['petId']]], $updateValues);
             }
 
-            GoFetchDogJob::dispatch($petId, $nodeController);
+            $existingIds = DogService::where('dog_id', $dog->id)->pluck('service_id')->toArray();
+            $newCodes = explode(',', $row[$columns['serviceCode']]);
+            $newIds = [];
+            foreach ($newCodes as $code) {
+                if ($services->has($code)) {
+                    $newIds[] = $services[$code]; // Map code to ID
+                }
+            }
+            $idsToDelete = array_diff($existingIds, $newIds);
+            if (count($idsToDelete) > 0) {
+                DogService::where('dog_id', $dog->id)->whereIn('service_id', $idsToDelete)->delete();
+            }
+
+            foreach ($newIds as $serviceId) {
+                DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $serviceId]);
+            }
+
+            GoFetchDogJob::dispatch($dog->pet_id, $nodeController);
         }
     }
 
-    function trimToNull($value): ?string
+    private function getFilteredValues($row, $columns, $cabins): array
+    {
+        $cabinId = $cabins->has($row[$columns['dateCabin']]) ? $cabins[$row[$columns['dateCabin']]] : null;
+        $updateValues = [
+            'name' => $this->trimToNull($row[$columns['name']]),
+            'gender' => $this->trimToNull($row[$columns['gender']]),
+            'cabin_id' => $cabinId,
+            'is_inhouse' => $cabinId ? 1 : 0,
+            'checkout' => Carbon::createFromFormat('m/d/Y g:i A', $row[$columns['checkOutDate']] . " " . $row[$columns['checkOutTime']])
+        ];
+        return array_filter($updateValues, function ($value) {
+            return !is_null($value);
+        });
+    }
+
+    private function trimToNull($value): ?string
     {
         $trimmed = trim($value);
         return $trimmed === '' ? null : $trimmed;

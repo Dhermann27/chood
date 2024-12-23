@@ -17,12 +17,14 @@ class Dog extends Model
         'checkout' => 'datetime'
     ];
 
-    public function cabin() : HasOne {
+    public function cabin(): HasOne
+    {
         return $this->hasOne(Cabin::class);
     }
 
 
-    public function services() : BelongsToMany {
+    public function services(): BelongsToMany
+    {
         return $this->belongsToMany(Service::class, 'dog_service', 'dog_id', 'service_id');
     }
 }

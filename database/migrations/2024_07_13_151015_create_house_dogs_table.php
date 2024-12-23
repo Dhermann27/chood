@@ -14,7 +14,8 @@ return new class extends Migration {
         Schema::create('dogs', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('pet_id')->nullable()->index();
-            $table->string('name');
+            $table->string('name')->default('Dog');
+            $table->fullText('name');
             $table->string('gender')->nullable();
             $table->string('size')->nullable();
             $table->string('photoUri')->nullable();
@@ -33,6 +34,9 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('dogs');
+        Schema::table('dogs', function (Blueprint $table) {
+            $table->dropFullText(['name']); // Drop the full-text index
+        });
+
     }
 };
