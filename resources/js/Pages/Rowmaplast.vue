@@ -1,5 +1,5 @@
 <script setup>
-import {Head, Link} from '@inertiajs/vue3';
+import {Head} from '@inertiajs/vue3';
 import {ref, onMounted, onBeforeUnmount} from 'vue';
 import Map from "@/Components/chood/Map.vue";
 
