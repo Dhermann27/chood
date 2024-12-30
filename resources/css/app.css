@@ -23,9 +23,8 @@
     font-style: normal; /* Specify the style */
 }
 
-.cabin {
-    background-color: #f0f0f0;
-    border: 5px solid #373a36;
+.cabin, .cabin-double {
+    border: 10px solid #373a36;
     overflow: hidden;
 }
 
@@ -47,7 +46,6 @@
     padding: 0;
     border-radius: 50%;
     color: #0277BD;
-    /*font-size: 3vw;*/
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -76,15 +74,12 @@
 }
 
 .dog-photo {
-    flex-grow: 1;
+    flex: 1;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
 }
 
 .dog-name {
-    height: 15%;
     white-space: nowrap;
-    overflow-x: hidden;
-    text-overflow: ellipsis;
 }

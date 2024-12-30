@@ -65,12 +65,9 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         foreach ($data['rows'] as $row) {
             $updateValues = $this->getFilteredValues($row, $columns, $cabins);
 
-            $dog = Dog::whereRaw('MATCH(name) AGAINST (? IN BOOLEAN MODE)', [$updateValues['name']]);
-            if(array_key_exists('cabin_id', $updateValues)) {
-                $dog = $dog->where('cabin_id', $updateValues['cabin_id']);
-            }
+            $dog = Dog::whereRaw('MATCH(firstname) AGAINST (? IN BOOLEAN MODE) AND MATCH(lastname) AGAINST (? IN BOOLEAN MODE)',
+                [$updateValues['firstname'], $updateValues['lastname']]);
             $dog = $dog->first();
-
             if ($dog) {
                 $dog->update(array_merge($updateValues, ['pet_id' => $row[$columns['petId']]]));
             } else {
@@ -102,7 +99,8 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
     {
         $cabinId = $cabins->has($row[$columns['dateCabin']]) ? $cabins[$row[$columns['dateCabin']]] : null;
         $updateValues = [
-            'name' => $this->trimToNull($row[$columns['name']]),
+            'firstname' => $this->trimToNull($row[$columns['name']]),
+            'lastname' => $this->trimToNull($row[$columns['lastName']]),
             'gender' => $this->trimToNull($row[$columns['gender']]),
             'cabin_id' => $cabinId,
             'is_inhouse' => $cabinId ? 1 : 0,

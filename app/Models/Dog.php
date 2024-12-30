@@ -11,7 +11,8 @@ class Dog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['pet_id', 'name', 'gender', 'photoUri', 'size', 'cabin_id', 'is_inhouse', 'checkout'];
+    protected $fillable = ['pet_id', 'firstname', 'lastname', 'gender', 'photoUri', 'size', 'cabin_id',
+        'is_inhouse', 'checkout'];
 
     protected $casts = [
         'checkout' => 'datetime'

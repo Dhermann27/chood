@@ -14,8 +14,10 @@ return new class extends Migration {
         Schema::create('dogs', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('pet_id')->nullable()->index();
-            $table->string('name')->default('Dog');
-            $table->fullText('name');
+            $table->string('firstname')->default('Dog');
+            $table->fullText('firstname');
+            $table->string('lastname')->default('Smith');
+            $table->fullText('lastname');
             $table->string('gender')->nullable();
             $table->string('size')->nullable();
             $table->string('photoUri')->nullable();
@@ -35,8 +37,17 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('dogs', function (Blueprint $table) {
-            $table->dropFullText(['name']); // Drop the full-text index
+            $indexExists = DB::select("SHOW INDEXES FROM dogs WHERE Key_name = 'dogs_firstname_fulltext'");
+            if ($indexExists) {
+                $table->dropFullText('dogs_firstname_fulltext');
+            }
+
+            $indexExists = DB::select("SHOW INDEXES FROM dogs WHERE Key_name = 'dogs_lastname_fulltext'");
+            if ($indexExists) {
+                $table->dropFullText('dogs_lastname_fulltext');
+            }
         });
+        Schema::dropIfExists('dogs');
 
     }
 };

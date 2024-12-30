@@ -13,12 +13,15 @@ const props = defineProps({
     dogs: Object,
     outhouseDogs: Array,
     maxlength: Number,
-    checksum: String
+    checksum: String,
+    cardWidth: Number,
+    cardHeight: Number,
 });
 
 const assignment = ref({
     id: null,
-    name: '',
+    firstname: '',
+    lastname: '',
     dogs: [],
     cabin_id: null,
     services: []
@@ -33,7 +36,8 @@ function openModal(type, cabin) {
     assignment.value.cabin_id = cabin.id;
     if (type === 'edit') {
         assignment.value.id = props.dogs[cabin.id][0].id;
-        assignment.value.name = props.dogs[cabin.id][0].name;
+        assignment.value.firstname = props.dogs[cabin.id][0].firstname;
+        assignment.value.lastname = props.dogs[cabin.id][0].lastname;
         assignment.value.dogs = props.dogs[cabin.id];
         assignment.value.services = props.dogs[cabin.id][0].services;
     }
@@ -43,7 +47,7 @@ function openModal(type, cabin) {
 
 function closeModal() {
     showModal.value = false;
-    assignment.value = {id: null, name: '', dogs: [], cabin_id: null, services: []};
+    assignment.value = {id: null, firstname: '', lastname: '', dogs: [], cabin_id: null, services: []};
 }
 
 async function submitForm() {
@@ -58,15 +62,15 @@ async function submitForm() {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
             },
             data: {
-                name: assignment.value.name,
+                firstname: assignment.value.firstname,
+                lastname: assignment.value.lastname,
                 dogs: assignment.value.dogs,
                 cabin_id: assignment.value.cabin_id,
                 service_ids: assignment.value.services,
             },
         });
 
-        alert('Assignment saved successfully');
-        assignment.value = {id: null, name: '', dogs: [], cabin_id: null, services: []};
+        assignment.value = {id: null, firstname: '', lastname: '', dogs: [], cabin_id: null, services: []};
         closeModal();
     } catch (error) {
         if (error.response && error.response.data.errors) {
@@ -92,8 +96,6 @@ async function handleDelete(dogs) {
                 },
             });
 
-
-            alert('Assignment deleted successfully');
         }
     } catch (error) {
         if (error.response && error.response.data.errors) {
@@ -119,7 +121,9 @@ const cabinStyle = (cabin) => {
             ? cabin.cleaning_status.cleaning_type === 'deep'
                 ? '#dd454f'
                 : '#f4df7a'
-            : '#373a36'
+            : '#373a36',
+        width: props.cardWidth + 'px',
+        height: (props.cardHeight * cabin.rowspan) + 'px'
     };
 };
 </script>
@@ -127,11 +131,11 @@ const cabinStyle = (cabin) => {
     <div
         v-for="cabin in cabins"
         :key="cabin.id"
-        :class="['cabin', { 'cabin-empty': !props.dogs[cabin.id] }]"
+        :class="['cabin', { 'cabin-empty': !props.dogs[cabin.id]}]"
         :style="cabinStyle(cabin)"
     >
         <div v-if="props.dogs[cabin.id] && props.dogs[cabin.id].length > 0" class="h-full w-full relative">
-            <DogCard :dog="props.dogs[cabin.id][0]" :photoUri="photoUri" :maxlength="maxlength"/>
+            <DogCard :dog="props.dogs[cabin.id][0]" :photoUri="photoUri" :maxlength="maxlength" :card-height="cardHeight"/>
             <div v-if="isBrowser && props.dogs[cabin.id][0].is_inhouse === 0"
                  class="absolute inset-y-0 left-0 flex flex-col justify-center py-1">
                 <button
@@ -175,13 +179,24 @@ const cabinStyle = (cabin) => {
                         </option>
                     </select>
                 </div>
-                <!-- name -->
+
                 <div class="mb-4">
-                    <label for="name" class="block text-xs font-medium text-gray-700">Name (ignored if dog
+                    <label for="name" class="block text-xs font-medium text-gray-700">Dog Name (ignored if dog
                         selected)</label>
                     <input
-                        v-model="assignment.name"
-                        id="name"
+                        v-model="assignment.firstname"
+                        id="firstname"
+                        type="text"
+                        class="mt-1 block w-full text-sm border border-gray-300 rounded-md p-2"
+                    />
+                </div>
+
+                <div class="mb-4">
+                    <label for="name" class="block text-xs font-medium text-gray-700">Family Name (ignored if dog
+                        selected)</label>
+                    <input
+                        v-model="assignment.lastname"
+                        id="lastname"
                         type="text"
                         class="mt-1 block w-full text-sm border border-gray-300 rounded-md p-2"
                     />
@@ -193,15 +208,15 @@ const cabinStyle = (cabin) => {
                         v-model="assignment.dogs"
                         :options="props.outhouseDogs"
                         multiple
-                        label="name"
+                        label="firstname"
                         :searchable="true"
                         :clearable="true"
                         placeholder="Select Dog(s)"
                     >
                         <template #option="props">
                             <img v-if="props.option.photoUri" :src="photoUri + props.option.photoUri"
-                                 :alt="'Picture of' + props.option.name" class="dog-photo"/>
-                            {{ props.option.name }}
+                                 :alt="'Picture of' + props.option.firstname" class="dog-photo"/>
+                            {{ props.option.firstname }}
                         </template>
                     </multiselect>
                 </div>
@@ -245,6 +260,6 @@ const cabinStyle = (cabin) => {
     width: 30px;
     height: 30px;
     margin: 0 5px 5px 0;
-    border-radius: 50%;
+    border-radius: 10%;
 }
 </style>

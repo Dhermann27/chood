@@ -55,7 +55,8 @@ class ApiController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'name' => 'nullable|string|max:255|required_without:dogs',
+                'firstname' => 'nullable|string|max:255|required_without:dogs',
+                'lastname' => 'nullable|string|max:255|required_without:dogs',
                 'dogs.*.id' => 'nullable|exists:dogs,id',
                 'cabin_id' => 'required|exists:cabins,id',
                 'service_ids.*.id' => 'required|exists:services,id'
@@ -97,14 +98,16 @@ class ApiController extends Controller
     public function updateAssignment(Request $request, $id): JsonResponse
     {
         $validatedData = $request->validate([
-            'name' => 'nullable|string|max:255',
+            'firstname' => 'nullable|string|max:255',
+            'lastname' => 'nullable|string|max:255',
             'dogs.0.pet_id' => 'nullable|exists:dogs,pet_id',
             'cabin_id' => 'required|exists:cabins,id',
             'service_ids.*.id' => 'required|exists:services,id'
         ]);
 
         $dog = Dog::findOrFail($id)->update([
-            'name' => $validatedData['name'],
+            'firstname' => $validatedData['firstname'],
+            'lastname' => $validatedData['lastname'],
             'pet_id' => $validatedData['dogs'][0]['pet_id'],
             'cabin_id' => $validatedData['cabin_id'],
         ]);
