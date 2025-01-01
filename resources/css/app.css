@@ -23,6 +23,10 @@
     font-style: normal; /* Specify the style */
 }
 
+#app {
+    height: 100vh;
+}
+
 .cabin, .cabin-double {
     border: 10px solid #373a36;
     overflow: hidden;
@@ -81,5 +85,6 @@
 }
 
 .dog-name {
+    height: 25%;
     white-space: nowrap;
 }

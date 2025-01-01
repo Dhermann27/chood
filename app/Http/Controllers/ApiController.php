@@ -18,7 +18,7 @@ class ApiController extends Controller
     const ERROR_MESSAGES = ['name.required_without' => 'You must specify the dog\'s name with no dog selected.',
     ];
 
-    function fullmap(string $checksum): JsonResponse
+    function fullmap(string $checksum = null): JsonResponse
     {
         $dogs = $this->getDogsByCabin();
         $new_checksum = md5($dogs->toJson());
@@ -33,7 +33,7 @@ class ApiController extends Controller
         return Response::json(false);
     }
 
-    function yardmap(string $size, string $checksum): JsonResponse
+    function yardmap(string $size, string $checksum = null): JsonResponse
     {
         $sizes = $size === 'small' ? ['Medium', 'Small', 'Extra Small'] : ['Medium', 'Large', 'Extra Large'];
         $dogs = $this->getDogs(false, $sizes);

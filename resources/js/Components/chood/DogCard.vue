@@ -8,7 +8,8 @@ const props = defineProps({
     cardHeight: Number,
 });
 const bannerSize = computed(() => `${props.cardHeight * 0.05}px`);
-const nameSize = computed(() => `${props.cardHeight * 0.25}px`);
+const nameSize = computed(() => `${props.cardHeight * 0.18}px`);
+const nameHeight = computed(() => `${props.cardHeight * 0.25}px`);
 
 const isBoarder = (dog) => {
     if (dog.services && dog.services.length > 0) return dog.services.some(service => service.id === 1000 || service.id === 1001);
@@ -26,7 +27,8 @@ const isBoarder = (dog) => {
              :style="{ backgroundImage: props.dog.photoUri ? `url(${props.photoUri}${props.dog.photoUri})` : 'none'}">
             &nbsp;
         </div>
-        <div v-if="props.dog.firstname" class="dog-name"  :style="{fontSize: nameSize}">
+        <div v-if="props.dog.firstname" class="dog-name flex items-center justify-center"
+             :style="{height: nameHeight, fontSize: nameSize}">
             {{ props.dog.firstname.slice(0, props.maxlength) }}
         </div>
     </div>

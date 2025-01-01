@@ -28,9 +28,9 @@ Route::get('/rowmap{i}', [MapController::class, 'rowmap'])->where('i', 'first|mi
 Route::get('/yardmap{i}', [MapController::class, 'yardmap'])->where('i', 'small|large');
 
 Route::prefix('api')->group(function () {
-    Route::get('/fullmap/{checksum}', [ApiController::class, 'fullmap'])
+    Route::get('/fullmap/{checksum?}', [ApiController::class, 'fullmap'])
         ->where('checksum', '[a-f0-9]{32}');
-    Route::get('/yardmap{size}/{checksum}', [ApiController::class, 'yardmap'])->where([
+    Route::get('/yardmap{size}/{checksum?}', [ApiController::class, 'yardmap'])->where([
         'size' => 'small|large',
         'checksum' => '[a-f0-9]{32}'
     ]);
