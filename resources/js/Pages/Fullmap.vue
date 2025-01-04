@@ -23,6 +23,7 @@ async function updateData() {
         dogs.value = fetchedDogs;
         localChecksum.value = fetchedChecksum;
     }
+    document.querySelector('.choodmap').focus();
 }
 
 // Fetch data when the component is mounted
