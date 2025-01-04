@@ -1,4 +1,3 @@
-import {nextTick} from "vue";
 
 export function getTextWidth(text) {
     const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
@@ -46,7 +45,7 @@ export function getYardGridStyle(rows, columns) {
 
 export function getNewGifAndPosition() {
     return {
-        newGif: '/images/doggifs/dog' + Math.floor(Math.random() * 11) + 1 + '.webp',
+        newGif: '/images/doggifs/dog' + (Math.floor(Math.random() * 11) + 1) + '.webp',
         top: Math.random() * (1080 - 480),
         left: Math.random() * (1920 - 480),
     };
