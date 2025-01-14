@@ -21,10 +21,12 @@ class ApiController extends Controller
     function fullmap(string $checksum = null): JsonResponse
     {
         $dogs = $this->getDogsByCabin();
+        $outhouseDogs = Dog::where('is_inhouse', 0)->get();
         $new_checksum = md5($dogs->toJson());
         if ($checksum !== $new_checksum) {
             $response = [
                 'dogs' => $dogs,
+                'outhouseDogs' => $outhouseDogs,
                 'checksum' => $new_checksum,
             ];
 
@@ -66,21 +68,24 @@ class ApiController extends Controller
                 return !is_null($value);
             });
 
-            $dog = null;
             if (array_key_exists('dogs', $filteredValues)) {
-                $dog = Dog::updateOrCreate(['id' => $filteredValues['dogs'][0]['id']], $filteredValues);
+                foreach ($filteredValues['dogs'] as $dog) {
+                    Dog::updateOrCreate(['id' => $dog['id']],
+                        ['cabin_id' => $filteredValues['cabin_id'], 'is_inhouse' => 1]);
+                }
             } else {
-                $filteredValues['is_inhouse'] = 0;
                 $dog = Dog::create($filteredValues);
             }
 
-            if(array_key_exists('service_ids', $filteredValues)) {
+            if (array_key_exists('service_ids', $filteredValues)) {
                 foreach ($filteredValues['service_ids'] as $service_id) {
                     DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $service_id['id']]);
                 }
             }
 
-            return response()->json($dog, 200);
+            return response()->json([
+                'message' => 'Great success.',
+            ], 200);
         } catch (ValidationException $e) {
             return response()->json([
                 'errors' => $e->errors(),

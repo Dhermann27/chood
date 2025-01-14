@@ -9,11 +9,10 @@ import DogCard from "@/Components/chood/DogCard.vue";
 const props = defineProps({
     photoUri: String,
     cabins: Array,
-    services: Array,
     dogs: Object,
+    services: Array,
     outhouseDogs: Array,
     maxlength: Number,
-    checksum: String,
     cardWidth: Number,
     cardHeight: Number,
 });
@@ -26,6 +25,7 @@ const assignment = ref({
     cabin_id: null,
     services: []
 });
+const cabins = ref(props.cabins);
 const errorMessages = ref([]);
 const showModal = ref(false);
 const modalType = ref('add'); // 'add' or 'edit'
@@ -73,7 +73,11 @@ async function submitForm() {
         assignment.value = {id: null, firstname: '', lastname: '', dogs: [], cabin_id: null, services: []};
         closeModal();
     } catch (error) {
-        if (error.response && error.response.data.errors) {
+        if (error.response && error.response.status === 419) {
+            if (confirm('Your session has expired due to inactivity. Would you like to reload the page?')) {
+                window.location.reload();
+            }
+        } else if (error.response && error.response.data.errors) {
             errorMessages.value = Object.values(error.response.data.errors).flat();
         } else {
             console.error('Error saving assignment:', error);
@@ -109,7 +113,7 @@ async function handleDelete(dogs) {
 
 onMounted(() => {
     if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
-        isBrowser.value = navigator.userAgent.includes('Chrome');
+        isBrowser.value = navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Chromium');
     }
 });
 
@@ -135,7 +139,8 @@ const cabinStyle = (cabin) => {
         :style="cabinStyle(cabin)"
     >
         <div v-if="props.dogs[cabin.id] && props.dogs[cabin.id].length > 0" class="h-full w-full relative">
-            <DogCard :dog="props.dogs[cabin.id][0]" :photoUri="photoUri" :maxlength="maxlength" :card-height="cardHeight"/>
+            <DogCard :dogs="props.dogs[cabin.id]" :photoUri="photoUri" :maxlength="maxlength"
+                     :card-height="cardHeight"/>
             <div v-if="isBrowser && props.dogs[cabin.id][0].is_inhouse === 0"
                  class="absolute inset-y-0 left-0 flex flex-col justify-center py-1">
                 <button

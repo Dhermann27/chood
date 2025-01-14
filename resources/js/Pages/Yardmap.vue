@@ -58,7 +58,7 @@ onBeforeUnmount(() => {
     <main class="w-full h-full">
         <div id="yardmap" class="items-center justify-center p-1" :style="yardGridStyle">
             <div v-for="dog in dogs" :style="{height: cardHeight + 'px', width: cardWidth + 'px'}">
-                <DogCard :dog="dog" :photoUri="props.photoUri" :card-width="cardWidth" :card-height="cardHeight"/>
+                <DogCard :dogs="[dog]" :photoUri="props.photoUri" :card-width="cardWidth" :card-height="cardHeight"/>
             </div>
             <img v-if="dogs.length === 0" :src="currentGif" alt="Dancing Doggo"
                  :style="{ top: randomPosition.top + 'px', left: randomPosition.left + 'px', position: 'absolute' }"

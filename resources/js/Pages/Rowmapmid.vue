@@ -40,7 +40,7 @@ onBeforeUnmount(() => {
     <main class="w-full h-full">
         <div class="choodmap items-center justify-center p-1">
             <Map :cabins="cabins" :dogs="dogs" :photoUri="photoUri" :maxlength="12"
-                 :card-width="259" :card-height="210"/>
+                 :card-width="260" :card-height="211"/>
         </div>
     </main>
 </template>

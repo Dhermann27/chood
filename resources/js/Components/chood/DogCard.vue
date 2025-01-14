@@ -1,12 +1,13 @@
 <script setup>
-import {computed} from "vue";
+import {computed, onMounted, onUnmounted, ref, watch} from "vue";
 
 const props = defineProps({
     photoUri: String,
-    dog: Object,
+    dogs: Array,
     maxlength: Number,
     cardHeight: Number,
 });
+const currentDogIndex = ref(0);
 const bannerSize = computed(() => `${props.cardHeight * 0.05}px`);
 const nameSize = computed(() => `${props.cardHeight * 0.18}px`);
 const nameHeight = computed(() => `${props.cardHeight * 0.25}px`);
@@ -17,19 +18,50 @@ const isBoarder = (dog) => {
     return false;
 }
 
+const currentDog = computed(() => {
+    return props.dogs.length ? props.dogs[currentDogIndex.value] : null;
+});
+let rotationInterval;
+
+const startRotation = () => {
+    rotationInterval = setInterval(() => {
+        currentDogIndex.value = (currentDogIndex.value + 1) % props.dogs.length;
+    }, 5000);
+};
+
+watch(() => props.dogs, () => {
+    if (rotationInterval) clearInterval(rotationInterval);
+    if (props.dogs.length > 0) {
+        currentDogIndex.value = 0;
+        startRotation();
+    }
+});
+
+// Start rotation when component is mounted
+onMounted(() => {
+    if (props.dogs.length > 0) startRotation();
+});
+
+// Clean up interval when component is unmounted
+onUnmounted(() => {
+    clearInterval(rotationInterval);
+});
 </script>
+
 <template>
-    <div :class="isBoarder(props.dog) ? 'dog-boarder' : 'dog-daycamper'" :style="{height: cardHeight}">
+    <div v-if="currentDog" :key="currentDog.firstname"
+         :class="isBoarder(currentDog) ? 'dog-boarder' : 'dog-daycamper'"
+         :style="{height: cardHeight}">
         <div class="dog-banner" :style="{fontSize: bannerSize}">
-            {{ isBoarder(props.dog) ? 'Boarder' : 'Daycamper' }}
+            {{ isBoarder(currentDog) ? 'Boarder' : 'Daycamper' }}
         </div>
         <div class="dog-photo"
-             :style="{ backgroundImage: props.dog.photoUri ? `url(${props.photoUri}${props.dog.photoUri})` : 'none'}">
+             :style="{ backgroundImage: currentDog.photoUri ? `url(${props.photoUri}${currentDog.photoUri})` : 'none'}">
             &nbsp;
         </div>
-        <div v-if="props.dog.firstname" class="dog-name flex items-center justify-center"
+        <div v-if="currentDog.firstname" class="dog-name flex items-center justify-center"
              :style="{height: nameHeight, fontSize: nameSize}">
-            {{ props.dog.firstname.slice(0, props.maxlength) }}
+            {{ currentDog.firstname.slice(0, props.maxlength) }}
         </div>
     </div>
 </template>

@@ -23,7 +23,7 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/fullmap{i}', [MapController::class, 'fullmap'])->where('i', '1|2|3');
+Route::get('/fullmap{i?}', [MapController::class, 'fullmap'])->where('i', '1|2|3');
 Route::get('/rowmap{i}', [MapController::class, 'rowmap'])->where('i', 'first|mid|last');
 Route::get('/yardmap{i}', [MapController::class, 'yardmap'])->where('i', 'small|large');
 

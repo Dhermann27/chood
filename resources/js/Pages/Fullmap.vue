@@ -7,23 +7,25 @@ import {fetchData} from "@/utils.js";
 const props = defineProps({
     photoUri: String,
     cabins: Array,
-    services: Array,
-    outhouseDogs: Array
+    services: Array
 });
 const dogs = ref([]);
+const outhouseDogs = ref([]);
 const localChecksum = ref('');
 let refreshInterval;
 
 async function updateData() {
     const {
         dogs: fetchedDogs,
+        outhouseDogs: fetchedOutDogs,
         checksum: fetchedChecksum
     } = await fetchData(`/api/fullmap/`, localChecksum.value);
     if (localChecksum.value !== fetchedChecksum) {
         dogs.value = fetchedDogs;
+        outhouseDogs.value = fetchedOutDogs;
         localChecksum.value = fetchedChecksum;
     }
-    document.querySelector('.choodmap').click();
+    document.querySelector('.choodmap').focus();
 }
 
 // Fetch data when the component is mounted

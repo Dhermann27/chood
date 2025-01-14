@@ -20,7 +20,11 @@ trait ChoodTrait
             ->with('cleaning_status')->get()->map(function ($cabin) use ($subtractor) {
                 $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
                 $cabin->cabinName = preg_replace('/\dx\d - Cabin /', '', $cabin->cabinName);
-                $cabin->kappa = $cabin->kappa + $subtractor;
+                $cabin->kappa += $subtractor;
+                if ($subtractor == 0 && $cabin->id < 2000) {
+                    $cabin->rho += 5;
+                    $cabin->kappa -= 3;
+                }
                 return $cabin;
             });
     }
@@ -46,6 +50,6 @@ trait ChoodTrait
         $dogs = Dog::with('services');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
         if ($sizes) $dogs->whereIn('size', $sizes);
-        return $dogs->get();
+        return $dogs->orderBy('firstname')->get();
     }
 }
