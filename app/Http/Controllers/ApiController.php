@@ -70,18 +70,24 @@ class ApiController extends Controller
 
             if (array_key_exists('dogs', $filteredValues)) {
                 foreach ($filteredValues['dogs'] as $dog) {
-                    Dog::updateOrCreate(['id' => $dog['id']],
+                    $dog = Dog::updateOrCreate(['id' => $dog['id']],
                         ['cabin_id' => $filteredValues['cabin_id'], 'is_inhouse' => 1]);
+
+                    if (array_key_exists('service_ids', $filteredValues)) {
+                        foreach ($filteredValues['service_ids'] as $service_id) {
+                            DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $service_id['id']]);
+                        }
+                    }
                 }
             } else {
                 $dog = Dog::create($filteredValues);
-            }
-
-            if (array_key_exists('service_ids', $filteredValues)) {
-                foreach ($filteredValues['service_ids'] as $service_id) {
-                    DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $service_id['id']]);
+                if (array_key_exists('service_ids', $filteredValues)) {
+                    foreach ($filteredValues['service_ids'] as $service_id) {
+                        DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $service_id['id']]);
+                    }
                 }
             }
+
 
             return response()->json([
                 'message' => 'Great success.',
