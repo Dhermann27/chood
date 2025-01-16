@@ -113,7 +113,7 @@ async function handleDelete(dogs) {
 
 onMounted(() => {
     if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
-        isBrowser.value = navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Chromium');
+        isBrowser.value = !navigator.userAgent.includes('Linux');
     }
 });
 
