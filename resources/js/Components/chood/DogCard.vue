@@ -57,7 +57,15 @@ onUnmounted(() => {
         </div>
         <div class="dog-photo"
              :style="{ backgroundImage: currentDog.photoUri ? `url(${props.photoUri}${currentDog.photoUri})` : 'none'}">
-            &nbsp;
+
+            <div class="relative">
+                <div class="absolute inset-y-0 right-2 flex flex-col py-1 chood-icon">
+                    <font-awesome-icon :icon="['fas', 'weight-hanging']" class="text-white text-2xl icon-with-outline"/>
+                    <span class="absolute inset-0 top-1 flex justify-center text-black font-bold">
+                        {{ currentDog.size_letter }}
+                    </span>
+                </div>
+            </div>
         </div>
         <div v-if="currentDog.firstname" class="dog-name flex items-center justify-center"
              :style="{height: nameHeight, fontSize: nameSize}">
@@ -65,3 +73,11 @@ onUnmounted(() => {
         </div>
     </div>
 </template>
+
+<style scoped>
+.icon-with-outline {
+    color: white;
+    filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 8px rgba(0, 0, 0, 0.7));
+    transform: translateY(-2px);
+}
+</style>

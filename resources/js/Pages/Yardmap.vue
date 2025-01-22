@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {ref, computed, onMounted, onBeforeUnmount, nextTick} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
-import {fetchData, getNewGifAndPosition, getYardGridStyle, reduceNameSizes} from "@/utils.js";
+import {fetchData, getNewGifAndPosition, getYardGridStyle, scaleObjects} from "@/utils.js";
 
 const props = defineProps({
     size: String,
@@ -28,7 +28,7 @@ async function updateData() {
         dogs.value = fetchedDogs;
         localChecksum.value = fetchedChecksum;
         await nextTick(() => {
-            reduceNameSizes();
+            scaleObjects();
         });
     }
 }

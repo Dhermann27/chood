@@ -36,7 +36,7 @@ Route::prefix('api')->group(function () {
     ]);
 
     Route::post('/dog', [ApiController::class, 'storeAssignment']);
-    Route::put('/dog/{id}', [ApiController::class, 'updateAssignment']);
+    Route::put('/dog', [ApiController::class, 'updateAssignment']);
     Route::delete('/dog', [ApiController::class, 'deleteAssignment']);
 });
 

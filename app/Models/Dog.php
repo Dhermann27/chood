@@ -14,9 +14,27 @@ class Dog extends Model
     protected $fillable = ['pet_id', 'firstname', 'lastname', 'gender', 'photoUri', 'size', 'cabin_id',
         'is_inhouse', 'checkout'];
 
-    protected $casts = [
-        'checkout' => 'datetime'
-    ];
+    protected $casts = [ 'checkout' => 'datetime'];
+
+    protected $appends = ['size_letter'];
+
+    public function getSizeLetterAttribute()
+    {
+        switch ($this->size) {
+            case 'Extra Small':
+                return 'XS';
+            case 'Small':
+                return 'S';
+            case 'Medium':
+                return 'M';
+            case 'Large':
+                return 'L';
+            case 'Extra Large':
+                return 'XL';
+            default:
+                return '?';
+        }
+    }
 
     public function cabin(): HasOne
     {

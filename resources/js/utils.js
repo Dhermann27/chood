@@ -1,4 +1,3 @@
-
 export function getTextWidth(text) {
     const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
     const context = canvas.getContext("2d");
@@ -29,13 +28,27 @@ export async function fetchData(uri, checksum) {
     return false;
 }
 
-export function reduceNameSizes() {
+export function scaleObjects() {
     const nameFields = document.querySelectorAll('.dog-name');
     nameFields.forEach((name) => {
         const pct = name.offsetWidth / getTextWidth(name);
         if (pct < 1.05) name.style.fontSize = (parseFloat(name.style.fontSize) * (pct - .02)) + 'px';
     });
+    const dogCards = document.querySelectorAll('.dog-boarder, .dog-daycamper');
+    dogCards.forEach((card) => {
+        const size = Math.min(Math.floor(card.offsetWidth / 10), 100);
+        const icons = card.querySelectorAll('.chood-icon');
+        icons.forEach((icon) => {
+            const faIcon = icon.querySelector('.icon-with-outline');
+            if (faIcon) {
+                faIcon.classList.remove('text-2xl');
+                faIcon.style.fontSize = size + 'px';
+            }
+            icon.querySelector('span').style.fontSize = (Math.floor(size * .75)) + 'px';
+        })
+    });
 }
+
 
 export function getYardGridStyle(rows, columns) {
     return {
