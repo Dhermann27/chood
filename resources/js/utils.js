@@ -36,7 +36,7 @@ export function scaleObjects() {
     });
     const dogCards = document.querySelectorAll('.dog-boarder, .dog-daycamper');
     dogCards.forEach((card) => {
-        const size = Math.min(Math.floor(card.offsetWidth / 10), 100);
+        const size = Math.min(Math.floor(card.offsetWidth / 7), 100);
         const icons = card.querySelectorAll('.chood-icon');
         icons.forEach((icon) => {
             const faIcon = icon.querySelector('.icon-with-outline');
