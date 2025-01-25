@@ -15,10 +15,13 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Collection;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
+
+;
 
 /**
  *
@@ -26,6 +29,8 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 class GoFetchListJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    const BRD = 'BRD'; // All Boarding service codes contain this string
 
     /**
      * Create a new job instance.
@@ -95,15 +100,16 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         }
     }
 
-    private function getFilteredValues($row, $columns, $cabins): array
+    private function getFilteredValues(array $row, Collection $columns, Collection $cabins): array
     {
         $cabinId = $cabins->has($row[$columns['dateCabin']]) ? $cabins[$row[$columns['dateCabin']]] : null;
         $updateValues = [
             'firstname' => $this->trimToNull($row[$columns['name']]),
             'lastname' => $this->trimToNull($row[$columns['lastName']]),
             'gender' => $this->trimToNull($row[$columns['gender']]),
+            'weight' => $this->trimToNull(intval($row[$columns['weight']])),
             'cabin_id' => $cabinId,
-            'is_inhouse' => $cabinId ? 1 : 0,
+            'is_inhouse' => str_contains($row[$columns['serviceCode']], self::BRD) ? 1 : 0,
             'checkout' => Carbon::createFromFormat('m/d/Y g:i A', $row[$columns['checkOutDate']] . " " . $row[$columns['checkOutTime']])
         ];
         return array_filter($updateValues, function ($value) {

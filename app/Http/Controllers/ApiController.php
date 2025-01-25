@@ -21,7 +21,7 @@ class ApiController extends Controller
     function fullmap(string $checksum = null): JsonResponse
     {
         $dogs = $this->getDogsByCabin();
-        $outhouseDogs = Dog::where('is_inhouse', 0)->get();
+        $outhouseDogs = Dog::whereNull('cabin_id')->orderBy('firstname')->get();
         $new_checksum = md5($dogs->toJson());
         if ($checksum !== $new_checksum) {
             $response = [
@@ -37,8 +37,7 @@ class ApiController extends Controller
 
     function yardmap(string $size, string $checksum = null): JsonResponse
     {
-        $sizes = $size === 'small' ? ['Medium', 'Small', 'Extra Small'] : ['Medium', 'Large', 'Extra Large'];
-        $dogs = $this->getDogs(false, $sizes);
+        $dogs = $this->getDogs(false, $size);
 
         $new_checksum = md5($dogs->toJson());
         if ($checksum !== $new_checksum) {
@@ -70,8 +69,7 @@ class ApiController extends Controller
 
             if (array_key_exists('dogs', $filteredValues)) {
                 foreach ($filteredValues['dogs'] as $dog) {
-                    $dog = Dog::updateOrCreate(['id' => $dog['id']],
-                        ['cabin_id' => $filteredValues['cabin_id'], 'is_inhouse' => 1]);
+                    $dog = Dog::updateOrCreate(['id' => $dog['id']], ['cabin_id' => $filteredValues['cabin_id']]);
 
                     if (array_key_exists('service_ids', $filteredValues)) {
                         foreach ($filteredValues['service_ids'] as $service_id) {
@@ -80,6 +78,7 @@ class ApiController extends Controller
                     }
                 }
             } else {
+                $filteredValues['is_inhouse'] = 0;
                 $dog = Dog::create($filteredValues);
                 if (array_key_exists('service_ids', $filteredValues)) {
                     foreach ($filteredValues['service_ids'] as $service_id) {

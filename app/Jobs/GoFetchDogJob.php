@@ -47,8 +47,7 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
         Dog::updateOrCreate(
             ['pet_id' => $this->petId],
             [
-                'photoUri' => $data['photoUrl'], // Comes from DD, do not change
-                'size' => $data['size']
+                'photoUri' => $data['photoUrl'] // Comes from DD, do not change
             ]
         );
         sleep(mt_rand(0, 2000)/1000);

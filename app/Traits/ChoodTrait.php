@@ -42,14 +42,14 @@ trait ChoodTrait
 
     /**
      * @param bool $filterByCabinId
-     * @param array $sizes
+     * @param string|null $size
      * @return Collection
      */
-    public function getDogs(bool $filterByCabinId = false, array $sizes = []): Collection
+    public function getDogs(bool $filterByCabinId = false, string $size = null): Collection
     {
         $dogs = Dog::with('services');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
-        if ($sizes) $dogs->whereIn('size', $sizes);
+        if ($size) $dogs->where('weight', $size == 'small' ? '<=' : '>=', $size == 'small' ? 40 : 30);
         return $dogs->orderBy('firstname')->get();
     }
 }

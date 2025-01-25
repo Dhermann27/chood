@@ -19,7 +19,7 @@ return new class extends Migration {
             $table->string('lastname')->default('Smith');
             $table->fullText('lastname');
             $table->string('gender')->nullable();
-            $table->string('size')->nullable();
+            $table->integer('weight')->nullable();
             $table->string('photoUri')->nullable();
             $table->foreignId('cabin_id')->nullable()->constrained()->nullOnDelete();
             $table->tinyInteger('is_inhouse')->default(1);
