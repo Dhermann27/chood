@@ -12,8 +12,8 @@ class MapController extends Controller
     use ChoodTrait;
 
     const rowviews = ['last' => [2055, 2099, -20],
-        'mid' => [2019, 2054, -14],
-        'first' => [0, 2018, 0]
+        'mid' => [2020, 2054, -14],
+        'first' => [0, 2019, 0]
 
     ];
 

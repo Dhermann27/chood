@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Http\Controllers\MapController;
 use App\Models\Cabin;
 use App\Models\Dog;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,7 +22,7 @@ trait ChoodTrait
                 $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
                 $cabin->cabinName = preg_replace('/\dx\d - Cabin /', '', $cabin->cabinName);
                 $cabin->kappa += $subtractor;
-                if ($end == 2018 && $cabin->id < 2000) {
+                if ($end == MapController::rowviews['first'][1] && $cabin->id < 2000) {
                     $cabin->rho += 5;
                     $cabin->kappa -= 3;
                 }
