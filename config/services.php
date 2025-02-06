@@ -38,10 +38,18 @@ return [
     'puppeteer' => [
         'uris' => [
             'base' => env('BASE_URI'),
+            'auth' => env('BASE_URI') . env('AUTH_URI'),
             'inHouseList' => env('BASE_URI') . env('IN_HOUSE_LIST_URI'),
             'card' => env('BASE_URI') . env('CARD_URI'),
             'cardSuffix' => env('CARD_URI_SUFFIX'),
             'photo' => env('BASE_URI') . env('PHOTO_URI'),
+            'reports' => [
+                'overall' => env('BASE_URI') . env('REPORT_URI') . env('OVERALL_SUFFIX'),
+                'deposits' => env('BASE_URI') . env('REPORT_URI') . env('DEPOSITS_SUFFIX'),
+                'packages' => env('BASE_URI') . env('REPORT_URI') . env('PACKAGES_SUFFIX'),
+                'services' => env('BASE_URI') . env('REPORT_URI') . env('SERVICES_SUFFIX'),
+            ],
+
         ],
         'nodepath' => env('NODE_PATH'),
         'username' => env('DD_USERNAME'),

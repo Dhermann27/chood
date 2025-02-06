@@ -2,8 +2,9 @@
 
 namespace App\Jobs;
 
-use App\Http\Controllers\NodeController;
 use App\Models\Dog;
+use App\Services\NodeService;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,12 +20,13 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $petId;
+    protected string $petId;
+
 
     /**
      * Create a new job instance.
      */
-    public function __construct($petId)
+    public function __construct(string $petId)
     {
         $this->petId = $petId;
     }
@@ -39,18 +41,24 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
      * @throws ServerExceptionInterface
      * @throws RedirectionExceptionInterface
      * @throws ClientExceptionInterface
+     * @throws Exception
      */
-    public function handle(NodeController $nodeController): void
+    public function handle(NodeService $nodeService): void
     {
-        $data = $nodeController->fetchData(config('services.puppeteer.uris.card') . $this->petId .
-            config('services.puppeteer.uris.cardSuffix'))->getData(true)['data'][0];
+        $payload = [
+            "username" => config('services.puppeteer.username'),
+            "password" => config('services.puppeteer.password'),
+        ];
+        $url = config('services.puppeteer.uris.card') . $this->petId .
+            config('services.puppeteer.uris.cardSuffix');
+        $data = $nodeService->fetchData($url, $payload)->getData(true)['data'][0];
         Dog::updateOrCreate(
             ['pet_id' => $this->petId],
             [
                 'photoUri' => $data['photoUrl'] // Comes from DD, do not change
             ]
         );
-        sleep(mt_rand(0, 2000)/1000);
+        sleep(mt_rand(0, 2000) / 1000);
 
     }
 

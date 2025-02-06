@@ -11,12 +11,22 @@ const currentDogIndex = ref(0);
 const bannerSize = computed(() => `${props.cardHeight * 0.05}px`);
 const nameSize = computed(() => `${props.cardHeight * 0.18}px`);
 const nameHeight = computed(() => `${props.cardHeight * 0.25}px`);
+const imageCache = new Map();
 
 const isBoarder = (dog) => {
     if (dog.services && dog.services.length > 0) return dog.services.some(service => service.id === 1000 || service.id === 1001);
     if (dog.service_ids) return dog.service_ids.includes('1000') || dog.service_ids.includes('1001');
     return false;
 }
+
+const preloadImage = (dog) => {
+    if (dog.photoUri && !imageCache.has(dog.photoUri)) {
+        const img = new Image();
+        img.src = `${props.photoUri}${dog.photoUri}`;
+        imageCache.set(dog.photoUri, img);
+    }
+};
+
 
 const currentDog = computed(() => {
     return props.dogs.length ? props.dogs[currentDogIndex.value] : null;
@@ -26,7 +36,8 @@ let rotationInterval;
 const startRotation = () => {
     rotationInterval = setInterval(() => {
         currentDogIndex.value = (currentDogIndex.value + 1) % props.dogs.length;
-    }, 5000);
+        preloadImage(props.dogs[currentDogIndex.value]);
+    }, 8000);
 };
 
 watch(() => props.dogs, () => {

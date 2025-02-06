@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\MapController;
-use App\Http\Controllers\NodeController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
 use App\Jobs\GoFetchListJob;
 use App\Jobs\MarkCabinsForCleaning;
 use App\Models\Cabin;
@@ -27,6 +27,13 @@ Route::get('/fullmap{i?}', [MapController::class, 'fullmap'])->where('i', '1|2|3
 Route::get('/rowmap{i}', [MapController::class, 'rowmap'])->where('i', 'first|mid|last');
 Route::get('/yardmap{i}', [MapController::class, 'yardmap'])->where('i', 'small|large');
 
+
+Route::prefix('depositfinder')->group(function () {
+    Route::get('/', [ReportController::class, 'report']);
+    Route::post('/login', [ReportController::class, 'overall']);
+    Route::get('/results/{i}', [ReportController::class, 'results']);
+});
+
 Route::prefix('api')->group(function () {
     Route::get('/fullmap/{checksum?}', [ApiController::class, 'fullmap'])
         ->where('checksum', '[a-f0-9]{32}');
@@ -46,7 +53,7 @@ Route::get('/current-time', function () {
 
 // TODO: REMOVE Testing only
 Route::get('/fetchDogList', function () {
-    return GoFetchListJob::dispatchSync(new NodeController());
+    return GoFetchListJob::dispatchSync();
 });
 
 Route::get('/markForCleaning', function () {

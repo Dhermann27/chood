@@ -2,11 +2,11 @@
 
 namespace App\Jobs;
 
-use App\Http\Controllers\NodeController;
 use App\Models\Cabin;
 use App\Models\Dog;
 use App\Models\DogService;
 use App\Models\Service;
+use App\Services\NodeService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Bus\Queueable;
@@ -31,12 +31,14 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     const BRD = 'BRD'; // All Boarding service codes contain this string
+    protected NodeService $nodeService;
 
     /**
      * Create a new job instance.
      */
-    public function __construct()
+    public function __construct(NodeService $nodeService)
     {
+        $this->nodeService = $nodeService;
         $this->onQueue('high');
     }
 
@@ -47,9 +49,14 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
      * @throws ClientExceptionInterface
      * @throws Exception
      */
-    public function handle(NodeController $nodeController): void
+    public function handle(): void
     {
-        $output = $nodeController->fetchData(config('services.puppeteer.uris.inHouseList'))->getData(true);
+        $payload = [
+            "username" => config('services.puppeteer.username'),
+            "password" => config('services.puppeteer.password'),
+        ];
+        $output = $this->nodeService->fetchData(config('services.puppeteer.uris.inHouseList'), $payload)
+            ->getData(true);
         if (!isset($output['data']) || !is_array($output['data']) || count($output['data']) == 0) {
             throw new Exception("No data found: " . $output);
         }
@@ -96,7 +103,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
                 DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $serviceId]);
             }
 
-            GoFetchDogJob::dispatch($dog->pet_id, $nodeController);
+            GoFetchDogJob::dispatch($dog->pet_id);
         }
     }
 

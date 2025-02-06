@@ -8,7 +8,7 @@ import { ZiggyVue } from '/vendor/tightenco/ziggy';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { fas } from '@awesome.me/kit-ed8e499057/icons';
-library.add(fas.faEdit, fas.faTrash, fas.faPlus, fas.faWeightHanging);
+library.add(fas.faEdit, fas.faTrash, fas.faPlus, fas.faWeightHanging, fas.faSpinnerThird);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
