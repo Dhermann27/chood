@@ -2,9 +2,9 @@
 import {ref} from 'vue'
 import axios from 'axios'
 
-const username = ref('sandbox');
-const password = ref('sandboxTest1!');
-const date = ref('2024-05-14');
+const username = ref('');
+const password = ref('');
+const date = ref(new Date().toISOString().split('T')[0]);
 const errorMessage = ref(null);
 const started = ref(false);
 const results = ref([]);
@@ -39,13 +39,16 @@ const handleLogin = async () => {
         pollResults(response.data.id);
     } catch (error) {
         if (error.response && error.response.status === 419) {
+            started.value = false;
             if (confirm('Your session has expired due to inactivity. Would you like to reload the page?')) {
                 window.location.reload();
             }
         } else if (error.response && error.response.data) {
+            started.value = false;
             errorMessage.value = error.response?.data?.output || 'Login failed due to server error';
             console.error('Error response:', error.response);
         } else {
+            started.value = false;
             errorMessage.value = 'Network error or no response from server';
             console.error('Network error:', error);
         }
@@ -60,7 +63,6 @@ function pollResults(reportId) {
                 const response = await axios.get('/depositfinder/results/' + reportId);
 
                 results.value = response.data.data;
-                console.log('Results', results.value)
                 if ('services' in results.value) clearInterval(pollInterval);
 
             } catch (error) {
@@ -226,20 +228,20 @@ function pollResults(reportId) {
                                 </div>
                             </td>
                         </tr>
-                        <tr v-if="results.data?.tips" class="border-b hover:bg-gray-50">
+                        <tr v-if="results?.tips" class="border-b hover:bg-gray-50">
                             <td>Tips Payable</td>
-                            <td>{{ results.data.tips.qty }}</td>
-                            <td>{{ results.data.tips.total }}</td>
+                            <td>{{ results.tips.qty }}</td>
+                            <td>{{ formatCurrency(results.tips.total) }}</td>
                         </tr>
-                        <tr v-if="results.data?.product" class="border-b hover:bg-gray-50">
+                        <tr v-if="results?.product" class="border-b hover:bg-gray-50">
                             <td>Retail Products</td>
-                            <td>{{ results.data.product.qty }}</td>
-                            <td>{{ results.data.product.total }}</td>
+                            <td>{{ results.product.qty }}</td>
+                            <td>{{ formatCurrency(results.product.total) }}</td>
                         </tr>
-                        <tr v-if="results.data?.tax" class="border-b hover:bg-gray-50">
+                        <tr v-if="results?.tax" class="border-b hover:bg-gray-50">
                             <td>Sales Tax to Pay</td>
-                            <td>{{ results.data.tax.qty }}</td>
-                            <td>{{ results.data.tax.total }}</td>
+                            <td>N/A</td>
+                            <td>{{ formatCurrency(results.tax.total) }}</td>
                         </tr>
                     </template>
                     <tr v-else class="border-b hover:bg-gray-50">

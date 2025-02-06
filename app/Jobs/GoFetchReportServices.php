@@ -50,6 +50,7 @@ class GoFetchReportServices implements ShouldQueue, ShouldBeUnique
             if ($column['filterKey'] === 'total') $totColIndex = $index;
         }
 
+        $data['services'] = [];
         foreach ($output['data'][0]['rows'] as $row) {
             if (!isset($data['services'][$row[$typeColIndex]])) $data['services'][$row[$typeColIndex]] = ['qty' => 0, 'total' => 0];
             $data['services'][$row[$typeColIndex]]['qty'] += $row[$qtyColIndex];

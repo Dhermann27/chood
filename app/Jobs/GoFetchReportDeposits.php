@@ -59,6 +59,6 @@ class GoFetchReportDeposits implements ShouldQueue, ShouldBeUnique
 
         $report->update(['data' => $data]);
 
-        sleep(4);//mt_rand(0, 1000) / 1000);
+        sleep(mt_rand(0, 1000) / 1000);
     }
 }

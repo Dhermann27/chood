@@ -8,6 +8,7 @@ use App\Jobs\GoFetchListJob;
 use App\Jobs\MarkCabinsForCleaning;
 use App\Models\Cabin;
 use App\Models\Service;
+use App\Services\NodeService;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -53,7 +54,7 @@ Route::get('/current-time', function () {
 
 // TODO: REMOVE Testing only
 Route::get('/fetchDogList', function () {
-    return GoFetchListJob::dispatchSync();
+    return GoFetchListJob::dispatchSync(app(NodeService::class));
 });
 
 Route::get('/markForCleaning', function () {

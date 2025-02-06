@@ -72,7 +72,7 @@ class ReportController extends Controller
                 if ($column['filterKey'] === 'tax') $taxColIndex = $index;
             }
 
-            $index = array_search("Tips", array_column($output['data'][0]['rows'], $catColIndex));
+            $index = array_search("Tip", array_column($output['data'][0]['rows'], $catColIndex));
             if ($index !== false) {
                 $data['tips'] = [
                     'qty' => $output['data'][0]['rows'][$index][$qtyColIndex],
