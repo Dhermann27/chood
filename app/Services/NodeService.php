@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Http;
 
 class NodeService
 {
-    
+
     /**
      * @throws Exception
      */
@@ -58,7 +58,7 @@ class NodeService
 
         $payload = [
             'timestamp' => microtime(true),
-            'data' => [['username' => $ddUser, 'password' => 'sandboxTest1!']]
+            'data' => [['username' => $ddUser, 'password' => $ddPass]]
         ];
         $response = Http::post($baseUri, $payload);
 
