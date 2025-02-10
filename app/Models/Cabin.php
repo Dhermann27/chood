@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -17,7 +16,7 @@ class Cabin extends Model
     }
 
 
-    public function cleaning_status() : HasOne
+    public function cleaningStatus() : HasOne
     {
         return $this->hasOne(CleaningStatus::class);
     }

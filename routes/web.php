@@ -5,7 +5,7 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Jobs\GoFetchListJob;
-use App\Jobs\MarkCabinsForCleaning;
+use App\Jobs\MarkCabinsForCleaningJob;
 use App\Models\Cabin;
 use App\Models\Service;
 use App\Services\NodeService;
@@ -58,7 +58,7 @@ Route::get('/fetchDogList', function () {
 });
 
 Route::get('/markForCleaning', function () {
-    return MarkCabinsForCleaning::dispatchSync();
+    return MarkCabinsForCleaningJob::dispatchSync();
 });
 Route::get('/assignDaycampers', function () {
     $services = Service::where('id', '<=', '1002')->whereHas('dogs')->with('dogs')->get();

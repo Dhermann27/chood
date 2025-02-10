@@ -18,7 +18,7 @@ trait ChoodTrait
     public function getCabins(int $start = 0, int $end = 9999, int $subtractor = 0): Collection
     {
         return Cabin::where('rho', '>', '0')->where('kappa', '>', '0')->whereBetween('id', [$start, $end])
-            ->with('cleaning_status')->get()->map(function ($cabin) use ($subtractor, $end) {
+            ->get()->map(function ($cabin) use ($subtractor, $end) {
                 $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
                 $cabin->cabinName = preg_replace('/\dx\d - Cabin /', '', $cabin->cabinName);
                 $cabin->kappa += $subtractor;

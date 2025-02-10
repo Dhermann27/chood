@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\DogService;
 use App\Traits\ChoodTrait;
@@ -21,11 +22,13 @@ class ApiController extends Controller
     function fullmap(string $checksum = null): JsonResponse
     {
         $dogs = $this->getDogsByCabin();
-        $outhouseDogs = Dog::whereNull('cabin_id')->orderBy('firstname')->get();
-        $new_checksum = md5($dogs->toJson());
+        $statuses = CleaningStatus::pluck('cleaning_type', 'cabin_id')->toArray();
+        $outhouseDogs = Dog::whereNull('cabin_id')->orderBy('firstname')->get(); // TODO: Unnecessary with unassigned dogs?
+        $new_checksum = md5($dogs->toJson() . json_encode($statuses));
         if ($checksum !== $new_checksum) {
             $response = [
                 'dogs' => $dogs,
+                'statuses' => $statuses,
                 'outhouseDogs' => $outhouseDogs,
                 'checksum' => $new_checksum,
             ];
@@ -71,22 +74,13 @@ class ApiController extends Controller
                 foreach ($filteredValues['dogs'] as $dog) {
                     $dog = Dog::updateOrCreate(['id' => $dog['id']], ['cabin_id' => $filteredValues['cabin_id']]);
 
-                    if (array_key_exists('service_ids', $filteredValues)) {
-                        foreach ($filteredValues['service_ids'] as $service_id) {
-                            DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $service_id['id']]);
-                        }
-                    }
+                    $this->createServices($filteredValues, $dog->id);
                 }
             } else {
                 $filteredValues['is_inhouse'] = 0;
                 $dog = Dog::create($filteredValues);
-                if (array_key_exists('service_ids', $filteredValues)) {
-                    foreach ($filteredValues['service_ids'] as $service_id) {
-                        DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $service_id['id']]);
-                    }
-                }
+                $this->createServices($filteredValues, $dog->id);
             }
-
 
             return response()->json([
                 'message' => 'Great success.',
@@ -105,35 +99,41 @@ class ApiController extends Controller
         }
     }
 
-    public function updateAssignment(Request $request, $id): JsonResponse
+    public function updateAssignment(Request $request): JsonResponse
     {
         $validatedData = $request->validate([
             'firstname' => 'nullable|string|max:255',
             'lastname' => 'nullable|string|max:255',
-            'dogs.0.pet_id' => 'nullable|exists:dogs,pet_id',
+            'dogs.*.id' => 'nullable|exists:dogs,id',
             'cabin_id' => 'required|exists:cabins,id',
             'service_ids.*.id' => 'required|exists:services,id'
         ]);
 
-        $dog = Dog::findOrFail($id)->update([
-            'firstname' => $validatedData['firstname'],
-            'lastname' => $validatedData['lastname'],
-            'pet_id' => $validatedData['dogs'][0]['pet_id'],
-            'cabin_id' => $validatedData['cabin_id'],
-        ]);
+        $filteredValues = array_filter($validatedData, function ($value) {
+            return !is_null($value);
+        });
 
-        $serviceIds = collect($validatedData['service_ids'])->pluck('id')->toArray();
-        $currentServiceIds = DogService::where('dog_id', $id)->pluck('service_id')->toArray();
-        $idsToDelete = array_diff($currentServiceIds, $serviceIds);
-        if (!empty($idsToDelete)) {
-            DogService::where('dog_id', $id)->whereIn('service_id', $idsToDelete)->delete();
+        if (array_key_exists('dogs', $filteredValues)) {
+            foreach ($filteredValues['dogs'] as $dog) {
+                $dog = Dog::updateOrCreate(['id' => $dog['id']], [
+                    'firstname' => $filteredValues['firstname'],
+                    'lastname' => $filteredValues['lastname'],
+                    'pet_id' => $dog['pet_id'],
+                    'cabin_id' => $filteredValues['cabin_id'],
+                ]);
+
+                $serviceIds = collect($filteredValues['service_ids'])->pluck('id')->toArray();
+
+                // Delete services that are not in the new list
+                DogService::where('dog_id', $dog->id)->whereNotIn('service_id', $serviceIds)->delete();
+
+                foreach ($filteredValues['service_ids'] as $service_id) {
+                    DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $service_id['id']]);
+                }
+            }
         }
 
-        foreach ($validatedData['service_ids'] as $service_id) {
-            DogService::updateOrCreate(['dog_id' => $id, 'service_id' => $service_id['id']]);
-        }
-
-        return response()->json($dog, 200);
+        return response()->json('Very nice', 200);
     }
 
     public function deleteAssignment(Request $request): JsonResponse
@@ -143,6 +143,20 @@ class ApiController extends Controller
         ]);
         $ids = collect($validatedData['dogs'])->pluck('id')->toArray();
         return response()->json(Dog::whereIn('id', $ids)->delete(), 200);
+    }
+
+    /**
+     * @param array $values
+     * @param $dog
+     * @return void
+     */
+    public function createServices(array $values, int $dogId): void
+    {
+        if (array_key_exists('service_ids', $values)) {
+            foreach ($values['service_ids'] as $service_id) {
+                DogService::updateOrCreate(['dog_id' => $dogId, 'service_id' => $service_id['id']]);
+            }
+        }
     }
 
 }

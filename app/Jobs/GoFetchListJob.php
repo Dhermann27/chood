@@ -16,12 +16,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
-use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
-use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
-use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
-use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
-
-;
 
 /**
  *
@@ -43,10 +37,6 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
     }
 
     /**
-     * @throws TransportExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws ClientExceptionInterface
      * @throws Exception
      */
     public function handle(): void
@@ -63,13 +53,9 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         $data = $output['data'][0];
         $columns = collect($data['columns'])->pluck('index', 'filterKey');
 
-
-        $existingIds = Dog::pluck('pet_id')->toArray();
+        // Delete removed dogs
         $newIds = collect($data['rows'])->pluck(1)->toArray();
-        $idsToDelete = array_diff($existingIds, $newIds);
-        if (count($idsToDelete) > 0) {
-            Dog::whereIn('pet_id', $idsToDelete)->delete();
-        }
+        Dog::whereNotIn('pet_id', $newIds)->whereNotNull('pet_id')->delete();
 
         $cabins = Cabin::all()->pluck('id', 'cabinName');
         $services = Service::all()->pluck('id', 'code');

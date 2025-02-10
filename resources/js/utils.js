@@ -10,15 +10,16 @@ export async function fetchData(uri, checksum) {
     try {
         const response = await fetch(uri + checksum);
         const newData = await response.json();
-        let dogs, outhouseDogs = [];
+        let dogs, statuses, outhouseDogs = [];
         if (newData) {
             dogs = newData.dogs;
+            statuses = newData.statuses;
             outhouseDogs = newData.outhouseDogs;
             checksum = newData.checksum;
         }
-        // TODO: Return cabin data with cleaning_status
         return {
             dogs: dogs,
+            statuses: statuses,
             outhouseDogs: outhouseDogs,
             checksum: checksum,
         };

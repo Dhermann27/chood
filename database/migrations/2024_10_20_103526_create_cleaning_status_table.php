@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::create('cleaning_status', function (Blueprint $table) {
             $table->foreignId('cabin_id')->unique()->constrained()->onDelete('cascade');
+            $table->foreignId('employee_id')->nullable()->constrained()->onDelete('set null');
             $table->enum('cleaning_type', ['daily', 'deep']);
+            $table->timestamp('completed_at')->nullable();
         });
     }
 

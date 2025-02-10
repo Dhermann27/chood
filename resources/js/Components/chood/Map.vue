@@ -9,6 +9,7 @@ import DogCard from "@/Components/chood/DogCard.vue";
 const props = defineProps({
     photoUri: String,
     cabins: Array,
+    statuses: Object,
     dogs: Object,
     services: Array,
     outhouseDogs: Array,
@@ -121,8 +122,8 @@ const cabinStyle = (cabin) => {
     return {
         gridRow: `${cabin.rho} / span ${cabin.rowspan}`,
         gridColumn: cabin.kappa,
-        borderColor: cabin.cleaning_status
-            ? cabin.cleaning_status.cleaning_type === 'deep'
+        borderColor: props.statuses?.[cabin.id]
+            ? props.statuses[cabin.id] === 'deep'
                 ? '#dd454f'
                 : '#f4df7a'
             : '#373a36',

@@ -10,6 +10,7 @@ const props = defineProps({
     services: Array
 });
 const dogs = ref([]);
+const statuses = ref({});
 const outhouseDogs = ref([]);
 const localChecksum = ref('');
 let refreshInterval;
@@ -17,11 +18,14 @@ let refreshInterval;
 async function updateData() {
     const {
         dogs: fetchedDogs,
+        statuses: fetchedStatuses,
         outhouseDogs: fetchedOutDogs,
         checksum: fetchedChecksum
     } = await fetchData(`/api/fullmap/`, localChecksum.value);
+
     if (localChecksum.value !== fetchedChecksum) {
         dogs.value = fetchedDogs;
+        statuses.value = fetchedStatuses;
         outhouseDogs.value = fetchedOutDogs;
         localChecksum.value = fetchedChecksum;
     }
@@ -44,7 +48,7 @@ onBeforeUnmount(() => {
     <Head title="Fullmap"/>
     <main class="w-full h-full">
         <div class="choodmap items-center justify-center p-1">
-            <Map :cabins="cabins" :dogs="dogs" :outhouse-dogs="outhouseDogs" :services="services"
+            <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :outhouse-dogs="outhouseDogs" :services="services"
                  :photoUri="photoUri" :maxlength="8" :card-width="96" :card-height="117"/>
         </div>
     </main>
