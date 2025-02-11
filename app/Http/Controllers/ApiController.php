@@ -22,7 +22,7 @@ class ApiController extends Controller
     function fullmap(string $checksum = null): JsonResponse
     {
         $dogs = $this->getDogsByCabin();
-        $statuses = CleaningStatus::pluck('cleaning_type', 'cabin_id')->toArray();
+        $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
         $outhouseDogs = Dog::whereNull('cabin_id')->orderBy('firstname')->get(); // TODO: Unnecessary with unassigned dogs?
         $new_checksum = md5($dogs->toJson() . json_encode($statuses));
         if ($checksum !== $new_checksum) {

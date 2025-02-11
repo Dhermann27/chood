@@ -29,6 +29,7 @@ class MarkCabinsForCleaningJob implements ShouldQueue
         if (Carbon::today()->isSunday()) {
             CleaningStatus::query()->update([
                 'cleaning_type' => 'deep',
+                'employee_id' => null,
                 'completed_at' => null,
             ]); // TODO: Make sure to delete rows after they are done on Sunday
         } else {
@@ -45,7 +46,7 @@ class MarkCabinsForCleaningJob implements ShouldQueue
             foreach ($cabins as $cabin) {
                 CleaningStatus::updateOrCreate(
                     ['cabin_id' => $cabin['cabin_id']],
-                    ['cleaning_type' => $cabin['cleaning_type'], 'completed_at' => null]
+                    ['cleaning_type' => $cabin['cleaning_type'], 'employee_id' => null, 'completed_at' => null]
                 );
             }
         }
