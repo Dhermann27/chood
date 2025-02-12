@@ -1,7 +1,8 @@
 import puppeteer from 'puppeteer';
 
-const url = process.argv[2];
+let url = process.argv[2];
 const cookies = process.argv[3];
+const dummyFranchiseIdRegexp = /franchises\/FRANCHISE_ID/;
 
 (async () => {
     const browser = await puppeteer.launch();
@@ -20,8 +21,14 @@ const cookies = process.argv[3];
 
     try {
         const jsonCookies = JSON.parse(cookies);
+        const franchiseIdCookieIndex = jsonCookies.findIndex(cookie => cookie.name === 'franchiseId');
+        if (franchiseIdCookieIndex !== -1) {
+            const franchiseId = jsonCookies[franchiseIdCookieIndex].value;
+            jsonCookies.splice(franchiseIdCookieIndex, 1); // Remove the 'franchiseId' cookie
+            url = url.replace(dummyFranchiseIdRegexp, `franchises/${franchiseId}`);
+        }
         await page.setCookie(...jsonCookies);
-        const response = await page.goto(url); // Navigate to the URL
+        const response = await page.goto(url);
 
         const contentType = response.headers()['content-type'];
         if (contentType && contentType.includes('application/json')) {

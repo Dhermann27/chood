@@ -16,6 +16,9 @@ return new class extends Migration
             $table->foreignId('employee_id')->nullable()->constrained()->onDelete('set null');
             $table->enum('cleaning_type', ['daily', 'deep']);
             $table->timestamp('completed_at')->nullable();
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
+            $table->timestamps();
         });
     }
 

@@ -22,11 +22,13 @@ return new class extends Migration
                             WHERE cabin_id = OLD.cabin_id AND cleaning_type = 'deep' AND completed_at IS NULL
                     ) THEN
                         -- If no such row exists, insert/update the cleaning_status
-                        INSERT INTO cleaning_status (cabin_id, cleaning_type, completed_at)
-                        VALUES (OLD.cabin_id, 'daily', NULL)
+                        INSERT INTO cleaning_status (cabin_id, cleaning_type, created_by)
+                        VALUES (OLD.cabin_id, 'daily', 'TriggerInsert')
                         ON DUPLICATE KEY UPDATE
                             cleaning_type = 'daily',
-                            completed_at = NULL;
+                            employee_id = NULL,
+                            completed_at = NULL
+                            updated_by = 'TriggerUpdate';
                     END IF;
                 END IF;
             END;
