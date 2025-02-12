@@ -27,7 +27,7 @@ return new class extends Migration
                         ON DUPLICATE KEY UPDATE
                             cleaning_type = 'daily',
                             employee_id = NULL,
-                            completed_at = NULL
+                            completed_at = NULL,
                             updated_by = 'TriggerUpdate';
                     END IF;
                 END IF;
