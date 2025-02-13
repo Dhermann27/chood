@@ -13,9 +13,9 @@ class EmployeeSeeder extends Seeder
     public function run(): void
     {
         $employeeValues = [
-            ['first_name' => 'Dan', 'last_name' => 'Hermann', 'birthday' => '1978-08-27'],
-            ['first_name' => 'Brittany', 'last_name' => 'Huxen', 'birthday' => '1987-03-10'],
-            ['first_name' => 'Sarah', 'last_name' => 'Kershman', 'birthday' => '1997-11-24'],
+            ['homebase_id' => 'A12345', 'first_name' => 'Dan', 'last_name' => 'Hermann', 'birthday' => '1978-08-27'],
+            ['homebase_id' => 'B23456', 'first_name' => 'Brittany', 'last_name' => 'Huxen', 'birthday' => '1987-03-10'],
+            ['homebase_id' => 'C34567', 'first_name' => 'Evey', 'last_name' => 'Danzo', 'birthday' => '1987-10-02'],
         ];
 
         DB::table('employees')->insert($employeeValues);

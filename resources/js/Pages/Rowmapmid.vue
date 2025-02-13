@@ -9,19 +9,19 @@ const props = defineProps({
     cabins: Array
 });
 const dogs = ref([]);
-const status = ref([]);
+const statuses = ref([]);
 const localChecksum = ref('');
 let refreshInterval;
 
 async function updateData() {
     const {
         dogs: fetchedDogs,
-        status: fetchedStatuses,
+        statuses: fetchedStatuses,
         checksum: fetchedChecksum
     } = await fetchData(`/api/fullmap/`, localChecksum.value);
     if (localChecksum.value !== fetchedChecksum) {
         dogs.value = fetchedDogs;
-        status.value = fetchedStatuses;
+        statuses.value = fetchedStatuses;
         localChecksum.value = fetchedChecksum;
     }
 }
@@ -42,7 +42,7 @@ onBeforeUnmount(() => {
     <Head title="Rowmap Midrow"/>
     <main class="w-full h-full">
         <div class="choodmap items-center justify-center p-1">
-            <Map :cabins="cabins" :status="status" :dogs="dogs" :photoUri="photoUri" :maxlength="12"
+            <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :photoUri="photoUri" :maxlength="12"
                  :card-width="260" :card-height="211"/>
         </div>
     </main>
