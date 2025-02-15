@@ -43,7 +43,7 @@ class CabinSeeder extends Seeder
             ['id' => 2016, 'cabinName' => '4x6 - Cabin 17', 'rho' => 6, 'kappa' => 13, 'rowspan' => 1],
             ['id' => 2017, 'cabinName' => '4x6 - Cabin 18', 'rho' => 7, 'kappa' => 13, 'rowspan' => 1],
             ['id' => 2018, 'cabinName' => '4x6 - Cabin 19', 'rho' => 8, 'kappa' => 13, 'rowspan' => 1],
-            ['id' => 2019, 'cabinName' => '6x8 - Cabin 20', 'rho' => 9, 'kappa' => 13, 'rowspan' => 2],
+            ['id' => 2019, 'cabinName' => '6x8- Cabin 20', 'rho' => 9, 'kappa' => 13, 'rowspan' => 2],
             ['id' => 2020, 'cabinName' => '4x6 - Cabin 21', 'rho' => 1, 'kappa' => 15, 'rowspan' => 1],
             ['id' => 2021, 'cabinName' => '4x6 - Cabin 22', 'rho' => 2, 'kappa' => 15, 'rowspan' => 1],
             ['id' => 2022, 'cabinName' => '4x6 - Cabin 23', 'rho' => 3, 'kappa' => 15, 'rowspan' => 1],

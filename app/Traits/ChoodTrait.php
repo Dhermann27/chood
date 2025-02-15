@@ -20,7 +20,7 @@ trait ChoodTrait
         return Cabin::where('rho', '>', '0')->where('kappa', '>', '0')->whereBetween('id', [$start, $end])
             ->get()->map(function ($cabin) use ($subtractor, $end) {
                 $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
-                $cabin->cabinName = preg_replace('/\dx\d - Cabin /', '', $cabin->cabinName);
+                $cabin->cabinName = preg_replace('/\dx\d\s?- Cabin /', '', $cabin->cabinName);
                 $cabin->kappa += $subtractor;
                 if ($end == MapController::rowviews['first'][1] && $cabin->id < 2000) {
                     $cabin->rho += 5;
