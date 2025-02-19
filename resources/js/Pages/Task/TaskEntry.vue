@@ -56,12 +56,12 @@ const handleEmployeeClick = (employee) => {
 }
 
 const handleTaskClick = (task) => {
-    console.log(`Selected task: ${task}`);
+    // console.log(`Selected task: ${task}`);
     nextStep();
 }
 
 const handleCabinClick = (cabin) => {
-    if(statuses[cabin.id]) {
+    if(statuses.value.hasOwnProperty(cabin.id)) {
         targetId.value = cabin.id;
         nextStep();
     }
