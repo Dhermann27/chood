@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {ref, onMounted, onBeforeUnmount} from 'vue';
 import Map from "@/Components/chood/Map.vue";
-import {fetchData} from "@/utils.js";
+import {fetchMapData} from "@/utils.js";
 
 const props = defineProps({
     photoUri: String,
@@ -13,27 +13,26 @@ const dogs = ref([]);
 const statuses = ref({});
 const outhouseDogs = ref([]);
 const localChecksum = ref('');
+const admin = ref(0 );
 let refreshInterval;
 
 async function updateData() {
-    const {
-        dogs: fetchedDogs,
-        statuses: fetchedStatuses,
-        outhouseDogs: fetchedOutDogs,
-        checksum: fetchedChecksum
-    } = await fetchData(`/api/fullmap/`, localChecksum.value);
+    const response = await fetchMapData(`/api/fullmap/`, localChecksum.value);
 
-    if (localChecksum.value !== fetchedChecksum) {
-        dogs.value = fetchedDogs;
-        statuses.value = fetchedStatuses;
-        outhouseDogs.value = fetchedOutDogs;
-        localChecksum.value = fetchedChecksum;
+    if (response && localChecksum.value !== response.checksum) {
+        dogs.value = response.dogs;
+        statuses.value = response.statuses;
+        outhouseDogs.value = response.outhouseDogs;
+        localChecksum.value = response.checksum;
     }
-    document.querySelector('.choodmap').focus();
 }
 
 // Fetch data when the component is mounted
 onMounted(() => {
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+        admin.value = !navigator.userAgent.includes('Linux') ? 2 : 0;
+    }
+
     updateData();
     refreshInterval = setInterval(updateData, 5000);
 });
@@ -49,7 +48,7 @@ onBeforeUnmount(() => {
     <main class="w-full h-full">
         <div class="choodmap items-center justify-center p-1">
             <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :outhouse-dogs="outhouseDogs" :services="services"
-                 :photoUri="photoUri" :maxlength="8" :card-width="96" :card-height="117"/>
+                 :photoUri="photoUri" :admin="admin" :maxlength="8" :card-width="96" :card-height="117"/>
         </div>
     </main>
 </template>

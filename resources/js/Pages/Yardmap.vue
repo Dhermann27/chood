@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {ref, computed, onMounted, onBeforeUnmount, nextTick} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
-import {fetchData, getNewGifAndPosition, getYardGridStyle, scaleObjects} from "@/utils.js";
+import {fetchMapData, getNewGifAndPosition, getYardGridStyle, scaleObjects} from "@/utils.js";
 
 const props = defineProps({
     size: String,
@@ -23,7 +23,7 @@ async function updateData() {
     const {
         dogs: fetchedDogs,
         checksum: fetchedChecksum
-    } = await fetchData(`/api/yardmap${props.size}/`, localChecksum.value);
+    } = await fetchMapData(`/api/yardmap${props.size}/`, localChecksum.value);
     if (localChecksum.value !== fetchedChecksum) {
         dogs.value = fetchedDogs;
         localChecksum.value = fetchedChecksum;

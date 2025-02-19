@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CleaningStatus extends Model
 {
     use HasFactory;
 
     protected $table = 'cleaning_status';
-    protected $fillable = ['cabin_id', 'cleaning_type'];
+    protected $fillable = ['cabin_id', 'cleaning_type', 'homebase_id', 'completed_at', 'updated_by', 'updated_at'];
     protected $primaryKey = 'cabin_id';
     public $incrementing = false;
     public $timestamps = false;
@@ -24,6 +25,16 @@ class CleaningStatus extends Model
             self::STATUS_DAILY,
             self::STATUS_DEEP
         ];
+    }
+
+    public function cabin(): HasOne
+    {
+        return $this->hasOne(Cabin::class, 'id', 'cabin_id');
+    }
+
+    public function employee(): HasOne
+    {
+        return $this->hasOne(Employee::class, 'homebase_id', 'homebase_id');
     }
 
 }

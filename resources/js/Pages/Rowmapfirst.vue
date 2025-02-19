@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {ref, onMounted, onBeforeUnmount} from 'vue';
 import Map from "@/Components/chood/Map.vue";
-import {fetchData} from "@/utils.js";
+import {fetchMapData} from "@/utils.js";
 
 const props = defineProps({
     photoUri: String,
@@ -20,7 +20,7 @@ async function updateData() {
         dogs: fetchedDogs,
         statuses: fetchedStatuses,
         checksum: fetchedChecksum
-    } = await fetchData(`/api/fullmap/`, localChecksum.value);
+    } = await fetchMapData(`/api/fullmap/`, localChecksum.value);
     if (localChecksum.value !== fetchedChecksum) {
         dogs.value = fetchedDogs;
         statuses.value = fetchedStatuses;

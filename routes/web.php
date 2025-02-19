@@ -1,14 +1,14 @@
 <?php
 
-use App\Http\Controllers\ApiController;
+use App\Http\Controllers\AssignmentController;
+use App\Http\Controllers\DataController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
-use App\Jobs\GoFetchListJob;
-use App\Jobs\MarkCabinsForCleaningJob;
+use App\Http\Controllers\TaskController;
 use App\Models\Cabin;
+use App\Models\CleaningStatus;
 use App\Models\Service;
-use App\Services\NodeService;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -35,17 +35,25 @@ Route::prefix('depositfinder')->group(function () {
     Route::get('/results/{i}', [ReportController::class, 'results']);
 });
 
-Route::prefix('api')->group(function () {
-    Route::get('/fullmap/{checksum?}', [ApiController::class, 'fullmap'])
+Route::prefix('task')->group(function () {
+    Route::get('/', [TaskController::class, 'index']);
+    Route::get('/data/{checksum?}', [TaskController::class, 'getData'])
         ->where('checksum', '[a-f0-9]{32}');
-    Route::get('/yardmap{size}/{checksum?}', [ApiController::class, 'yardmap'])->where([
+    Route::post('/cleaned', [TaskController::class, 'markCleaned']);
+});
+
+Route::prefix('api')->group(function () {
+    Route::get('/fullmap/{checksum?}', [DataController::class, 'fullmap'])
+        ->where('checksum', '[a-f0-9]{32}');
+    Route::get('/yardmap{size}/{checksum?}', [DataController::class, 'yardmap'])->where([
         'size' => 'small|large',
         'checksum' => '[a-f0-9]{32}'
     ]);
 
-    Route::post('/dog', [ApiController::class, 'storeAssignment']);
-    Route::put('/dog', [ApiController::class, 'updateAssignment']);
-    Route::delete('/dog', [ApiController::class, 'deleteAssignment']);
+    Route::post('/dog', [AssignmentController::class, 'storeAssignment']);
+    Route::put('/dog', [AssignmentController::class, 'updateAssignment']);
+    Route::delete('/dog', [AssignmentController::class, 'deleteAssignment']);
+
 });
 
 Route::get('/current-time', function () {
@@ -53,13 +61,18 @@ Route::get('/current-time', function () {
 });
 
 // TODO: REMOVE Testing only
-Route::get('/fetchDogList', function () {
-    return GoFetchListJob::dispatchSync(app(NodeService::class));
+Route::get('/markForCleaning', function () {
+    $cabinIds = Cabin::inRandomOrder()->limit(12)->pluck('id');
+
+    // Use the factory to create 12 cleaning statuses
+    foreach ($cabinIds as $cabinId) {
+        CleaningStatus::factory()->create([
+            'cabin_id' => $cabinId, // Assign each unique cabin ID
+        ]);
+    }
+    return 'Cleaning finished';
 });
 
-Route::get('/markForCleaning', function () {
-    return MarkCabinsForCleaningJob::dispatchSync();
-});
 Route::get('/assignDaycampers', function () {
     $services = Service::where('id', '<=', '1002')->whereHas('dogs')->with('dogs')->get();
     $emptycabins = Cabin::where('id', '<', '3000')->whereDoesntHave('dogs')->get();

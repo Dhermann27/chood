@@ -6,23 +6,18 @@ export function getTextWidth(text) {
     return context.measureText(text.textContent).width;
 }
 
-export async function fetchData(uri, checksum) {
+export async function fetchMapData(uri, checksum) {
     try {
-        const response = await fetch(uri + checksum);
-        const newData = await response.json();
-        let dogs, statuses, outhouseDogs = [];
-        if (newData) {
-            dogs = newData.dogs;
-            statuses = newData.statuses;
-            outhouseDogs = newData.outhouseDogs;
-            checksum = newData.checksum;
+        const response = await axios.get(uri + checksum);
+
+        if (response.data && checksum !== response.data?.checksum) {
+            return {
+                dogs: response.data.dogs,
+                statuses: response.data.statuses,
+                outhouseDogs: response.data.outhouseDogs,
+                checksum: response.data.checksum,
+            }
         }
-        return {
-            dogs: dogs,
-            statuses: statuses,
-            outhouseDogs: outhouseDogs,
-            checksum: checksum,
-        };
     } catch (error) {
         console.error('Error fetching data:', error);
     }

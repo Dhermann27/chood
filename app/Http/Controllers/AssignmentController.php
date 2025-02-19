@@ -2,59 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\DogService;
-use App\Traits\ChoodTrait;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
 use Illuminate\Validation\ValidationException;
 
-class ApiController extends Controller
+class AssignmentController extends Controller
 {
-    use ChoodTrait;
-
-    const ERROR_MESSAGES = ['name.required_without' => 'You must specify the dog\'s name with no dog selected.',
-    ];
-
-    function fullmap(string $checksum = null): JsonResponse
-    {
-        $dogs = $this->getDogsByCabin();
-        $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
-        $outhouseDogs = Dog::whereNull('cabin_id')->orderBy('firstname')->get(); // TODO: Unnecessary with unassigned dogs?
-        $new_checksum = md5($dogs->toJson() . json_encode($statuses));
-        if ($checksum !== $new_checksum) {
-            $response = [
-                'dogs' => $dogs,
-                'statuses' => $statuses,
-                'outhouseDogs' => $outhouseDogs,
-                'checksum' => $new_checksum,
-            ];
-
-            return Response::json($response);
-        }
-        return Response::json(false);
-    }
-
-    function yardmap(string $size, string $checksum = null): JsonResponse
-    {
-        $dogs = $this->getDogs(false, $size);
-
-        $new_checksum = md5($dogs->toJson());
-        if ($checksum !== $new_checksum) {
-            $response = [
-                'dogs' => $dogs,
-                'checksum' => $new_checksum,
-            ];
-
-            return Response::json($response);
-        }
-        return Response::json(false);
-
-    }
-
     public function storeAssignment(Request $request): JsonResponse
     {
         try {
@@ -64,7 +20,7 @@ class ApiController extends Controller
                 'dogs.*.id' => 'nullable|exists:dogs,id',
                 'cabin_id' => 'required|exists:cabins,id',
                 'service_ids.*.id' => 'required|exists:services,id'
-            ], self::ERROR_MESSAGES);
+            ]);
 
             $filteredValues = array_filter($validatedData, function ($value) {
                 return !is_null($value);
@@ -102,11 +58,12 @@ class ApiController extends Controller
     public function updateAssignment(Request $request): JsonResponse
     {
         $validatedData = $request->validate([
+            'id' => 'nullable|exists:dogs,id',
+            'cabin_id' => 'required|exists:cabins,id',
+            'dogs.*.id' => 'nullable|exists:dogs,id',
             'firstname' => 'nullable|string|max:255',
             'lastname' => 'nullable|string|max:255',
-            'dogs.*.id' => 'nullable|exists:dogs,id',
-            'cabin_id' => 'required|exists:cabins,id',
-            'service_ids.*.id' => 'required|exists:services,id'
+            'service_ids.*.id' => 'nullable|exists:services,id'
         ]);
 
         $filteredValues = array_filter($validatedData, function ($value) {
@@ -115,13 +72,11 @@ class ApiController extends Controller
 
         if (array_key_exists('dogs', $filteredValues)) {
             foreach ($filteredValues['dogs'] as $dog) {
-                $dog = Dog::updateOrCreate(['id' => $dog['id']], [
-                    'firstname' => $filteredValues['firstname'],
-                    'lastname' => $filteredValues['lastname'],
-                    'pet_id' => $dog['pet_id'],
-                    'cabin_id' => $filteredValues['cabin_id'],
-                ]);
-
+                $dog = Dog::updateOrCreate(['id' => $dog['id']], ['cabin_id' => $filteredValues['cabin_id']]);
+            }
+        } else {
+            $dog = Dog::updateOrCreate(['id' => $filteredValues['id']], $filteredValues);
+            if (array_key_exists('service_ids', $filteredValues)) {
                 $serviceIds = collect($filteredValues['service_ids'])->pluck('id')->toArray();
 
                 // Delete services that are not in the new list
@@ -147,10 +102,10 @@ class ApiController extends Controller
 
     /**
      * @param array $values
-     * @param $dog
+     * @param int $dogId
      * @return void
      */
-    public function createServices(array $values, int $dogId): void
+    private function createServices(array $values, int $dogId): void
     {
         if (array_key_exists('service_ids', $values)) {
             foreach ($values['service_ids'] as $service_id) {
@@ -158,5 +113,4 @@ class ApiController extends Controller
             }
         }
     }
-
 }
