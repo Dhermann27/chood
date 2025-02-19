@@ -1,5 +1,4 @@
 <script setup>
-import {defineProps, defineEmits} from 'vue';
 import Multiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.css';
 
