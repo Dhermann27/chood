@@ -16,15 +16,12 @@ const localChecksum = ref('');
 let refreshInterval;
 
 async function updateData() {
-    const {
-        dogs: fetchedDogs,
-        statuses: fetchedStatuses,
-        checksum: fetchedChecksum
-    } = await fetchMapData(`/api/fullmap/`, localChecksum.value);
-    if (localChecksum.value !== fetchedChecksum) {
-        dogs.value = fetchedDogs;
-        statuses.value = fetchedStatuses;
-        localChecksum.value = fetchedChecksum;
+    const response = await fetchMapData(`/api/fullmap/`, localChecksum.value);
+
+    if (response && localChecksum.value !== response.checksum) {
+        dogs.value = response.dogs;
+        statuses.value = response.statuses;
+        localChecksum.value = response.checksum;
     }
 }
 

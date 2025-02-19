@@ -20,13 +20,11 @@ const cardWidth = computed(() => (1918 - (columns.value - 1) * 10) / columns.val
 const cardHeight = computed(() => (1078 - (rows.value - 1) * 10) / rows.value);
 
 async function updateData() {
-    const {
-        dogs: fetchedDogs,
-        checksum: fetchedChecksum
-    } = await fetchMapData(`/api/yardmap${props.size}/`, localChecksum.value);
-    if (localChecksum.value !== fetchedChecksum) {
-        dogs.value = fetchedDogs;
-        localChecksum.value = fetchedChecksum;
+    const response = await fetchMapData(`/api/yardmap${props.size}/`, localChecksum.value);
+
+    if (response && localChecksum.value !== response.checksum) {
+        dogs.value = response.dogs;
+        localChecksum.value = response.checksum;
         await nextTick(() => {
             scaleObjects();
         });
