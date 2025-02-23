@@ -21,7 +21,7 @@ class TaskController extends Controller
     public function index(): \Inertia\Response
     {
         return Inertia::render('Task/TaskEntry', [
-            'employees' => Employee::orderBy('first_name')->get(),
+            'employees' => Employee::where('is_working', '1')->orderBy('first_name')->get(),
             'cabins' => $this->getCabins(),
             'statuses' => CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray()
         ]);
@@ -31,7 +31,7 @@ class TaskController extends Controller
     function getData(string $checksum = null): JsonResponse
     {
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
-        $employees = Employee::orderBy('first_name')->get();
+        $employees = Employee::where('is_working', '1')->orderBy('first_name')->get();
         $new_checksum = md5($employees->toJson() . json_encode($statuses));
         if ($checksum !== $new_checksum) {
             $response = [

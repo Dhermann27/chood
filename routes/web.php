@@ -6,9 +6,7 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TaskController;
-use App\Models\Cabin;
-use App\Models\CleaningStatus;
-use App\Models\Service;
+use App\Jobs\GoFetchHomebaseEmployeesJob;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -61,39 +59,24 @@ Route::get('/current-time', function () {
 });
 
 // TODO: REMOVE Testing only
-Route::get('/markForCleaning', function () {
-    $cabinIds = Cabin::inRandomOrder()->limit(12)->pluck('id');
-
-    // Use the factory to create 12 cleaning statuses
-    foreach ($cabinIds as $cabinId) {
-        CleaningStatus::factory()->create([
-            'cabin_id' => $cabinId, // Assign each unique cabin ID
-        ]);
-    }
-    return 'Cleaning finished';
-});
-
-Route::get('/assignDaycampers', function () {
-    $services = Service::where('id', '<=', '1002')->whereHas('dogs')->with('dogs')->get();
-    $emptycabins = Cabin::where('id', '<', '3000')->whereDoesntHave('dogs')->get();
-    foreach ($services as $service) {
-        $service->dogs->each(function ($dog) use ($emptycabins) {
-            if ($emptycabins->isNotEmpty()) {
-                // Pick a random cabin
-                $cabin = $emptycabins->random();
-
-                // Remove the selected cabin from the collection
-                $emptycabins = $emptycabins->reject(function ($c) use ($cabin) {
-                    return $c->id === $cabin->id;
-                });
-
-                // Assign the random cabin to the dog
-                $dog->cabin_id = $cabin->id;
-                $dog->save();
-            }
-
-        });
-    }
+//Route::get('/markForCleaning', function () {
+//    $cabinIds = Cabin::inRandomOrder()->limit(12)->pluck('id');
+//
+//    // Use the factory to create 12 cleaning statuses
+//    foreach ($cabinIds as $cabinId) {
+//        CleaningStatus::factory()->create([
+//            'cabin_id' => $cabinId, // Assign each unique cabin ID
+//        ]);
+//    }
+//    return 'Cleaning finished';
+//});
+//Route::get('/markForCleaningJob', function () {
+//    MarkCabinsForCleaningJob::dispatchSync();
+//    return 'Cleaning jobbed';
+//});
+Route::get('/fetchEmployees', function () {
+    GoFetchHomebaseEmployeesJob::dispatchSync();
+    return 'Employees fetched';
 });
 
 Route::get('/note', function () {

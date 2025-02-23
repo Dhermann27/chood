@@ -6,7 +6,7 @@ use App\Jobs\GoFetchReportDeposits;
 use App\Jobs\GoFetchReportPackages;
 use App\Jobs\GoFetchReportServices;
 use App\Models\Report;
-use App\Services\NodeService;
+use App\Services\FetchDataService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,11 +15,11 @@ use Inertia\Response;
 
 class ReportController extends Controller
 {
-    protected NodeService $nodeService;
+    protected FetchDataService $fetchDataService;
 
-    public function __construct(NodeService $nodeService)
+    public function __construct(FetchDataService $fetchDataService)
     {
-        $this->nodeService = $nodeService;
+        $this->fetchDataService = $fetchDataService;
     }
 
     public function report(): Response
@@ -61,7 +61,7 @@ class ReportController extends Controller
                 ]
             ];
 
-            $output = $this->nodeService->fetchData(config('services.puppeteer.uris.reports.overall'), $payload)
+            $output = $this->fetchDataService->fetchData(config('services.dd.uris.reports.overall'), $payload)
                 ->getData(true);
 
             $data = [];

@@ -35,7 +35,7 @@ return [
         ],
     ],
 
-    'puppeteer' => [
+    'dd' => [
         'uris' => [
             'base' => env('BASE_URI'),
             'auth' => env('BASE_URI') . env('AUTH_URI'),
@@ -54,6 +54,11 @@ return [
         'nodepath' => env('NODE_PATH'),
         'username' => env('DD_USERNAME'),
         'password' => env('DD_PASSWORD'),
-    ]
+    ],
+
+    'homebase' => [
+        'api_key' => env('HOMEBASE_API_KEY'),
+        'loc_id' => env('HOMEBASE_LOCATION_ID'),
+    ],
 
 ];

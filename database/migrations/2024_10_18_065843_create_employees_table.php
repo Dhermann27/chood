@@ -18,8 +18,7 @@ return new class extends Migration
             $table->index('homebase_id');
             $table->string('first_name');
             $table->string('last_name');
-            $table->string('photo_file_name')->nullable();
-            $table->date('birthday');
+            $table->tinyInteger('is_working')->default('0');
             $table->timestamps();
         });
         DB::update('ALTER TABLE employees AUTO_INCREMENT = 1000');

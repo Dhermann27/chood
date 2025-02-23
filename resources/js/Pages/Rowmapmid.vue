@@ -48,7 +48,7 @@ onBeforeUnmount(() => {
 <style>
 .choodmap {
     display: grid;
-    grid-template-columns: repeat(2, 1fr) 40px repeat(2, 1fr);
+    grid-template-columns: 1fr 40px repeat(2, 1fr) 40px repeat(2, 1fr);
     grid-template-rows: repeat(4, 1fr) 20px repeat(5, 1fr);
 }
 </style>

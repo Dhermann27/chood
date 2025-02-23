@@ -29,7 +29,7 @@ async function updateData() {
         localChecksum.value = response.data.checksum;
     }
 
-    if(step.value !== 1 && counter++ > 2) {
+    if (step.value !== 1 && counter++ > 2) {
         statusMessage.value = null;
         step.value = 1;
         counter = 0;
@@ -61,7 +61,7 @@ const handleTaskClick = (task) => {
 }
 
 const handleCabinClick = (cabin) => {
-    if(statuses.value.hasOwnProperty(cabin.id)) {
+    if (statuses.value.hasOwnProperty(cabin.id)) {
         targetId.value = cabin.id;
         nextStep();
     }
@@ -115,13 +115,19 @@ onMounted(() => {
     <div class="flex flex-col items-center h-screen p-4">
         <template v-if="step === 1">
             <h1 class="text-lg font-semibold mb-4">Hi! Huaryoo?</h1>
-            <div class="grid grid-cols-4 gap-4 w-[75vw] h-[75vh]">
+            <div class="grid grid-cols-4 gap-4 w-full max-h-[75vh] overflow-y-auto">
                 <button
                     v-for="employee in employees"
                     :key="employee.id"
-                    class="bg-blue-500 text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
+                    class="bg-blue-500 text-white text-3xl py-4 px-6 rounded-2xl flex flex-col items-center justify-center w-full"
                     @click="handleEmployeeClick(employee)">
-                    {{ employee.first_name }}
+
+                    <img
+                        :src="`/images/staff/${employee.homebase_id}.png`"
+                        :alt="employee.first_name"
+                        class="w-[80%] h-[80%] rounded-full object-cover mb-4"
+                    />
+                    <span>{{ employee.first_name }}</span>
                 </button>
             </div>
         </template>

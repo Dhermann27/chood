@@ -6,7 +6,7 @@ use App\Models\Cabin;
 use App\Models\Dog;
 use App\Models\DogService;
 use App\Models\Service;
-use App\Services\NodeService;
+use App\Services\FetchDataService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Bus\Queueable;
@@ -25,14 +25,14 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     const BRD = 'BRD'; // All Boarding service codes contain this string
-    protected NodeService $nodeService;
+    protected FetchDataService $fetchDataService;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(NodeService $nodeService)
+    public function __construct(FetchDataService $fetchDataService)
     {
-        $this->nodeService = $nodeService;
+        $this->fetchDataService = $fetchDataService;
         $this->onQueue('high');
     }
 
@@ -42,10 +42,10 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
     public function handle(): void
     {
         $payload = [
-            "username" => config('services.puppeteer.username'),
-            "password" => config('services.puppeteer.password'),
+            "username" => config('services.dd.username'),
+            "password" => config('services.dd.password'),
         ];
-        $output = $this->nodeService->fetchData(config('services.puppeteer.uris.inHouseList'), $payload)
+        $output = $this->fetchDataService->fetchData(config('services.dd.uris.inHouseList'), $payload)
             ->getData(true);
         if (!isset($output['data']) || !is_array($output['data']) || count($output['data']) == 0) {
             throw new Exception("No data found: " . $output);

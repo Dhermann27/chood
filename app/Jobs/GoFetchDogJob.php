@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Dog;
-use App\Services\NodeService;
+use App\Services\FetchDataService;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -35,15 +35,15 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
     /**
      * @throws Exception
      */
-    public function handle(NodeService $nodeService): void
+    public function handle(FetchDataService $fetchDataService): void
     {
         $payload = [
-            "username" => config('services.puppeteer.username'),
-            "password" => config('services.puppeteer.password'),
+            "username" => config('services.dd.username'),
+            "password" => config('services.dd.password'),
         ];
-        $url = config('services.puppeteer.uris.card') . $this->petId .
-            config('services.puppeteer.uris.cardSuffix');
-        $data = $nodeService->fetchData($url, $payload)->getData(true)['data'][0];
+        $url = config('services.dd.uris.card') . $this->petId .
+            config('services.dd.uris.cardSuffix');
+        $data = $fetchDataService->fetchData($url, $payload)->getData(true)['data'][0];
         Dog::updateOrCreate(['pet_id' => $this->petId], ['photoUri' => $data['photoUrl']]);
         sleep(mt_rand(0, 1000) / 1000);
 

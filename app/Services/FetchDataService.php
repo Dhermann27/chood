@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
-class NodeService
+class FetchDataService
 {
 
     /**
@@ -54,7 +54,7 @@ class NodeService
      */
     private function authenticate(string $ddUser, string $ddPass)
     {
-        $baseUri = config('services.puppeteer.uris.auth');
+        $baseUri = config('services.dd.uris.auth');
 
         $payload = [
             'timestamp' => microtime(true),

@@ -22,7 +22,7 @@ trait ChoodTrait
                 $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
                 $cabin->cabinName = preg_replace('/\dx\d\s?- Cabin /', '', $cabin->cabinName);
                 $cabin->kappa += $subtractor;
-                if ($end == MapController::rowviews['first'][1] && $cabin->id < 2000) {
+                if ($end == MapController::ROW_VIEWS['first'][1] && $cabin->id < 2000) {
                     $cabin->rho += 5;
                     $cabin->kappa -= 3;
                 }

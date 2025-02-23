@@ -10,4 +10,6 @@ class Employee extends Model
 {
     /** @use HasFactory<EmployeeFactory> */
     use HasFactory;
+
+    protected $fillable = ['homebase_id', 'first_name', 'last_name', 'is_working'];
 }

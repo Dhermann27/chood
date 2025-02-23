@@ -11,16 +11,16 @@ class MapController extends Controller
 {
     use ChoodTrait;
 
-    const rowviews = ['last' => [2055, 2099, -20],
-        'mid' => [2020, 2054, -14],
-        'first' => [0, 2019, 0]
+    const ROW_VIEWS = ['last' => [2046, 2099, -18],
+        'mid' => [2016, 2045, -12],
+        'first' => [0, 2015, 0]
 
     ];
 
     public function fullmap(): Response
     {
         return Inertia::render('Fullmap', [
-            'photoUri' => config('services.puppeteer.uris.photo'),
+            'photoUri' => config('services.dd.uris.photo'),
             'cabins' => $this->getCabins(),
             'services' => Service::all(),
         ]);
@@ -30,8 +30,8 @@ class MapController extends Controller
     {
         // 0 means First rowmap
         return Inertia::render('Rowmap' . $row, [
-            'photoUri' => config('services.puppeteer.uris.photo'),
-            'cabins' => $this->getCabins(self::rowviews[$row][0], self::rowviews[$row][1], self::rowviews[$row][2]),
+            'photoUri' => config('services.dd.uris.photo'),
+            'cabins' => $this->getCabins(self::ROW_VIEWS[$row][0], self::ROW_VIEWS[$row][1], self::ROW_VIEWS[$row][2]),
         ]);
     }
 
@@ -39,7 +39,7 @@ class MapController extends Controller
     {
         return Inertia::render('Yardmap', [
             'size' => $size,
-            'photoUri' => config('services.puppeteer.uris.photo'),
+            'photoUri' => config('services.dd.uris.photo'),
         ]);
     }
 

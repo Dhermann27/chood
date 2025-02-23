@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Report;
-use App\Services\NodeService;
+use App\Services\FetchDataService;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -36,14 +36,14 @@ class GoFetchReportPackages implements ShouldQueue, ShouldBeUnique
      * Execute the job.
      * @throws Exception
      */
-    public function handle(NodeService $nodeService): void
+    public function handle(FetchDataService $fetchDataService): void
     {
         $report = Report::findOrFail($this->reportId);
-        $payload = $nodeService->createPayload($report);
+        $payload = $fetchDataService->createPayload($report);
         $data = $report->data;
         $data['packages'] = [];
 
-        $output = $nodeService->fetchData(config('services.puppeteer.uris.reports.packages'), $payload)
+        $output = $fetchDataService->fetchData(config('services.dd.uris.reports.packages'), $payload)
             ->getData(true);;
         foreach ($output['data'][0]['columns'] as $index => $column) {
             if ($column['filterKey'] === 'packageName') $typeColIndex = $index;
