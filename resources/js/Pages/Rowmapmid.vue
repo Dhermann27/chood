@@ -40,7 +40,7 @@ onBeforeUnmount(() => {
     <main class="w-full h-full">
         <div class="choodmap items-center justify-center p-1">
             <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :photoUri="photoUri" :maxlength="12"
-                 :card-width="260" :card-height="211"/>
+                 :card-width="250" :card-height="211"/>
         </div>
     </main>
 </template>
@@ -48,7 +48,7 @@ onBeforeUnmount(() => {
 <style>
 .choodmap {
     display: grid;
-    grid-template-columns: 1fr 40px repeat(2, 1fr) 40px repeat(2, 1fr);
+    grid-template-columns: 1fr 40px 1fr 1fr 40px 1fr;
     grid-template-rows: repeat(4, 1fr) 20px repeat(5, 1fr);
 }
 </style>
