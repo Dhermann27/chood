@@ -36,7 +36,7 @@ class DataController extends Controller
 
     function yardmap(string $size, string $checksum = null): JsonResponse
     {
-        $now = Carbon::now()->subHours(5);
+        $now = Carbon::now();
         $dogs = $this->getDogs(false, $size);
         $assignments = YardAssignment::where('start_time', '<=', $now)->where('end_time', '>=', $now)
             ->orderBy('yard_number')->with('employee')->get();

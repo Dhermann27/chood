@@ -23,7 +23,7 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
     const SHIFTS_URL_PREFIX = 'https://app.joinhomebase.com/api/public/locations/';
     const SHIFTS_URL_SUFFIX = '/shifts?start_date=TODAY&end_date=TODAY&open=false&with_note=false&date_filter=start_at';
     const BACK_OF_HOUSE = 'BOH';
-    const YARD_WORKER = 'Camp Counselor';
+    const YARD_WORKER = 'Camp Counselor ';
 
 
     /**
@@ -73,6 +73,7 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
                     $startHour = Carbon::today()->setHour($i);
                     $endHour = Carbon::today()->setHour($i + 1);
 
+                    Log::info('Hour ' . $startHour . ' - ' . $endHour);
                     // Filter employees who are working during this hour and not on break
                     $availableEmployees = $shifts->filter(function ($shift) use ($startHour, $endHour) {
                         // Ensure they are working during this hour
