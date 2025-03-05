@@ -11,5 +11,7 @@ class Employee extends Model
     /** @use HasFactory<EmployeeFactory> */
     use HasFactory;
 
-    protected $fillable = ['homebase_id', 'first_name', 'last_name', 'is_working'];
+    protected $primaryKey = 'homebase_user_id';
+    protected $fillable = ['homebase_user_id', 'first_name', 'last_name', 'is_working',
+        'next_first_break', 'next_lunch_break', 'next_second_break'];
 }

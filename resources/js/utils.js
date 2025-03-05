@@ -1,4 +1,4 @@
-export function getTextWidth(text) {
+function getTextWidth(text) {
     const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
     const context = canvas.getContext("2d");
     const computedStyle = window.getComputedStyle(text);
@@ -43,22 +43,11 @@ export function scaleObjects() {
             icon.querySelector('span').style.fontSize = (Math.floor(size * .75)) + 'px';
         })
     });
+    const chyron = document.querySelector("#chyron");
+    if (chyron) {
+        const pct = chyron.offsetWidth / getTextWidth(chyron);
+        if (pct < 1.05) chyron.style.fontSize = (parseFloat(chyron.style.fontSize) * (pct - .07)) + 'px';
+    }
+
 }
 
-
-export function getYardGridStyle(rows, columns) {
-    return {
-        display: 'grid',
-        gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`,
-        gap: '10px',
-    };
-}
-
-export function getNewGifAndPosition() {
-    return {
-        newGif: '/images/doggifs/dog' + (Math.floor(Math.random() * 11) + 1) + '.webp',
-        top: Math.random() * (1080 - 480),
-        left: Math.random() * (1920 - 480),
-    };
-}

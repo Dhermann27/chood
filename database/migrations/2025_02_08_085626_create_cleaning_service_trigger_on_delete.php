@@ -26,7 +26,7 @@ return new class extends Migration
                         VALUES (OLD.cabin_id, 'daily', 'TriggerInsert', NOW())
                         ON DUPLICATE KEY UPDATE
                             cleaning_type = 'daily',
-                            homebase_id = NULL,
+                            homebase_user_id = NULL,
                             completed_at = NULL,
                             updated_by = 'TriggerUpdate',
                             updated_at = NOW();

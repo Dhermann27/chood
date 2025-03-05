@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\CleaningStatus;
 use App\Models\Dog;
+use App\Models\Employee;
+use App\Models\YardAssignment;
 use App\Traits\ChoodTrait;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Response;
 
@@ -33,12 +36,25 @@ class DataController extends Controller
 
     function yardmap(string $size, string $checksum = null): JsonResponse
     {
+        $now = Carbon::now()->subHours(5);
         $dogs = $this->getDogs(false, $size);
+        $assignments = YardAssignment::where('start_time', '<=', $now)->where('end_time', '>=', $now)
+            ->orderBy('yard_number')->with('employee')->get();
+        $nextBreak = Employee::selectRaw('*, GREATEST(COALESCE(next_first_break,0), COALESCE(next_second_break,0)) as next_break')
+        ->where(function ($query) use ($now) {
+            $query->where('next_first_break', '>', $now)
+                ->orWhere('next_second_break', '>', $now);
+        })->orderBy('next_break', 'ASC')->first();
+        $nextLunch = Employee::whereNotNull('next_lunch_break')->where('next_lunch_break', '>=', $now)
+            ->orderBy('next_lunch_break')->first();
 
-        $new_checksum = md5($dogs->toJson());
+        $new_checksum = md5($dogs->toJson() . $assignments . $nextBreak . $nextLunch);
         if ($checksum !== $new_checksum) {
             $response = [
                 'dogs' => $dogs,
+                'assignments' => $assignments,
+                'nextBreak' => $nextBreak,
+                'nextLunch' => $nextLunch,
                 'checksum' => $new_checksum,
             ];
 

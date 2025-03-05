@@ -61,4 +61,9 @@ return [
         'loc_id' => env('HOMEBASE_LOCATION_ID'),
     ],
 
+    'yardAssignments' => [
+        'numberOfYards' => 2,
+        'numberOfHours' => 10,
+        'startHourOfDay' => 8,
+    ],
 ];

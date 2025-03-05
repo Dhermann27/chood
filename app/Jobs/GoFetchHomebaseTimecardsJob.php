@@ -18,8 +18,8 @@ class GoFetchHomebaseTimecardsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    const SHIFTS_URL_PREFIX = 'https://app.joinhomebase.com/api/public/locations/';
-    const SHIFTS_URL_SUFFIX = '/timecards?start_date=TODAY&end_date=TODAY&date_filter=clock_in';
+    const TIMECARDS_URL_PREFIX = 'https://app.joinhomebase.com/api/public/locations/';
+    const TIMECARDS_URL_SUFFIX = '/timecards?start_date=TODAY&end_date=TODAY&date_filter=clock_in';
 
     /**
      * Execute the job.
@@ -29,8 +29,8 @@ class GoFetchHomebaseTimecardsJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $url = self::SHIFTS_URL_PREFIX . config('services.homebase.loc_id') .
-            str_replace('TODAY', Carbon::today()->toDateString(), self::SHIFTS_URL_SUFFIX);
+        $url = self::TIMECARDS_URL_PREFIX . config('services.homebase.loc_id') .
+            str_replace('TODAY', Carbon::today()->toDateString(), self::TIMECARDS_URL_SUFFIX);
 
 
         try {
@@ -41,18 +41,18 @@ class GoFetchHomebaseTimecardsJob implements ShouldQueue
 
             if ($response->successful()) {
                 $timecards = json_decode($response->getBody()->getContents());
-                $presentPayrollIds = [];
+                $presentUserIds = [];
 
                 foreach ($timecards as $timecard) {
                     if ($timecard->clock_out === null) {
-                        $presentPayrollIds[] = $timecard->payroll_id;
+                        $presentUserIds[] = $timecard->user_id;
                     }
                 }
 
-                Employee::whereIn('homebase_id', $presentPayrollIds)->where('is_working', '!=', 1)
+                Employee::whereIn('homebase_user_id', $presentUserIds)->where('is_working', '!=', 1)
                     ->update(['is_working' => 1]);
 
-                Employee::whereNotIn('homebase_id', $presentPayrollIds)->where('is_working', '!=', 0)
+                Employee::whereNotIn('homebase_user_id', $presentUserIds)->where('is_working', '!=', 0)
                     ->update(['is_working' => 0]);
 
             } else {
@@ -60,7 +60,7 @@ class GoFetchHomebaseTimecardsJob implements ShouldQueue
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
-                throw new \Exception('Failed to fetch Homebase shifts.');
+                throw new \Exception('Failed to fetch Homebase timecards.');
             }
         } catch (ConnectionException $e) {
             Log::error('Connection to Homebase API failed.', ['error' => $e->getMessage()]);

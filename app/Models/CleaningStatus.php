@@ -11,7 +11,7 @@ class CleaningStatus extends Model
     use HasFactory;
 
     protected $table = 'cleaning_status';
-    protected $fillable = ['cabin_id', 'cleaning_type', 'homebase_id', 'completed_at', 'created_by', 'created_at', 'updated_by', 'updated_at'];
+    protected $fillable = ['cabin_id', 'cleaning_type', 'homebase_user_id', 'completed_at', 'created_by', 'created_at', 'updated_by', 'updated_at'];
     protected $primaryKey = 'cabin_id';
     public $incrementing = false;
     public $timestamps = false;
@@ -34,7 +34,7 @@ class CleaningStatus extends Model
 
     public function employee(): HasOne
     {
-        return $this->hasOne(Employee::class, 'homebase_id', 'homebase_id');
+        return $this->hasOne(Employee::class, 'homebase_user_id', 'homebase_user_id');
     }
 
 }

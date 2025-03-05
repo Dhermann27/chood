@@ -51,7 +51,7 @@ const nextStep = () => {
 }
 
 const handleEmployeeClick = (employee) => {
-    homebaseId.value = employee.homebase_id;
+    homebaseId.value = employee.homebase_user_id;
     nextStep();
 }
 
@@ -76,7 +76,7 @@ const handleFinishAction = async (action) => {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
             },
             data: {
-                'homebase_id': homebaseId.value,
+                'homebase_user_id': homebaseId.value,
                 'cabin_id': targetId.value
             }
         }).then((response) => {
@@ -123,7 +123,7 @@ onMounted(() => {
                     @click="handleEmployeeClick(employee)">
 
                     <img
-                        :src="`/images/staff/${employee.homebase_id}.png`"
+                        :src="`/images/staff/${employee.homebase_user_id}.png`"
                         :alt="employee.first_name"
                         class="w-[80%] h-[80%] rounded-full object-cover mb-4"
                     />

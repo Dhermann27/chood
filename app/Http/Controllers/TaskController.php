@@ -49,7 +49,7 @@ class TaskController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'homebase_id' => 'required|exists:employees,homebase_id',
+                'homebase_user_id' => 'required|exists:employees,homebase_user_id',
                 'cabin_id' => 'required|exists:cabins,id'
             ]);
             $cleaningStatus = CleaningStatus::where('cabin_id', $validatedData['cabin_id'])->firstOrFail();
@@ -57,7 +57,7 @@ class TaskController extends Controller
                 $cleaningStatus->delete();
             } else {
                 $cleaningStatus->update([
-                    'homebase_id' => $validatedData['homebase_id'],
+                    'homebase_user_id' => $validatedData['homebase_user_id'],
                     'completed_at' => Carbon::now(),
                     'updated_by' => 'ApiMarkClean',
                     'updated_at' => Carbon::now()]);

@@ -39,8 +39,8 @@ class GoFetchHomebaseEmployeesJob implements ShouldQueue
             if ($response->successful()) {
                 $employees = json_decode($response->getBody()->getContents());
                 foreach ($employees as $employee) {
-                    Employee::updateOrCreate(['homebase_id' => $employee->job->payroll_id], [
-                        'homebase_id' => $employee->job->payroll_id,
+                    Employee::updateOrCreate(['homebase_user_id' => $employee->id], [
+                        'homebase_user_id' => $employee->id,
                         'first_name' => $employee->first_name,
                         'last_name' => $employee->last_name
                     ]);
@@ -51,7 +51,7 @@ class GoFetchHomebaseEmployeesJob implements ShouldQueue
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
-                throw new \Exception('Failed to fetch Homebase shifts.');
+                throw new \Exception('Failed to fetch Homebase employees.');
             }
         } catch (ConnectionException $e) {
             Log::error('Connection to Homebase API failed.', ['error' => $e->getMessage()]);

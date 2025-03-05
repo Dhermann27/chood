@@ -29,7 +29,7 @@ class MarkCabinsForCleaningJob implements ShouldQueue
         if (Carbon::today()->isSunday()) {
             CleaningStatus::query()->update([
                 'cleaning_type' => 'deep',
-                'homebase_id' => null,
+                'homebase_user_id' => null,
                 'completed_at' => null,
                 'updated_by' => 'MCFCJobIsSunday',
                 'updated_at' => Carbon::now()
@@ -50,7 +50,7 @@ class MarkCabinsForCleaningJob implements ShouldQueue
                 if ($cabin['cleaning_status']) {
                     $cabin['cleaning_status']->update([
                         'cleaning_type' => $cabin['cleaning_type'],
-                        'homebase_id' => null,
+                        'homebase_user_id' => null,
                         'completed_at' => null,
                         'updated_by' => 'MCFCJobNotSunday',
                         'updated_at' => now(),

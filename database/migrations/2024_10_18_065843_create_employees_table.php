@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -13,15 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('employees', function (Blueprint $table) {
-            $table->id();
-            $table->string('homebase_id')->unique();
-            $table->index('homebase_id');
+            $table->string('homebase_user_id')->unique();
+            $table->index('homebase_user_id');
             $table->string('first_name');
             $table->string('last_name');
             $table->tinyInteger('is_working')->default('0');
+            $table->time('next_first_break')->nullable();
+            $table->time('next_lunch_break')->nullable();
+            $table->time('next_second_break')->nullable();
             $table->timestamps();
         });
-        DB::update('ALTER TABLE employees AUTO_INCREMENT = 1000');
     }
 
     /**
