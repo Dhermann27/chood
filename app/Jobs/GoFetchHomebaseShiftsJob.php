@@ -297,7 +297,7 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
 
                     Log::info($employee->first_name . ' assigned, having ' .
                         $employee->yardHoursWorked[$j] . ' hours in Yard ' . $j);
-                    $this->assignEmployee($j, $startHour, $employee, $shifts, $lastAssignedYard);
+                    $this->assignEmployee($j, $startHour, $employee, $shifts, $lastYard);
                     $assigned = true;
                     break;
                 }
@@ -307,7 +307,7 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
                     if ($availableEmployees->isNotEmpty()) {
                         $employee = $availableEmployees->first();
                         Log::info('No other employees available, assigning ' . $employee->first_name . ' to Yard ' . $j);
-                        $this->assignEmployee($j, $startHour, $employee, $shifts, $lastAssignedYard);
+                        $this->assignEmployee($j, $startHour, $employee, $shifts, $lastYard);
                     } else {
                         // Nobody wants to work these days
                         YardAssignment::where('yard_number', $j + 1)
