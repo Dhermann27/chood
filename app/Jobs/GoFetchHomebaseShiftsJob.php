@@ -229,12 +229,11 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
      */
     public function assignEmployee(int $j, Carbon $startHour, $employee, mixed &$shifts, array &$lastYard): void
     {
-        Log::info('Update yard_assignments SET hbuid=' . $employee->user_id . ' WHERE yn=' . $j+1 . ' AND sh=' . $startHour . ';');
-        YardAssignment::where('yard_number', $j + 1)
+        $ya = YardAssignment::where('yard_number', $j + 1)
             ->where('start_time', $startHour)
             ->update(['homebase_user_id' => $employee->user_id]);
+        Log::info('Output of update: ' . $ya . ';;');
 
-        // Update the employee's yard hours in the Collection
         $shifts = $shifts->map(function ($e) use ($employee, $j) {
             if ($e->user_id === $employee->user_id) {
                 $e->yardHoursWorked[$j]++;
