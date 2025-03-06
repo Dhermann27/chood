@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class YardAssignment extends Model
 {
-    protected $fillable = ['employee_id'];
+    protected $fillable = ['homebase_user_id'];
 
     public function employee(): HasOne
     {
