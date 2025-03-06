@@ -6,6 +6,18 @@ function getTextWidth(text) {
     return context.measureText(text.textContent).width;
 }
 
+
+export function formatTime(time) {
+    if (time && typeof time === 'string' && time.includes(':')) {
+        let [hours, minutes] = time.split(":");
+        hours = parseInt(hours, 10);
+        const suffix = hours >= 12 ? "pm" : "am";
+        hours = hours % 12 || 12; // Convert to 12-hour format (0 becomes 12)
+        return `${hours}:${minutes}${suffix}`;
+    }
+    return null;
+}
+
 export async function fetchMapData(uri, checksum) {
     try {
         const response = await axios.get(uri + checksum);

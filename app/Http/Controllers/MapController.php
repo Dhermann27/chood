@@ -43,5 +43,9 @@ class MapController extends Controller
         ]);
     }
 
+    public function mealmap(): Response {
+        return Inertia::render('Mealmap');
+    }
+
 
 }

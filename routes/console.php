@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\GoFetchHomebaseEmployeesJob;
+use App\Jobs\GoFetchHomebaseShiftsJob;
 use App\Jobs\GoFetchHomebaseTimecardsJob;
 use App\Jobs\GoFetchListJob;
 use App\Jobs\MarkCabinsForCleaningJob;
@@ -11,3 +12,4 @@ Schedule::job(new GoFetchListJob(app(FetchDataService::class)))->everyFifteenSec
 Schedule::job(new GoFetchHomebaseTimecardsJob())->everyFifteenSeconds()->between('6:00', '19:30');
 Schedule::job(new MarkCabinsForCleaningJob())->daily();
 Schedule::job(new GoFetchHomebaseEmployeesJob())->daily();
+Schedule::job(new GoFetchHomebaseShiftsJob())->daily();

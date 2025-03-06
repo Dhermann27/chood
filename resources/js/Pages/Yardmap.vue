@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {ref, computed, onMounted, onBeforeUnmount, nextTick} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
-import {scaleObjects} from "@/utils.js";
+import {formatTime, scaleObjects} from "@/utils.js";
 
 const props = defineProps({
     size: String,
@@ -24,20 +24,14 @@ const cardHeight = computed(() => (978 - (rows.value - 1) * 10) / rows.value);
 const chyronStyle = computed(() => ({
     height: '100px',
     textAlign: 'center',
-    alignItems: 'center',
-    fontSize: `${cardHeight.value * 0.07}px`,
+    display: 'flex',
+    alignItems: 'center',       // Vertically aligns text
+    justifyContent: 'center',   // Horizontally aligns text
+    fontSize: '60px',
     gridColumn: '1 / -1',
     backgroundColor: '#9e1b32',
     color: 'white'
 }));
-
-function formatTime(time) {
-    let [hours, minutes] = time.split(":");
-    hours = parseInt(hours, 10);
-    const suffix = hours >= 12 ? "pm" : "am";
-    hours = hours % 12 || 12; // Convert to 12-hour format (0 becomes 12)
-    return `${hours}:${minutes}${suffix}`;
-}
 
 function getYardGridStyle(rows, columns) {
     return {
@@ -109,7 +103,7 @@ onBeforeUnmount(() => {
             <div id="chyron" :style="chyronStyle">
                 <span v-for="assignment in assignments" class="pe-10">
                     {{ assignment.yard_number === 1 ? 'Small' : 'Large' }}:
-                    {{ assignment.employee.first_name }}
+                    {{ assignment.employee?.first_name ?? 'None' }}
                 </span>
                 <span v-if="nextBreak" class="pe-10">
                     Next Break: {{ nextBreak.first_name }} @
