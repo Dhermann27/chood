@@ -24,13 +24,15 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
     const SHIFTS_URL_SUFFIX = '/shifts?start_date=TODAY&end_date=TODAY&open=false&with_note=false&date_filter=start_at';
     const BACK_OF_HOUSE = 'BOH';
     const YARD_WORKER = 'Camp Counselor ';
+    const START_BREAKS_AT_INDEX = 3;
+    const START_LUNCHES_AT_INDEX = 2 * 12 + 6;
 
 
     /**
      * Execute the job.
      *
      * @return void
-     * @throws ConnectionException|Exception
+     * @throws Exception
      */
     public function handle(): void
     {
@@ -54,15 +56,14 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
 
                 if ($day->isSunday()) $shifts = $this->assignSundayMorningBreaks($shifts);
 
-                // Boolean matrix for workday, each hour in 5-minute intervals (12 intervals per hour)
-                $breakMatrix = array_fill(0, 24, array_fill(0, 12, false));
-                $startBreaksAt = $day->copy()->setTime(8, 15);
-                $startLunchesAt = $day->copy()->setTime(10, 30);
+                $numberOfHours = config('services.yardAssignments.numberOfHours');
+                // Boolean matrix for 5-minute segments of workday
+                $breakMatrix = array_fill(0, $numberOfHours * 12, 0);
                 $numberOfYards = config('services.yardAssignments.numberOfYards');
 
                 foreach ($shifts as $shift) {
                     if (isset($shift->labor->scheduled_hours) && str_contains($shift->department, self::BACK_OF_HOUSE)) {
-                        $breakMatrix = $this->assignBreaks($shift, $startBreaksAt, $startLunchesAt, $breakMatrix);
+                        $breakMatrix = $this->assignBreaks($shift, $breakMatrix);
                     }
                     $shift->yardHoursWorked = array_fill(0, $numberOfYards, 0);
 
@@ -74,60 +75,135 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
-                throw new \Exception('Failed to fetch Homebase shifts.');
+                throw new Exception('Failed to fetch Homebase shifts.');
             }
-        } catch
-        (ConnectionException $e) {
+        } catch (ConnectionException $e) {
             Log::error('Connection to Homebase API failed.', ['error' => $e->getMessage()]);
         }
     }
 
 
     /**
+     * @param mixed $shift
+     * @param array $breakMatrix
+     * @return array
      * @throws Exception
      */
-    function isSlotAvailable($startTime, $duration, $breakMatrix): bool
+    public function assignBreaks(mixed &$shift, array $breakMatrix): array
     {
+        $employee = Employee::where('homebase_user_id', $shift->user_id)->first();
 
-        Log::info("Looking for {$startTime}");
-        $hourSlot = $startTime->hour;
-        $minuteSlot = floor($startTime->minute / 5);
-        $slotsNeeded = ceil($duration / 5); // Number of 5-minute slots needed for the break
+        $shiftStartIndex = $this->convertTimeToIndex(Carbon::parse($shift->start_at));
+        $shiftEndIndex = $this->convertTimeToIndex(Carbon::parse($shift->end_at)->subHours(2));
+        $shiftDuration = floatval($shift->labor->scheduled_hours) * 12;
+        $shiftSegmentLength = $shiftDuration / ($shiftDuration >= (8 * 12) ? 4 : ($shiftDuration >= (6.5 * 12) ? 3 : 2));
 
-        for ($i = 0; $i < $slotsNeeded; $i++) {
-            if ($breakMatrix[$hourSlot][$minuteSlot]) {
-                $loggerMin = $minuteSlot * 5;
-                Log::info("{$hourSlot}:{$loggerMin} taken");
-                return false; // Slot is occupied
-            }
-            $loggerMin = $minuteSlot * 5;
-            Log::info("{$hourSlot}:{$loggerMin} free, trying next");
-            $minuteSlot++;
-            if ($minuteSlot == 12) { // If we move past the current hour, increment hour and reset minute slot
-                $minuteSlot = 0;
-                $hourSlot++;
-                if ($hourSlot >= 19) {
-                    // No available slots if we pass 7:00pm
-                    throw new Exception('Failed to find shift break time before 7pm.');
-                }
+        $firstBreakIndex = max($shiftStartIndex + $shiftSegmentLength - 3, self::START_BREAKS_AT_INDEX);
+        $lunchBreakIndex = max($firstBreakIndex + $shiftSegmentLength - 3, self::START_LUNCHES_AT_INDEX);
+        $secondBreakIndex = min($lunchBreakIndex + $shiftSegmentLength - 3, $shiftEndIndex);
+
+        if ($shiftDuration >= (8 * 12) || ($shiftDuration >= (4 * 12) && !is_null($employee->next_first_break))) {
+            // If second shift, don't overwrite first break
+            $logTime = $this->convertIndexToTime($secondBreakIndex);
+            Log::info("Looking for a second break time for {$employee->first_name} at {$logTime}");
+            $secondBreakIndex = $this->findBreakIndex($secondBreakIndex, 4, $breakMatrix);
+            $this->markSlots($secondBreakIndex, 4, $breakMatrix);
+        } else {
+            $secondBreakIndex = null;
+        }
+
+        if ($shiftDuration >= (6.5 * 12)) {
+            $logTime = $this->convertIndexToTime($lunchBreakIndex);
+            Log::info("Looking for a lunch time for {$employee->first_name} at {$logTime}");
+            $lunchBreakIndex = $this->findBreakIndex($lunchBreakIndex, 7, $breakMatrix);
+            $this->markSlots($lunchBreakIndex, 7, $breakMatrix);
+        } else {
+            $lunchBreakIndex = null;
+        }
+        $shift->lunch_break = $this->convertIndexToTime($lunchBreakIndex); // To be referenced by YardAssignment logic
+
+        if (is_null($employee->next_first_break)) { // Second shift, don't overwrite first break
+            if ($shiftDuration >= (4 * 12)) {
+                $logTime = $this->convertIndexToTime($firstBreakIndex);
+                Log::info("Looking for a first break time for {$employee->first_name} at {$logTime}");
+                $firstBreakIndex = $this->findBreakIndex($firstBreakIndex, 4, $breakMatrix);
+                $this->markSlots($firstBreakIndex, 4, $breakMatrix);
+            } else {
+                $firstBreakIndex = null;
             }
         }
-        return true;
+
+        $employee->update([
+            'next_first_break' => $employee->next_first_break ?? $this->convertIndexToTime($firstBreakIndex),
+            'next_lunch_break' => $this->convertIndexToTime($lunchBreakIndex),
+            'next_second_break' => $this->convertIndexToTime($secondBreakIndex)
+        ]);
+        return $breakMatrix;
     }
 
-    function markSlots($startTime, $duration, &$breakMatrix): void
+    /**
+     * @param int $breakIndex
+     * @param int $duration
+     * @param array $breakMatrix
+     * @return int
+     * @throws Exception
+     */
+    public function findBreakIndex(int $breakIndex, int $duration, array $breakMatrix): int
     {
-        $hourSlot = $startTime->hour;
-        $minuteSlot = floor($startTime->minute / 5);
-        $slotsNeeded = ceil($duration / 5);
-
-        for ($i = 0; $i < $slotsNeeded; $i++) {
-            $breakMatrix[$hourSlot][$minuteSlot] = true; // Mark slot as occupied
-            $minuteSlot++;
-            if ($minuteSlot == 12) {
-                $minuteSlot = 0;
-                $hourSlot++;
+        $maxPeopleOnBreak = 0;
+        $searcherIndex = $breakIndex;
+        while (true) {
+            $searcherIndex = $this->findNextAvailableSlot($searcherIndex, $duration, $maxPeopleOnBreak++, $breakMatrix);
+            if (!$searcherIndex || $searcherIndex - $breakIndex > 24) {
+                $searcherIndex = $breakIndex;
+            } else {
+                $breakIndex = $searcherIndex;
+                break;
             }
+        }
+        return $breakIndex;
+    }
+
+
+    /**
+     * @param int $startIndex
+     * @param int $duration
+     * @param int $maximum
+     * @param array $breakMatrix
+     * @return int|null
+     * @throws Exception
+     */
+    function findNextAvailableSlot(int $startIndex, int $duration, int $maximum, array $breakMatrix): int|null
+    {
+        for ($i = 0; $i < $duration; $i++) {
+            if (!isset($breakMatrix[$startIndex + $i])) {
+                // No available slots if we pass 7:00pm
+                Log::warning('Failed to find shift break time before 7pm.');
+                return null;
+            }
+            $logTime = $this->convertIndexToTime($startIndex + $i);
+            if ($breakMatrix[$startIndex + $i] > $maximum) {
+                Log::info("{$logTime} taken by {$breakMatrix[$startIndex + $i]} people");
+                $startIndex += $i + 1;
+                $i = 0; // Slot is occupied, restart search
+            } else {
+                Log::info("{$logTime} free, only {$breakMatrix[$startIndex + $i]} people");
+            }
+        }
+        return $startIndex;
+    }
+
+
+    /**
+     * @param int $startIndex
+     * @param int $duration
+     * @param array $breakMatrix
+     * @return void
+     */
+    function markSlots(int $startIndex, int $duration, array &$breakMatrix): void
+    {
+        for ($i = 0; $i < $duration; $i++) {
+            $breakMatrix[$startIndex + $i] += 1; // Mark slot as occupied
         }
     }
 
@@ -157,67 +233,78 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
     }
 
     /**
-     * @param mixed $shift
-     * @param Carbon $startBreaksAt
-     * @param Carbon $startLunchesAt
-     * @param array $breakMatrix
-     * @return array
-     * @throws Exception
+     * @param Collection $shifts
+     * @param mixed $numberOfYards
      */
-    public function assignBreaks(mixed &$shift, Carbon $startBreaksAt, Carbon $startLunchesAt, array $breakMatrix): array
+    public function updateYardAssignments(Collection $shifts, mixed $numberOfYards): void
     {
-        $employee = Employee::where('homebase_user_id', $shift->user_id)->first();
+        $startHourOfDay = config('services.yardAssignments.startHourOfDay');
+        $endHourOfDay = $startHourOfDay + config('services.yardAssignments.numberOfHours');
+        $lastYard = [];
 
-        $shiftStart = Carbon::parse($shift->start_at);
-        $shiftDuration = floatval($shift->labor->scheduled_hours);
-        $shiftSegmentLength = $shiftDuration * 60 / ($shiftDuration >= 8 ? 4 : ($shiftDuration >= 6.5 ? 3 : 2));
+        for ($i = $startHourOfDay; $i < $endHourOfDay; $i++) {
+            $startOfHour = Carbon::today()->setHour($i);
+            $endOfHour = Carbon::today()->setHour($i + 1);
+            Log::info('Hour ' . $startOfHour . ' - ' . $endOfHour);
 
-        $firstBreak = $shiftStart->copy()->addMinutes($shiftSegmentLength)
-            ->floorMinutes(10)->max($startBreaksAt);
-        $lunchBreak = $firstBreak->copy()->addMinutes($shiftSegmentLength)
-            ->floorMinutes(10)->max($startLunchesAt);
-        $secondBreak = $lunchBreak->copy()->addMinutes($shiftSegmentLength)
-            ->floorMinutes(10)->min(Carbon::parse($shift->end_at)->subHours(2));
+            // Filter employees who are working during this hour and not on break
+            $availableEmployees = $shifts->filter(function ($shift) use ($startOfHour, $endOfHour) {
+                $isWorking = isset($shift->labor->scheduled_hours) &&
+                    str_contains($shift->department, self::BACK_OF_HOUSE) &&
+                    Carbon::parse($shift->start_at)->lessThanOrEqualTo($startOfHour) &&
+                    Carbon::parse($shift->end_at)->greaterThanOrEqualTo($endOfHour);
+                $noLunchBreak = !isset($shift->lunch_break) ||
+                    !(Carbon::parse($shift->lunch_break)->addMinutes(35)->greaterThan($startOfHour) &&
+                        Carbon::parse($shift->lunch_break)->lessThan($endOfHour));
 
+                return $isWorking && $noLunchBreak;
+            });
+            Log::info(count($availableEmployees) . ' employees available');
 
-        if ($shiftDuration >= 8 || ($shiftDuration >= 4 && !is_null($employee->next_first_break))) {
-            // If second shift, don't overwrite first break
-            while (!$this->isSlotAvailable($secondBreak, 20, $breakMatrix)) {
-                $secondBreak->addMinutes(5);
-            }
-            $this->markSlots($secondBreak, 20, $breakMatrix);
-        } else {
-            $secondBreak = null;
-        }
+            for ($j = 0; $j < $numberOfYards; $j++) {
+                $availableEmployees = $availableEmployees->sortBy(function ($employee) use ($j) {
+                    return [$employee->yardHoursWorked[$j], $employee->start_at];
+                });
 
+                $assigned = false;
 
-        if ($shiftDuration >= 6.5) {
-            while (!$this->isSlotAvailable($lunchBreak, 35, $breakMatrix)) {
-                $lunchBreak->addMinutes(5);
-            }
-            $this->markSlots($lunchBreak, 35, $breakMatrix);
-        } else {
-            $lunchBreak = null;
-        }
-        $shift->lunch_break = $lunchBreak; // To be referenced by YardAssignment logic
+                // Not an Employee object, it's a Homebase shift
+                while ($availableEmployees->isNotEmpty()) {
+                    $employee = $availableEmployees->shift();
 
-        if (is_null($employee->next_first_break)) { // Second shift, don't overwrite first break
-            if ($shiftDuration >= 4) {
-                while (!$this->isSlotAvailable($firstBreak, 20, $breakMatrix)) {
-                    $firstBreak->addMinutes(5);
+                    // Check if employee worked the same yard last hour
+                    if (isset($lastYard[$employee->user_id][$j])
+                        && $lastYard[$employee->user_id][$j] >= $startOfHour->copy()->subHour()) {
+                        Log::info($employee->first_name . ' worked this yard within the last hour, skipping');
+
+                        if ($availableEmployees->isNotEmpty()) {
+                            $availableEmployees->push($employee);
+                            continue;
+                        }
+                    }
+
+                    Log::info($employee->first_name . ' assigned, having ' .
+                        $employee->yardHoursWorked[$j] . ' hours in Yard ' . $j);
+                    $this->assignEmployee($j, $startOfHour, $employee, $shifts, $lastYard);
+                    $assigned = true;
+                    break;
                 }
-                $this->markSlots($firstBreak, 20, $breakMatrix);
-            } else {
-                $firstBreak = null;
+
+                // If no employee was assigned due to all of them working the same yard last hour, allow back-to-back assignment
+                if (!$assigned) {
+                    if ($availableEmployees->isNotEmpty()) {
+                        $employee = $availableEmployees->first();
+                        Log::info('No other employees available, assigning ' . $employee->first_name . ' to Yard ' . $j);
+                        $this->assignEmployee($j, $startOfHour, $employee, $shifts, $lastYard);
+                    } else {
+                        // Nobody wants to work these days
+                        YardAssignment::where('yard_number', $j + 1)
+                            ->where('start_time', $startOfHour)
+                            ->update(['homebase_user_id' => null]);
+                    }
+                }
             }
         }
-
-        $employee->update([
-            'next_first_break' => $employee->next_first_break ?? $firstBreak,
-            'next_lunch_break' => $lunchBreak,
-            'next_second_break' => $secondBreak
-        ]);
-        return $breakMatrix;
     }
 
     /**
@@ -230,10 +317,8 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
     public function assignEmployee(int $j, Carbon $startHour, $employee, mixed &$shifts, array &$lastYard): void
     {
         YardAssignment::where('yard_number', $j + 1)
-            ->where('start_time', $startHour->format('H:i:s'))
-            ->update(['homebase_user_id' => $employee->user_id]);
-        Log::info('SQL: ' . YardAssignment::where('yard_number', $j + 1)
-                ->where('start_time', $startHour->format('H:i:s'))->toSql() . ';;');
+                ->where('start_time', $startHour->format('H:i:s'))
+                ->update(['homebase_user_id' => $employee->user_id]);
 
         $shifts = $shifts->map(function ($e) use ($employee, $j) {
             if ($e->user_id === $employee->user_id) {
@@ -246,77 +331,23 @@ class GoFetchHomebaseShiftsJob implements ShouldQueue
     }
 
     /**
-     * @param Collection $shifts
-     * @param mixed $numberOfYards
+     * @param int $index
+     * @return Carbon|null
      */
-    public function updateYardAssignments(Collection $shifts, mixed $numberOfYards): void
+    public function convertIndexToTime(?int $index): Carbon|null
     {
-        $startHourOfDay = config('services.yardAssignments.startHourOfDay');
-        $endHourOfDay = $startHourOfDay + config('services.yardAssignments.numberOfHours');
-        $lastYard = [];
+        if ($index == null) return null;
+        return Carbon::parse((floor($index / 12) + config('services.yardAssignments.startHourOfDay')) .
+            ':' . (($index % 12) * 5));
+    }
 
-        for ($i = $startHourOfDay; $i < $endHourOfDay; $i++) {
-            $startHour = Carbon::today()->setHour($i);
-            $endHour = Carbon::today()->setHour($i + 1);
-            Log::info('Hour ' . $startHour . ' - ' . $endHour);
-
-            // Filter employees who are working during this hour and not on break
-            $availableEmployees = $shifts->filter(function ($shift) use ($startHour, $endHour) {
-                $isWorking = isset($shift->labor->scheduled_hours) &&
-                    str_contains($shift->role, self::YARD_WORKER) &&
-                    Carbon::parse($shift->start_at)->lessThanOrEqualTo($startHour) &&
-                    Carbon::parse($shift->end_at)->greaterThanOrEqualTo($endHour);
-                $noLunchBreak = !isset($shift->lunch_break) ||
-                    !(Carbon::parse($shift->lunch_break)->addMinutes(35)->greaterThan($startHour) &&
-                        Carbon::parse($shift->lunch_break)->lessThan($endHour));
-
-                return $isWorking && $noLunchBreak;
-            });
-            Log::info(count($availableEmployees) . ' employees available');
-
-            for ($j = 0; $j < $numberOfYards; $j++) {
-                $availableEmployees = $availableEmployees->sortBy(function ($employee) use ($j) {
-                    return $employee->yardHoursWorked[$j];
-                });
-
-                $assigned = false;
-
-                // Not an Employee object, it's a Homebase shift
-                while ($availableEmployees->isNotEmpty()) {
-                    $employee = $availableEmployees->shift();
-
-                    // Check if employee worked the same yard last hour
-                    if (isset($lastYard[$employee->user_id][$j])
-                        && $lastYard[$employee->user_id][$j] >= $startHour->copy()->subHour()) {
-                        Log::info($employee->first_name . ' worked this yard within the last hour, skipping');
-
-                        if ($availableEmployees->isNotEmpty()) {
-                            $availableEmployees->push($employee);
-                            continue;
-                        }
-                    }
-
-                    Log::info($employee->first_name . ' assigned, having ' .
-                        $employee->yardHoursWorked[$j] . ' hours in Yard ' . $j);
-                    $this->assignEmployee($j, $startHour, $employee, $shifts, $lastYard);
-                    $assigned = true;
-                    break;
-                }
-
-                // If no employee was assigned due to all of them working the same yard last hour, allow back-to-back assignment
-                if (!$assigned) {
-                    if ($availableEmployees->isNotEmpty()) {
-                        $employee = $availableEmployees->first();
-                        Log::info('No other employees available, assigning ' . $employee->first_name . ' to Yard ' . $j);
-                        $this->assignEmployee($j, $startHour, $employee, $shifts, $lastYard);
-                    } else {
-                        // Nobody wants to work these days
-                        YardAssignment::where('yard_number', $j + 1)
-                            ->where('start_time', $startHour)
-                            ->update(['homebase_user_id' => null]);
-                    }
-                }
-            }
-        }
+    /**
+     * @param Carbon $shiftTime
+     * @return int
+     */
+    public function convertTimeToIndex(Carbon $shiftTime): int
+    {
+        return ($shiftTime->hour - config('services.yardAssignments.startHourOfDay')) * 12 +
+            ($shiftTime->minute / 5);
     }
 }
