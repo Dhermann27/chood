@@ -4,14 +4,14 @@ import axios from 'axios'
 
 const username = ref('');
 const password = ref('');
-const date = ref(new Date().toISOString().split('T')[0]);
+const date = ref(new Date().toLocaleDateString('en-CA'));
 const errorMessage = ref(null);
 const started = ref(false);
 const results = ref([]);
 const daycarePackageTotal = computed(() => {
     let total = 0.0;
-    if (results && results.packages) {
-        for (const [key, result] of Object.entries(results.packages)) {
+    if (results.value && results.value.packages) {
+        for (const [key, result] of Object.entries(results.value?.packages)) {
             if (key.includes("Day Camp") || key.includes("First Day")) total += result.total;
         }
     }
@@ -19,8 +19,8 @@ const daycarePackageTotal = computed(() => {
 });
 const trainingPackagesTotal = computed(() => {
     let total = 0.0;
-    if (results && results.packages) {
-        for (const [key, result] of Object.entries(results.packages)) {
+    if (results.value && results.value.packages) {
+        for (const [key, result] of Object.entries(results.value?.packages)) {
             if (key.includes("Train")) total += result.total;
         }
     }
