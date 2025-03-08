@@ -9,7 +9,8 @@ import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { fas, far } from '@awesome.me/kit-ed8e499057/icons';
 library.add(fas.faEdit, fas.faTrash, fas.faPlus, fas.faWeightHanging, fas.faSpinnerThird, fas.faBroom,
-    fas.faCheckSquare, far.faSquare, fas.faBadgeCheck, fas.faRotateLeft, fas.faCowbellCirclePlus);
+    fas.faCheckSquare, far.faSquare, fas.faBadgeCheck, fas.faRotateLeft, fas.faCowbellCirclePlus, fas.faClipboard,
+    fas.faHouseCircleCheck);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

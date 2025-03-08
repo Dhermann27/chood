@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Report;
 
 use App\Models\Report;
 use App\Services\FetchDataService;
@@ -12,7 +12,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class GoFetchReportServices implements ShouldQueue, ShouldBeUnique
+class GoFetchServices implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

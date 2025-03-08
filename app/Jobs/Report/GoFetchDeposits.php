@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Report;
 
 use App\Models\Report;
 use App\Services\FetchDataService;
@@ -12,10 +12,11 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class GoFetchReportDeposits implements ShouldQueue, ShouldBeUnique
+class GoFetchDeposits implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    const CASH = 'Cash';
     protected string $reportId;
 
     /**
@@ -52,7 +53,10 @@ class GoFetchReportDeposits implements ShouldQueue, ShouldBeUnique
         }
 
         foreach ($output['data'][0]['rows'] as $row) {
-            if (!isset($data['deposits'][$row[$typeColIndex]])) $data['deposits'][$row[$typeColIndex]] = ['qty' => 0, 'total' => 0];
+            if (!isset($data['deposits'][$row[$typeColIndex]])) {
+                $data['deposits'][$row[$typeColIndex]] = ['qty' => 0, 'total' => 0];
+                if($row[$typeColIndex] == self::CASH) GoFetchCashDetails::dispatch($this->reportId);
+            }
             $data['deposits'][$row[$typeColIndex]]['qty'] += $row[$qtyColIndex];
             $data['deposits'][$row[$typeColIndex]]['total'] += $row[$totColIndex];
         }

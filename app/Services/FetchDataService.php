@@ -112,7 +112,7 @@ class FetchDataService
      * @param Report $report
      * @return array
      */
-    public function createPayload(Report $report): array
+    public function createPayload(Report $report, bool $getCash = false): array
     {
         return [
             "username" => $report->username,
@@ -132,6 +132,48 @@ class FetchDataService
                                 "key" => "dateTo",
                                 "operator" => "lte",
                                 "value" => $report->report_date
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+    }
+
+
+    /**
+     * ...don't ask
+     * @param Report $report
+     * @param string $key
+     * @param string $operator
+     * @param string $value
+     * @return array
+     */
+    public function createConstrainedPayload(Report $report, string $key, string $operator, string $value): array
+    {
+        return [
+            "username" => $report->username,
+            "dataToPost" => [
+                "timestamp" => time(),
+                "data" => [
+                    [
+                        "limit" => 50,
+                        "order" => [],
+                        "criteria" => [
+                            [
+                                "key" => "dateFrom",
+                                "operator" => "gte",
+                                "value" => $report->report_date
+                            ],
+                            [
+                                "key" => "dateTo",
+                                "operator" => "lte",
+                                "value" => $report->report_date
+                            ],
+                            [
+                                "key" => $key,
+                                "operator" => $operator,
+                                "value" => $value
                             ]
                         ]
                     ]

@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GoFetchReportDeposits;
-use App\Jobs\GoFetchReportPackages;
-use App\Jobs\GoFetchReportServices;
+use App\Jobs\Report\GoFetchDeposits;
+use App\Jobs\Report\GoFetchPackages;
+use App\Jobs\Report\GoFetchServices;
 use App\Models\Report;
 use App\Services\FetchDataService;
 use Exception;
@@ -102,9 +102,9 @@ class ReportController extends Controller
                 ['username' => $validatedData['username'], 'report_date' => $validatedData['date'], 'data' => $data]
             );
 
-            GoFetchReportDeposits::dispatch($report->id);
-            GoFetchReportPackages::dispatch($report->id);
-            GoFetchReportServices::dispatch($report->id);
+            GoFetchDeposits::dispatch($report->id);
+            GoFetchPackages::dispatch($report->id);
+            GoFetchServices::dispatch($report->id);
 
             return response()->json($report);
 

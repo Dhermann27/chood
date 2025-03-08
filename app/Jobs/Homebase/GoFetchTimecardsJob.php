@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Homebase;
 
 use App\Models\Employee;
 use Carbon\Carbon;
@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class GoFetchHomebaseTimecardsJob implements ShouldQueue
+class GoFetchTimecardsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

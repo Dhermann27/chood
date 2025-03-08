@@ -6,8 +6,8 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TaskController;
-use App\Jobs\GoFetchHomebaseEmployeesJob;
-use App\Jobs\GoFetchHomebaseShiftsJob;
+use App\Jobs\Homebase\GoFetchEmployeesJob;
+use App\Jobs\Homebase\GoFetchShiftsJob;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -78,8 +78,8 @@ Route::get('/current-time', function () {
 //    return 'Cleaning jobbed';
 //});
 Route::get('/fetch', function () {
-    GoFetchHomebaseEmployeesJob::dispatchSync();
-    GoFetchHomebaseShiftsJob::dispatchSync();
+    GoFetchEmployeesJob::dispatchSync();
+    GoFetchShiftsJob::dispatchSync();
 //    MarkCabinsForCleaningJob::dispatchSync();
     return 'Jobs fetched';
 });

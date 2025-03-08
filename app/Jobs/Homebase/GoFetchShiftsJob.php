@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Homebase;
 
 use App\Models\Employee;
 use App\Models\YardAssignment;
@@ -16,7 +16,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class GoFetchHomebaseShiftsJob implements ShouldQueue
+class GoFetchShiftsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

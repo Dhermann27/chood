@@ -46,6 +46,7 @@ return [
             'reports' => [
                 'overall' => env('BASE_URI') . env('REPORT_URI') . env('OVERALL_SUFFIX'),
                 'deposits' => env('BASE_URI') . env('REPORT_URI') . env('DEPOSITS_SUFFIX'),
+                'depositDetails' => env('BASE_URI') . env('REPORT_URI') . env('DEPOSITS_DETAILS_SUFFIX'),
                 'packages' => env('BASE_URI') . env('REPORT_URI') . env('PACKAGES_SUFFIX'),
                 'services' => env('BASE_URI') . env('REPORT_URI') . env('SERVICES_SUFFIX'),
             ],

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Homebase;
 
 use App\Models\Employee;
 use Exception;
@@ -13,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class GoFetchHomebaseEmployeesJob implements ShouldQueue
+class GoFetchEmployeesJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
