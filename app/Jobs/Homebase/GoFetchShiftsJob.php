@@ -54,19 +54,17 @@ class GoFetchShiftsJob implements ShouldQueue
                 ]);
                 $shifts = collect(json_decode($response->getBody()->getContents()))->sortBy('start_at');
 
-                if ($day->isSunday()) $shifts = $this->assignSundayMorningBreaks($shifts);
+                if ($day->isSunday()) $remainingShifts = $this->assignSundayMorningBreaks($shifts);
 
                 $numberOfHours = config('services.yardAssignments.numberOfHours');
                 // Boolean matrix for 5-minute segments of workday
                 $breakMatrix = array_fill(0, $numberOfHours * 12, 0);
                 $numberOfYards = config('services.yardAssignments.numberOfYards');
 
-                foreach ($shifts as $shift) {
+                foreach ($remainingShifts as $shift) {
                     if (isset($shift->labor->scheduled_hours) && str_contains($shift->department, self::BACK_OF_HOUSE)) {
                         $breakMatrix = $this->assignBreaks($shift, $breakMatrix);
                     }
-                    $shift->yardHoursWorked = array_fill(0, $numberOfYards, 0);
-
                 }
 
                 $this->updateYardAssignments($shifts, $numberOfYards);
@@ -262,7 +260,10 @@ class GoFetchShiftsJob implements ShouldQueue
             Log::info(count($availableEmployees) . ' employees available');
 
             for ($j = 0; $j < $numberOfYards; $j++) {
-                $availableEmployees = $availableEmployees->sortBy(function ($employee) use ($j) {
+                $availableEmployees = $availableEmployees->sortBy(function ($employee) use ($j, $numberOfYards) {
+                    if (!isset($employee->yardHoursWorked)) {
+                        $employee->yardHoursWorked = array_fill(0, $numberOfYards, 0);
+                    }
                     return [$employee->yardHoursWorked[$j], $employee->start_at];
                 });
 

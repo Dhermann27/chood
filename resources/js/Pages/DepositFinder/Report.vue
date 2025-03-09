@@ -263,7 +263,7 @@ const copyToClipboard = async (text) => {
                                 <div v-if="key === 'Day Care'" class="text-sm italic">
                                     w/Packages: {{ formatCurrency(result.total + daycarePackageTotal) }}
                                     <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                       @click="() => copyToClipboard(trainingPackagesTotal)"
+                                                       @click="() => copyToClipboard(result.total + daycarePackageTotal)"
                                     />
                                 </div>
                             </td>

@@ -42,7 +42,11 @@ class DataController extends Controller
                     return $assignment->employee;
                 });
             });
-        $employees = Employee::whereNotNull('next_first_break')->orderBy('first_name')->get();
+        $employees = Employee::whereNotNull('next_first_break');
+        if(Carbon::today()->isSunday()) {
+            $employees = $employees->where('next_first_break', '!=', '10:00:00');
+        }
+        $employees = $employees->orderBy('first_name')->get();
 
         $new_checksum = md5($assignments . $employees);
         if ($checksum !== $new_checksum) {
@@ -64,15 +68,23 @@ class DataController extends Controller
         $dogs = $this->getDogs(false, $size);
         $assignments = YardAssignment::where('start_time', '<=', $now)->where('end_time', '>=', $now)
             ->orderBy('yard_number')->with('employee')->get();
-        $nextBreak = Employee::selectRaw('*, GREATEST(COALESCE(next_first_break,0), COALESCE(next_second_break,0)) as next_break')
-            ->where(function ($query) use ($now) {
-                $query->where('next_first_break', '>', $now)
-                    ->orWhere('next_second_break', '>', $now);
-            })->orderBy('next_break', 'ASC')->first();
-        $nextLunch = Employee::whereNotNull('next_lunch_break')->where('next_lunch_break', '>=', $now)
-            ->orderBy('next_lunch_break')->first();
+        if($now->isSunday() && $now->hour < 12) {
+            $nextBreak = new \stdClass();
+            $nextBreak->first_name = 'Everyone';
+            $nextBreak->next_break = '10:00:00';
+            $nextLunch = null;
+        } else {
+            $nextBreak = Employee::selectRaw('*, GREATEST(COALESCE(next_first_break,0), COALESCE(next_second_break,0)) as next_break')
+                ->where(function ($query) use ($now) {
+                    $query->where('next_first_break', '>', $now)
+                        ->orWhere('next_second_break', '>', $now);
+                })->orderBy('next_break', 'ASC')->first();
+            $nextLunch = Employee::whereNotNull('next_lunch_break')->where('next_lunch_break', '>=', $now)
+                ->orderBy('next_lunch_break')->first();
+        }
 
-        $new_checksum = md5($dogs->toJson() . $assignments . $nextBreak . $nextLunch);
+        $new_checksum = md5($dogs->toJson() . $assignments->toJson() . json_encode($nextBreak) .
+            json_encode($nextLunch));
         if ($checksum !== $new_checksum) {
             $response = [
                 'dogs' => $dogs,
