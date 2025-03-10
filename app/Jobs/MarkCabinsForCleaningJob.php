@@ -73,8 +73,6 @@ class MarkCabinsForCleaningJob implements ShouldQueue
             }
 
             if ($withoutCleaningStatus->isNotEmpty()) {
-
-                Log::info($cs . ' cabins updated with Daily Clean ');
                 CleaningStatus::insert($withoutCleaningStatus->map(function ($cabin) {
                     return [
                         'cabin_id' => $cabin->id,
@@ -83,6 +81,7 @@ class MarkCabinsForCleaningJob implements ShouldQueue
                         'created_at' => now(),
                     ];
                 })->toArray());
+                Log::info(count($withoutCleaningStatus) . ' cabins inserted with Daily Clean ');
             }
 
             if ($cabinsWithCheckoutDue->isNotEmpty()) {

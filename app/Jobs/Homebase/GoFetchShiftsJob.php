@@ -54,7 +54,11 @@ class GoFetchShiftsJob implements ShouldQueue
                 ]);
                 $shifts = collect(json_decode($response->getBody()->getContents()))->sortBy('start_at');
 
-                if ($day->isSunday()) $remainingShifts = $this->assignSundayMorningBreaks($shifts);
+                if ($day->isSunday()) {
+                    $remainingShifts = $this->assignSundayMorningBreaks($shifts);
+                } else {
+                    $remainingShifts = $shifts;
+                }
 
                 $numberOfHours = config('services.yardAssignments.numberOfHours');
                 // Boolean matrix for 5-minute segments of workday
@@ -318,8 +322,8 @@ class GoFetchShiftsJob implements ShouldQueue
     public function assignEmployee(int $j, Carbon $startHour, $employee, mixed &$shifts, array &$lastYard): void
     {
         YardAssignment::where('yard_number', $j + 1)
-                ->where('start_time', $startHour->format('H:i:s'))
-                ->update(['homebase_user_id' => $employee->user_id]);
+            ->where('start_time', $startHour->format('H:i:s'))
+            ->update(['homebase_user_id' => $employee->user_id]);
 
         $shifts = $shifts->map(function ($e) use ($employee, $j) {
             if ($e->user_id === $employee->user_id) {
