@@ -192,7 +192,7 @@ const handleClick = (cabin) => {
             </div>
         </div>
         <div v-else>
-            {{ cabin.cabinName }}
+            {{ cabin.short_name }}
             <div v-if="admin > 1" @click="openModal( 'add', cabin) " class="cabin-icon">
                 <button class="bg-blue-100 text-blue-500 hover:text-blue-700 p-1 rounded-r-md">
                     <font-awesome-icon :icon="['fas', 'add']"/>
