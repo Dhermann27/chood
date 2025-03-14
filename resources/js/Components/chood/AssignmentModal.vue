@@ -42,7 +42,7 @@ const closeModal = () => {
                             class="mt-1 block w-full text-sm border border-gray-300 rounded-md p-2">
                         <option disabled value="">Please select a cabin</option>
                         <option v-for="cabin in cabins" :key="cabin.id" :value="cabin.id">
-                            {{ cabin.cabinName }}
+                            {{ cabin.short_name }}
                         </option>
                     </select>
                 </div>

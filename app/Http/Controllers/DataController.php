@@ -10,6 +10,7 @@ use App\Traits\ChoodTrait;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Response;
+use stdClass;
 
 class DataController extends Controller
 {
@@ -42,17 +43,29 @@ class DataController extends Controller
                     return $assignment->employee;
                 });
             });
-        $employees = Employee::whereNotNull('next_first_break');
-        if(Carbon::today()->isSunday()) {
-            $employees = $employees->where('next_first_break', '!=', '10:00:00');
-        }
-        $employees = $employees->orderBy('first_name')->get();
+        $employees = Employee::whereNotNull('next_first_break')->orderBy('first_name')->get();
+        $dogsFeeding = Dog::whereHas('feedings', function ($query) {
+            $query->whereRaw('DATE(dogs.checkin) = DATE(feedings.modified_at)');
+        })->with(['feedings', 'cabin'])->orderBy('firstname')->get();
 
-        $new_checksum = md5($assignments . $employees);
+
+        if (Carbon::today()->isSunday()) {
+            $employees = $employees->filter(function ($employee) {
+                return $employee->next_first_break !== '10:00:00';
+            });
+
+            $nextBreak = new stdClass();
+            $nextBreak->first_name = 'Everyone';
+            $nextBreak->next_first_break = '10:00:00'; // Assuming this is the break time you want to set
+            $employees->unshift($nextBreak);
+        }
+
+        $new_checksum = md5($assignments . $employees . $dogsFeeding);
         if ($checksum !== $new_checksum) {
             $response = [
-                'hours' => $assignments,
                 'breaks' => $employees,
+                'dogs' => $dogsFeeding,
+                'hours' => $assignments,
                 'checksum' => $new_checksum,
             ];
 
@@ -68,7 +81,7 @@ class DataController extends Controller
         $dogs = $this->getDogs(false, $size);
         $assignments = YardAssignment::where('start_time', '<=', $now)->where('end_time', '>=', $now)
             ->orderBy('yard_number')->with('employee')->get();
-        if($now->isSunday() && $now->hour < 12) {
+        if ($now->isSunday() && $now->hour < 12) {
             $nextBreak = new \stdClass();
             $nextBreak->first_name = 'Everyone';
             $nextBreak->next_break = '10:00:00';

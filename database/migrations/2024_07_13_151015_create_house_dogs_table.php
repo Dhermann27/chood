@@ -14,6 +14,7 @@ return new class extends Migration {
         Schema::create('dogs', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('pet_id')->nullable()->index();
+            $table->string('accountId')->nullable();
             $table->string('firstname')->default('Dog');
             $table->fullText('firstname');
             $table->string('lastname')->default('Smith');
@@ -23,6 +24,7 @@ return new class extends Migration {
             $table->string('photoUri')->nullable();
             $table->foreignId('cabin_id')->nullable()->constrained()->nullOnDelete();
             $table->tinyInteger('is_inhouse')->default(1);
+            $table->dateTime('checkin')->nullable();
             $table->dateTime('checkout')->nullable();
             $table->timestamps();
         });

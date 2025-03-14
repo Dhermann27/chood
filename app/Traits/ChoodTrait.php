@@ -19,8 +19,6 @@ trait ChoodTrait
     {
         return Cabin::where('rho', '>', '0')->where('kappa', '>', '0')->whereBetween('id', [$start, $end])
             ->get()->map(function ($cabin) use ($subtractor, $end) {
-                $cabin->cabinName = preg_replace('/Luxury Suite /', 'LS', $cabin->cabinName);
-                $cabin->cabinName = preg_replace('/\dx\d\s?- Cabin /', '', $cabin->cabinName);
                 $cabin->kappa += $subtractor;
                 if ($end == MapController::ROW_VIEWS['first'][1] && $cabin->id < 2000) {
                     $cabin->rho += 5;
@@ -48,7 +46,7 @@ trait ChoodTrait
      */
     public function getDogs(bool $filterByCabinId = false, string $size = null): Collection
     {
-        $dogs = Dog::with('services');
+        $dogs = Dog::with('services', 'cabin');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
         if ($size) $dogs->where('weight', $size == 'small' ? '<=' : '>=', $size == 'small' ? 40 : 30);
         return $dogs->orderBy('firstname')->get();

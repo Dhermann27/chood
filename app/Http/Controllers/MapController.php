@@ -44,7 +44,9 @@ class MapController extends Controller
     }
 
     public function mealmap(): Response {
-        return Inertia::render('Mealmap');
+        return Inertia::render('Mealmap', [
+            'photoUri' => config('services.dd.uris.photo'),
+        ]);
     }
 
 

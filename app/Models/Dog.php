@@ -4,17 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Dog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['pet_id', 'firstname', 'lastname', 'gender', 'photoUri', 'weight', 'cabin_id',
-        'is_inhouse', 'checkout'];
+    protected $fillable = ['accountId', 'pet_id', 'firstname', 'lastname', 'gender', 'photoUri', 'weight', 'cabin_id',
+        'is_inhouse', 'checkin', 'checkout'];
 
-    protected $casts = ['checkout' => 'datetime'];
+    protected $casts = ['checkin' => 'datetime', 'checkout' => 'datetime'];
 
     protected $appends = ['size_letter'];
 
@@ -27,11 +28,15 @@ class Dog extends Model
         else return 'XS';
     }
 
-    public function cabin(): HasOne
+    public function cabin(): BelongsTo
     {
-        return $this->hasOne(Cabin::class);
+        return $this->belongsTo(Cabin::class, 'cabin_id');
     }
 
+    public function feedings(): HasMany
+    {
+        return $this->hasMany(Feeding::class, 'pet_id', 'pet_id');
+    }
 
     public function services(): BelongsToMany
     {

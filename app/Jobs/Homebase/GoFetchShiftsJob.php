@@ -23,7 +23,7 @@ class GoFetchShiftsJob implements ShouldQueue
     const SHIFTS_URL_PREFIX = 'https://app.joinhomebase.com/api/public/locations/';
     const SHIFTS_URL_SUFFIX = '/shifts?start_date=TODAY&end_date=TODAY&open=false&with_note=false&date_filter=start_at';
     const BACK_OF_HOUSE = 'BOH';
-    const YARD_WORKER = 'Camp Counselor ';
+    const SUPERVISOR = 'Supervisor';
     const START_BREAKS_AT_INDEX = 3;
     const START_LUNCHES_AT_INDEX = 2 * 12 + 6;
 
@@ -134,6 +134,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 $firstBreakIndex = null;
             }
         }
+        $shift->first_break = $this->convertIndexToTime($firstBreakIndex); // To be referenced by YardAssignment logic
 
         $employee->update([
             'next_first_break' => $employee->next_first_break ?? $this->convertIndexToTime($firstBreakIndex),
@@ -255,11 +256,18 @@ class GoFetchShiftsJob implements ShouldQueue
                     str_contains($shift->department, self::BACK_OF_HOUSE) &&
                     Carbon::parse($shift->start_at)->lessThanOrEqualTo($startOfHour) &&
                     Carbon::parse($shift->end_at)->greaterThanOrEqualTo($endOfHour);
-                $noLunchBreak = !isset($shift->lunch_break) ||
-                    !(Carbon::parse($shift->lunch_break)->addMinutes(35)->greaterThan($startOfHour) &&
-                        Carbon::parse($shift->lunch_break)->lessThan($endOfHour));
 
-                return $isWorking && $noLunchBreak;
+                $noBreaks = (!isset($shift->first_break) ||
+                        !(Carbon::parse($shift->first_break)->addMinutes(15)->greaterThan($startOfHour) &&
+                            Carbon::parse($shift->first_break)->lessThan($endOfHour))) &&
+                    (!isset($shift->lunch_break) ||
+                        !(Carbon::parse($shift->lunch_break)->addMinutes(30)->greaterThan($startOfHour) &&
+                            Carbon::parse($shift->lunch_break)->lessThan($endOfHour)));
+
+                $notSuperFirstHour = !str_contains($shift->role, self::SUPERVISOR) ||
+                    !$startOfHour->between(Carbon::parse($shift->start_at), Carbon::parse($shift->start_at)->addHour());
+
+                return $isWorking && $noBreaks && $notSuperFirstHour;
             });
             Log::info(count($availableEmployees) . ' employees available');
 

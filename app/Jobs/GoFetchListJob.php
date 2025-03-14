@@ -62,7 +62,6 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
 
         foreach ($data['rows'] as $row) {
             $updateValues = $this->getFilteredValues($row, $columns, $cabins);
-
             $dog = Dog::whereRaw('MATCH(firstname) AGAINST (? IN BOOLEAN MODE) AND MATCH(lastname) AGAINST (? IN BOOLEAN MODE)',
                 [$updateValues['firstname'], $updateValues['lastname']]);
             $dog = $dog->first();
@@ -90,6 +89,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             }
 
             GoFetchDogJob::dispatch($dog->pet_id);
+            if ($row[$columns['feedingAttributeCount']] > 0) GoFetchFeedingJob::dispatch($dog->pet_id, $dog->accountId);
         }
     }
 
@@ -97,12 +97,14 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
     {
         $cabinId = $cabins->has($row[$columns['dateCabin']]) ? $cabins[$row[$columns['dateCabin']]] : null;
         $updateValues = [
+            'accountId' => $this->trimToNull($row[$columns['accountId']]),
             'firstname' => $this->trimToNull($row[$columns['name']]),
             'lastname' => $this->trimToNull($row[$columns['lastName']]),
             'gender' => $this->trimToNull($row[$columns['gender']]),
             'weight' => $this->trimToNull(intval($row[$columns['weight']])),
             'cabin_id' => $cabinId,
             'is_inhouse' => str_contains($row[$columns['serviceCode']], self::BRD) ? 1 : 0,
+            'checkin' => Carbon::createFromFormat('m/d/y g:i A', $row[$columns['checkInDate']] . " " . $row[$columns['checkInTime']]),
             'checkout' => Carbon::createFromFormat('m/d/Y g:i A', $row[$columns['checkOutDate']] . " " . $row[$columns['checkOutTime']])
         ];
         return array_filter($updateValues, function ($value) {

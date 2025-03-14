@@ -41,7 +41,7 @@ return [
             'auth' => env('BASE_URI') . env('AUTH_URI'),
             'inHouseList' => env('BASE_URI') . env('IN_HOUSE_LIST_URI'),
             'card' => env('BASE_URI') . env('CARD_URI'),
-            'cardSuffix' => env('CARD_URI_SUFFIX'),
+            'feeding' => env('BASE_URI') . env('FEEDING_URI'),
             'photo' => env('BASE_URI') . env('PHOTO_URI'),
             'reports' => [
                 'overall' => env('BASE_URI') . env('REPORT_URI') . env('OVERALL_SUFFIX'),

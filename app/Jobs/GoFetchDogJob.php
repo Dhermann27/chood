@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
 {
@@ -41,10 +42,16 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
             "username" => config('services.dd.username'),
             "password" => config('services.dd.password'),
         ];
-        $url = config('services.dd.uris.card') . $this->petId .
-            config('services.dd.uris.cardSuffix');
-        $data = $fetchDataService->fetchData($url, $payload)->getData(true)['data'][0];
-        Dog::updateOrCreate(['pet_id' => $this->petId], ['photoUri' => $data['photoUrl']]);
+        $url = preg_replace('/PET_ID/', $this->petId, config('services.dd.uris.card'));
+        $response = $fetchDataService->fetchData($url, $payload)->getData(true);
+
+        if (isset($response['data']) && is_array($response['data']) && count($response['data']) > 0) {
+            $data = $response['data'][0];
+            Dog::updateOrCreate(['pet_id' => $this->petId], ['photoUri' => $data['photoUrl']]);
+        } else {
+            Log::warning('Dog data missing: ' . $this->petId);
+        }
+
         sleep(mt_rand(0, 1000) / 1000);
 
     }
