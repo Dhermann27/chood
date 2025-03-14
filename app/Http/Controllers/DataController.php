@@ -46,7 +46,7 @@ class DataController extends Controller
         $employees = Employee::whereNotNull('next_first_break')->orderBy('first_name')->get();
         $dogsFeeding = Dog::whereHas('feedings', function ($query) {
             $query->whereRaw('DATE(dogs.checkin) = DATE(feedings.modified_at)');
-        })->with(['feedings', 'cabin'])->orderBy('firstname')->get();
+        })->with(['feedings', 'cabin', 'services'])->orderBy('firstname')->get();
 
 
         if (Carbon::today()->isSunday()) {
