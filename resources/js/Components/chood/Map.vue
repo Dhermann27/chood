@@ -174,7 +174,7 @@ const handleClick = (cabin) => {
     >
         <div v-if="props.dogs[cabin.id] && props.dogs[cabin.id].length > 0" class="h-full w-full relative">
             <DogCard :dogs="props.dogs[cabin.id]" :photoUri="photoUri" :maxlength="maxlength"
-                     :card-height="cardHeight"/>
+                     :short-name="cabin.short_name" :card-height="cardHeight"/>
             <div v-if="admin > 1 && props.dogs[cabin.id][0].is_inhouse === 0"
                  class="absolute inset-y-0 left-0 flex flex-col justify-center py-1">
                 <button
