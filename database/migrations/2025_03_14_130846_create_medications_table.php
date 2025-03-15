@@ -12,16 +12,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('feedings', function (Blueprint $table) {
+        Schema::create('medications', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('feeding_id')->nullable()->index();
+            $table->unsignedBigInteger('medication_id')->nullable()->index();
             $table->unsignedBigInteger('pet_id')->nullable()->index();
+            $table->integer('type_id')->nullable();
             $table->string('type');
             $table->text('description')->nullable();
             $table->dateTime('modified_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->timestamps();
         });
-        DB::update('ALTER TABLE feedings AUTO_INCREMENT = 1000');
+        DB::update('ALTER TABLE medications AUTO_INCREMENT = 1000');
     }
 
     /**
@@ -29,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('feedings');
+        Schema::dropIfExists('medications');
     }
 };

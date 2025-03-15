@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\Feeding;
+use App\Models\Medication;
 use App\Services\FetchDataService;
 use Carbon\Carbon;
 use Exception;
@@ -12,9 +12,8 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class GoFetchFeedingJob implements ShouldQueue
+class GoFetchMedicationJob implements ShouldQueue
 {
-
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected string $petId;
@@ -32,7 +31,7 @@ class GoFetchFeedingJob implements ShouldQueue
 
     public function uniqueId()
     {
-        return 'feed' . $this->petId . $this->accountId;
+        return 'med' . $this->petId . $this->accountId;
     }
 
     /**
@@ -44,21 +43,24 @@ class GoFetchFeedingJob implements ShouldQueue
             "username" => config('services.dd.username'),
             "password" => config('services.dd.password'),
         ];
-        $url = preg_replace('/PET_ID/', $this->petId, config('services.dd.uris.feeding'));
+        $url = preg_replace('/PET_ID/', $this->petId, config('services.dd.uris.med'));
         $url = preg_replace('/ACCOUNT_ID/', $this->accountId, $url);
 
         $response = $fetchDataService->fetchData($url, $payload)->getData(true);
 
         if (isset($response['data']) && is_array($response['data']) && count($response['data']) > 0) {
             $newIds = collect($response['data'])->pluck('id')->toArray();
-            Feeding::where('pet_id', $this->petId)->whereNotIn('feeding_id', $newIds)->delete();
-            foreach ($response['data'] as $feeding) {
-                Feeding::updateOrCreate(['feeding_id' => $feeding['id']], [
-                    'pet_id' => $this->petId,
-                    'type' => $feeding['attributeValue'],
-                    'description' => $feeding['description'],
-                    'modified_at' => Carbon::parse($feeding['dateModified']),
-                ]);
+            Medication::where('pet_id', $this->petId)->whereNotIn('medication_id', $newIds)->delete();
+            foreach ($response['data'] as $medication) {
+                if (trim($medication['attributeValue']) !== '' || trim($medication['description']) !== '') {
+                    Medication::updateOrCreate(['medication_id' => $medication['id']], [
+                        'pet_id' => $this->petId,
+                        'type_id' => $medication['attributeSubTypeId'],
+                        'type' => $medication['attributeValue'],
+                        'description' => $medication['description'],
+                        'modified_at' => Carbon::parse($medication['dateModified']),
+                    ]);
+                }
             }
         }
 

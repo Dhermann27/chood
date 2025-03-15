@@ -38,10 +38,12 @@ return [
     'dd' => [
         'uris' => [
             'base' => env('BASE_URI'),
+            'allergy' => env('BASE_URI') . env('ALLERGY_URI'),
             'auth' => env('BASE_URI') . env('AUTH_URI'),
             'inHouseList' => env('BASE_URI') . env('IN_HOUSE_LIST_URI'),
             'card' => env('BASE_URI') . env('CARD_URI'),
             'feeding' => env('BASE_URI') . env('FEEDING_URI'),
+            'med' => env('BASE_URI') . env('MED_URI'),
             'photo' => env('BASE_URI') . env('PHOTO_URI'),
             'reports' => [
                 'overall' => env('BASE_URI') . env('REPORT_URI') . env('OVERALL_SUFFIX'),

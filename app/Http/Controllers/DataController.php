@@ -40,13 +40,17 @@ class DataController extends Controller
         $assignments = YardAssignment::with('employee')->get()->groupBy('start_time')
             ->map(function ($hourAssignments) {
                 return $hourAssignments->map(function ($assignment) {
+                    if ($assignment->yard_number == 99) return $assignment->description;
                     return $assignment->employee;
                 });
             });
         $employees = Employee::whereNotNull('next_first_break')->orderBy('first_name')->get();
-        $dogsFeeding = Dog::whereHas('feedings', function ($query) {
-            $query->whereRaw('DATE(dogs.checkin) = DATE(feedings.modified_at)');
-        })->with(['feedings', 'cabin', 'services'])->orderBy('firstname')->get();
+        $dogs = Dog::whereHas('feedings', function ($query) {
+            $query->whereRaw('DATE(feedings.modified_at) >= DATE(dogs.checkin)');
+        })->orWhereHas('medications', function ($query) {
+            $query->whereRaw('DATE(medications.modified_at) >= DATE(dogs.checkin)');
+        })->orWhereHas('allergies')->with(['feedings', 'medications', 'allergies', 'cabin', 'services'])
+            ->orderBy('firstname')->get();
 
 
         if (Carbon::today()->isSunday()) {
@@ -56,15 +60,15 @@ class DataController extends Controller
 
             $nextBreak = new stdClass();
             $nextBreak->first_name = 'Everyone';
-            $nextBreak->next_first_break = '10:00:00'; // Assuming this is the break time you want to set
+            $nextBreak->next_first_break = '10:00:00';
             $employees->unshift($nextBreak);
         }
 
-        $new_checksum = md5($assignments . $employees . $dogsFeeding);
+        $new_checksum = md5($assignments . $employees . $dogs);
         if ($checksum !== $new_checksum) {
             $response = [
                 'breaks' => $employees,
-                'dogs' => $dogsFeeding,
+                'dogs' => $dogs,
                 'hours' => $assignments,
                 'checksum' => $new_checksum,
             ];
@@ -87,11 +91,28 @@ class DataController extends Controller
             $nextBreak->next_break = '10:00:00';
             $nextLunch = null;
         } else {
-            $nextBreak = Employee::selectRaw('*, GREATEST(COALESCE(next_first_break,0), COALESCE(next_second_break,0)) as next_break')
-                ->where(function ($query) use ($now) {
-                    $query->where('next_first_break', '>', $now)
-                        ->orWhere('next_second_break', '>', $now);
-                })->orderBy('next_break', 'ASC')->first();
+            $nextFirstBreak = Employee::whereNotNull('next_first_break')->where('next_first_break', '>=', $now)
+                ->orderBy('next_first_break')->first();
+            $nextSecondBreak = Employee::whereNotNull('next_second_break')->where('next_second_break', '>=', $now)
+                ->orderBy('next_second_break')->first();
+            $nextBreak = null;
+            if ($nextFirstBreak && $nextSecondBreak) {
+                if (Carbon::parse($nextFirstBreak->next_first_break)
+                    ->lessThanOrEqualTo(Carbon::parse($nextSecondBreak->next_second_break))) {
+                    $nextBreak = $nextFirstBreak;
+                    $nextBreak->next_break = $nextFirstBreak->next_first_break;
+                } else {
+                    $nextBreak = $nextSecondBreak;
+                    $nextBreak->next_break = $nextSecondBreak->next_second_break;
+                }
+            } elseif ($nextFirstBreak) {
+                $nextBreak = $nextFirstBreak;
+                $nextBreak->next_break = $nextFirstBreak->next_first_break;
+            } elseif ($nextSecondBreak) {
+                $nextBreak = $nextSecondBreak;
+                $nextBreak->next_break = $nextSecondBreak->next_second_break;
+            }
+
             $nextLunch = Employee::whereNotNull('next_lunch_break')->where('next_lunch_break', '>=', $now)
                 ->orderBy('next_lunch_break')->first();
         }

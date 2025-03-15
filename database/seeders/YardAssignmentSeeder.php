@@ -30,5 +30,15 @@ class YardAssignmentSeeder extends Seeder
             $startTime = Carbon::createFromTime(config('services.yardAssignments.startHourOfDay'), 0);
 
         }
+
+        for ($j = 0; $j < config('services.yardAssignments.numberOfHours'); $j++) {
+            DB::table('yard_assignments')->insert([
+                'yard_number' => 99,
+                'start_time' => $startTime->format('H:i:s'),
+                'end_time' => $startTime->addHour()->subMinute()->format('H:i:s'),
+                'created_at' => Carbon::now()
+            ]);
+            $startTime->addMinute();
+        }
     }
 }

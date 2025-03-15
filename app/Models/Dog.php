@@ -27,6 +27,10 @@ class Dog extends Model
         else if ($this->weight >= 10) return 'S';
         else return 'XS';
     }
+    public function allergies(): HasMany
+    {
+        return $this->hasMany(Allergy::class, 'pet_id', 'pet_id');
+    }
 
     public function cabin(): BelongsTo
     {
@@ -36,6 +40,11 @@ class Dog extends Model
     public function feedings(): HasMany
     {
         return $this->hasMany(Feeding::class, 'pet_id', 'pet_id');
+    }
+
+    public function medications(): HasMany
+    {
+        return $this->hasMany(Medication::class, 'pet_id', 'pet_id');
     }
 
     public function services(): BelongsToMany

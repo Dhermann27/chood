@@ -51,12 +51,29 @@ onBeforeUnmount(() => {
                 <div class="grid grid-cols-1 gap-4">
                     <div v-for="dog in dogs" :key="dog.pet_id" class="flex pb-2 border-b-2">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: '150px'}">
-                            <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"/>
+                            <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20"
+                                     :card-height="cardHeight"/>
                         </div>
 
-                        <div class="flex-grow flex flex-col items-start justify-start p-4">
-                            <div v-for="feeding in dog.feedings" :key="feeding.id" class="mb-5">
+                        <div class="flex-grow flex flex-col items-start justify-center p-4 text-2xl">
+                            <div v-for="feeding in dog.feedings" :key="feeding.id" class="flex mb-2 justify-center">
+                                <font-awesome-icon :icon="['fas', 'bowl-food']" class="me-2"/>
                                 {{ feeding.type }}: {{ feeding.description }}
+                            </div>
+                            <div v-for="medication in dog.medications" :key="medication.id"
+                                 class="flex mb-2 justify-center">
+                                <font-awesome-icon v-if="medication.type_id === 18"
+                                                   :icon="['fas', 'prescription-bottle-pill']" class="me-2"/>
+                                <font-awesome-icon v-if="medication.type_id === 15" :icon="['fas', 'note-medical']"
+                                                   class="me-2"/>
+                                {{ medication.type }}
+                                <span v-if="medication.type && medication.description">:&nbsp;</span>
+                                {{ medication.description }}
+                            </div>
+                            <div v-for="allergy in dog.allergies" :key="allergy.id"
+                                 class="flex mb-2 justify-center text-red-700">
+                                <font-awesome-icon :icon="['fas', 'hand-dots']" class="me-2"/>
+                                ALLERGY: {{ allergy.description }}
                             </div>
                         </div>
                     </div>
@@ -73,6 +90,7 @@ onBeforeUnmount(() => {
                         <th>&nbsp;</th>
                         <th>Small Yard</th>
                         <th>Large Yard</th>
+                        <th>Floaters</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -80,6 +98,7 @@ onBeforeUnmount(() => {
                         <td class="border border-black px-4 py-2">{{ formatTime(hour) }}</td>
                         <td class="border border-black px-4 py-2">{{ assignments[0]?.first_name }}</td>
                         <td class="border border-black px-4 py-2">{{ assignments[1]?.first_name }}</td>
+                        <td class="border border-black px-4 py-2">{{ assignments[2] }}</td>
                     </tr>
                     </tbody>
                 </table>

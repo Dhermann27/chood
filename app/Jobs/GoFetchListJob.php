@@ -2,9 +2,12 @@
 
 namespace App\Jobs;
 
+use App\Models\Allergy;
 use App\Models\Cabin;
 use App\Models\Dog;
 use App\Models\DogService;
+use App\Models\Feeding;
+use App\Models\Medication;
 use App\Models\Service;
 use App\Services\FetchDataService;
 use Carbon\Carbon;
@@ -89,7 +92,22 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             }
 
             GoFetchDogJob::dispatch($dog->pet_id);
-            if ($row[$columns['feedingAttributeCount']] > 0) GoFetchFeedingJob::dispatch($dog->pet_id, $dog->accountId);
+            if ($row[$columns['feedingAttributeCount']] > 0) {
+                GoFetchFeedingJob::dispatch($dog->pet_id, $dog->accountId);
+            } else {
+                Feeding::where('pet_id', $dog->pet_id)->delete();
+            }
+            if ($row[$columns['medicationAttributeCount']] > 0 ||
+                    $row[$columns['medicalConditionsAttributeCount']] > 0) {
+                GoFetchMedicationJob::dispatch($dog->pet_id, $dog->accountId);
+            } else {
+                Medication::where('pet_id', $dog->pet_id)->delete();
+            }
+            if ($row[$columns['allergiesAttributeCount']] > 0) {
+                GoFetchAllergyJob::dispatch($dog->pet_id, $dog->accountId);
+            } else {
+                Allergy::where('pet_id', $dog->pet_id)->delete();
+            }
         }
     }
 

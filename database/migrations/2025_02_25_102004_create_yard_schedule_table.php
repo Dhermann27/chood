@@ -18,6 +18,7 @@ return new class extends Migration
             $table->time('start_time');
             $table->time('end_time');
             $table->string('homebase_user_id')->nullable();
+            $table->text('description')->nullable();
             $table->timestamps();
         });
         DB::update('ALTER TABLE yard_assignments AUTO_INCREMENT = 1000');
