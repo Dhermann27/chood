@@ -37,13 +37,20 @@ class DataController extends Controller
 
     function mealmap(string $checksum = null): JsonResponse
     {
-        $assignments = YardAssignment::with('employee')->get()->groupBy('start_time')
-            ->map(function ($hourAssignments) {
+        $assignments = YardAssignment::with('employee')->where(function ($query) {
+                $isSunday = Carbon::now()->isSunday();
+                if ($isSunday) {
+                    $query->whereNotBetween('start_time', ['10:00:00', '14:00:00']);
+                }
+            })->get()->groupBy('start_time')->map(function ($hourAssignments) {
                 return $hourAssignments->map(function ($assignment) {
-                    if ($assignment->yard_number == 99) return $assignment->description;
+                    if ($assignment->yard_number == 99) {
+                        return $assignment->description;
+                    }
                     return $assignment->employee;
                 });
             });
+
         $employees = Employee::whereNotNull('next_first_break')->orderBy('first_name')->get();
         $dogs = Dog::whereHas('feedings', function ($query) {
             $query->whereRaw('DATE(feedings.modified_at) >= DATE(dogs.checkin)');
@@ -83,8 +90,8 @@ class DataController extends Controller
     {
         $now = Carbon::now();
         $dogs = $this->getDogs(false, $size);
-        $assignments = YardAssignment::where('start_time', '<=', $now)->where('end_time', '>=', $now)
-            ->orderBy('yard_number')->with('employee')->get();
+        $assignments = YardAssignment::where('yard_number', '!=', '99')->where('start_time', '<=', $now)
+            ->where('end_time', '>=', $now)->orderBy('yard_number')->with('employee')->get();
         if ($now->isSunday() && $now->hour < 12) {
             $nextBreak = new \stdClass();
             $nextBreak->first_name = 'Everyone';
