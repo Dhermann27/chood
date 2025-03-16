@@ -52,7 +52,12 @@ class GoFetchShiftsJob implements ShouldQueue
                     'next_lunch_break' => null,
                     'next_second_break' => null
                 ]);
-                $shifts = collect(json_decode($response->getBody()->getContents()))->sortBy('start_at');
+                $shifts = collect(json_decode($response->getBody()->getContents()))
+                    ->sortBy('start_at')
+                    ->map(function ($shift) {
+                        $shift->yardHoursWorked = array_fill(0, config('services.yardAssignments.numberOfYards'), 0);
+                        return $shift;
+                    });
 
                 if ($day->isSunday()) {
                     $remainingShifts = $this->assignSundayMorningBreaks($shifts);
@@ -102,9 +107,6 @@ class GoFetchShiftsJob implements ShouldQueue
         $firstBreakIndex = max($shiftStartIndex + $shiftSegmentLength - 3, self::START_BREAKS_AT_INDEX);
         $lunchBreakIndex = max($firstBreakIndex + $shiftSegmentLength - 3, self::START_LUNCHES_AT_INDEX);
         $secondBreakIndex = min($lunchBreakIndex + $shiftSegmentLength - 3, $shiftEndIndex);
-
-        // To be referenced by YardAssignment logic
-        $shift->yardHoursWorked = array_fill(0, config('services.yardAssignments.numberOfYards'), 0);
 
         if ($shiftDuration >= (7.5 * 12) || ($shiftDuration >= (4 * 12) && !is_null($employee->next_first_break))) {
             // If second shift, don't overwrite first break
@@ -279,9 +281,7 @@ class GoFetchShiftsJob implements ShouldQueue
                     fn($employee) => $employee->start_at,
                 ]);
 
-
                 $assigned = false;
-
                 // Not an Employee object, it's a Homebase shift
                 while ($availableEmployees->isNotEmpty()) {
                     $employee = $availableEmployees->shift();
@@ -319,11 +319,11 @@ class GoFetchShiftsJob implements ShouldQueue
                 }
             }
 
-            if ($availableEmployees->isNotEmpty()) {
-                YardAssignment::where('yard_number', '99')
-                    ->where('start_time', $startOfHour)
-                    ->update(['description' => $availableEmployees->pluck('first_name')->implode(', ')]);
-            }
+            YardAssignment::where('yard_number', '99')
+                ->where('start_time', $startOfHour)
+                ->update(['description' => $availableEmployees->isNotEmpty()
+                    ? $availableEmployees->pluck('first_name')->implode(', ')
+                    : null]);
         }
     }
 

@@ -55,7 +55,7 @@ class DataController extends Controller
 
         if (Carbon::today()->isSunday()) {
             $employees = $employees->filter(function ($employee) {
-                return $employee->next_first_break !== '10:00:00';
+                return $employee->next_first_break !== '10:00:00' || $employee->next_second_break !== null;
             });
 
             $nextBreak = new stdClass();
