@@ -12,7 +12,7 @@ const dogs = ref([]);
 const hours = ref([]);
 const localChecksum = ref('');
 let refreshInterval;
-const cardHeight = computed(() => 900 / Math.max(dogs.value.length, 3));
+const cardHeight = computed(() => 800 / Math.max(dogs.value.length, 3));
 
 async function updateData() {
 

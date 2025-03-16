@@ -50,7 +50,7 @@ class DataController extends Controller
         })->orWhereHas('medications', function ($query) {
             $query->whereRaw('DATE(medications.modified_at) >= DATE(dogs.checkin)');
         })->orWhereHas('allergies')->with(['feedings', 'medications', 'allergies', 'cabin', 'services'])
-            ->orderBy('firstname')->get();
+            ->orderBy('cabin_id')->orderBy('firstname')->get();
 
 
         if (Carbon::today()->isSunday()) {
