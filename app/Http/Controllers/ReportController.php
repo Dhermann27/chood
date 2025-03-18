@@ -24,7 +24,10 @@ class ReportController extends Controller
 
     public function report(): Response
     {
-        return Inertia::render('DepositFinder/Report');
+        return Inertia::render('DepositFinder/Report', [
+            'sbUser' => config('services.dd.sandbox_username'),
+            'sbPass' => config('services.dd.sandbox_password'),
+        ]);
     }
 
     public function overall(Request $request): JsonResponse

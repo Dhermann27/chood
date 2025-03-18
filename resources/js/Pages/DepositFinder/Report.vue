@@ -2,8 +2,14 @@
 import {ref, computed} from 'vue'
 import axios from 'axios'
 
-const username = ref('');
-const password = ref('');
+
+const props = defineProps({
+    sbUser: String,
+    sbPass: String,
+});
+
+const username = ref(props.sbUser);
+const password = ref(props.sbPass);
 const date = ref(new Date().toLocaleDateString('en-CA'));
 const errorMessage = ref(null);
 const started = ref(false);

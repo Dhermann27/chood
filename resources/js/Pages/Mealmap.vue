@@ -9,10 +9,17 @@ const props = defineProps({
 
 const breaks = ref([]);
 const dogs = ref([]);
+const fohStaff = ref('');
 const hours = ref([]);
 const localChecksum = ref('');
 let refreshInterval;
 const cardHeight = computed(() => 800 / Math.max(dogs.value.length, 3));
+const scrollDuration = computed(() => {
+    const baseDuration = 30;
+    const durationPerDog = 5;
+    return baseDuration + (dogs.value.length * durationPerDog);
+});
+
 
 async function updateData() {
 
@@ -22,6 +29,7 @@ async function updateData() {
         if (response.data && localChecksum.value !== response.data?.checksum) {
             breaks.value = response.data.breaks;
             dogs.value = response.data.dogs;
+            fohStaff.value = response.data.fohStaff;
             hours.value = response.data.hours;
             localChecksum.value = response.data.checksum;
         }
@@ -42,13 +50,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="min-h-screen flex flex-col items-center justify-center">
-
-        <div class="w-full flex justify-center">
-            <div class="w-1/2 flex-grow flex flex-col items-center ps-3 divider">
+    <div class="h-full w-full flex flex-col items-center justify-center">
+        <div class="w-full grid grid-cols-2 gap-4">
+            <div class="flex flex-col items-center ps-3 divider">
                 <div class="text-3xl mb-10">Dog Feeding Instructions</div>
 
-                <div class="grid grid-cols-1 gap-4">
+                <div class="grid grid-cols-1 gap-4 scroll-container" :style="{ animationDuration: scrollDuration + 's' }">
                     <div v-for="dog in dogs" :key="dog.pet_id" class="flex pb-2 border-b-2">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: '150px'}">
                             <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20"
@@ -56,12 +63,14 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="flex-grow flex flex-col items-start justify-center p-4 text-2xl">
-                            <div v-for="feeding in dog.feedings" :key="feeding.id" class="flex mb-2 justify-center">
+                            <div v-for="feeding in dog.feedings" :key="feeding.id" class="flex-col mb-2 justify-center">
                                 <font-awesome-icon :icon="['fas', 'bowl-food']" class="me-2"/>
-                                {{ feeding.type }}: {{ feeding.description }}
+                                {{ feeding.type.trim() }}
+                                <span v-if="feeding.type && feeding.description">: </span>
+                                {{ feeding.description.trim() }}
                             </div>
                             <div v-for="medication in dog.medications" :key="medication.id"
-                                 class="flex mb-2 justify-center">
+                                 class="flex-col mb-2 justify-center">
                                 <font-awesome-icon v-if="medication.type_id === 18"
                                                    :icon="['fas', 'prescription-bottle-pill']" class="me-2"/>
                                 <font-awesome-icon v-if="medication.type_id === 15" :icon="['fas', 'note-medical']"
@@ -71,7 +80,7 @@ onBeforeUnmount(() => {
                                 {{ medication.description }}
                             </div>
                             <div v-for="allergy in dog.allergies" :key="allergy.id"
-                                 class="flex mb-2 justify-center text-red-700">
+                                 class="flex-col mb-2 justify-center text-red-700">
                                 <font-awesome-icon :icon="['fas', 'hand-dots']" class="me-2"/>
                                 ALLERGY: {{ allergy.description }}
                             </div>
@@ -81,8 +90,9 @@ onBeforeUnmount(() => {
             </div>
 
 
-            <div class="w-1/2 flex-grow flex flex-col justify-center items-center p-5">
-                <div class="text-3xl mb-10">Daily Rotation</div>
+            <div class="flex flex-col items-center ps-3 text-2xl">
+                <div class="text-3xl mb-5">Daily Rotation</div>
+                <div v-if="fohStaff" class="text-base mb-5">{{ fohStaff }}</div>
 
                 <table class="w-full bg-amber-100">
                     <thead>
@@ -131,4 +141,23 @@ onBeforeUnmount(() => {
 .divider {
     border-right: 25px solid #9e1b32;
 }
+
+.scroll-container {
+    max-height: 1000px;  /* Adjust this value as needed */
+    position: relative;
+}
+
+.scroll-container {
+    animation: scrollContent 60s linear infinite;  /* 60s scroll duration */
+}
+
+@keyframes scrollContent {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-100%);
+    }
+}
+
 </style>

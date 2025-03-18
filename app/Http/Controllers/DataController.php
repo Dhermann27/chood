@@ -9,6 +9,7 @@ use App\Models\YardAssignment;
 use App\Traits\ChoodTrait;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Response;
 use stdClass;
 
@@ -76,6 +77,7 @@ class DataController extends Controller
             $response = [
                 'breaks' => $employees,
                 'dogs' => $dogs,
+                'fohStaff' => Cache::get('foh_staff'),
                 'hours' => $assignments,
                 'checksum' => $new_checksum,
             ];

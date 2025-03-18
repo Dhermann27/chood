@@ -57,6 +57,8 @@ return [
         'nodepath' => env('NODE_PATH'),
         'username' => env('DD_USERNAME'),
         'password' => env('DD_PASSWORD'),
+        'sandbox_username' => env('SB_USERNAME'),
+        'sandbox_password' => env('SB_PASSWORD'),
     ],
 
     'homebase' => [

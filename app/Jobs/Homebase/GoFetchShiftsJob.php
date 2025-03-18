@@ -13,6 +13,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -69,10 +70,22 @@ class GoFetchShiftsJob implements ShouldQueue
                 // Boolean matrix for 5-minute segments of workday
                 $breakMatrix = array_fill(0, $numberOfHours * 12, 0);
 
+                $fohStaff = [];
                 foreach ($remainingShifts as $shift) {
                     if (isset($shift->labor->scheduled_hours) && str_contains($shift->department, self::BACK_OF_HOUSE)) {
                         $breakMatrix = $this->assignBreaks($shift, $breakMatrix);
+                    } else if (!str_contains($shift->role, 'Top Dog') && !str_contains($shift->role, 'Scout')) { // Slacker
+                        $startAt = Carbon::parse($shift->start_at);
+                        $endAt = Carbon::parse($shift->end_at);
+
+                        $startTime = $startAt->minute == 0 ? $startAt->format('ga') : $startAt->format('g:ia');
+                        $endTime = $endAt->minute == 0 ? $endAt->format('ga') : $endAt->format('g:ia');
+
+                        $fohStaff[] = "{$shift->first_name} ({$shift->role}) {$startTime}-{$endTime}";
                     }
+                }
+                if(count($fohStaff) > 0) {
+                    Cache::put('foh_staff', implode(', ', $fohStaff), Carbon::today()->addDay());
                 }
 
                 $this->updateYardAssignments($shifts);
@@ -134,11 +147,12 @@ class GoFetchShiftsJob implements ShouldQueue
                 Log::info("Looking for a first break time for {$employee->first_name} at {$logTime}");
                 $firstBreakIndex = $this->findBreakIndex($firstBreakIndex, 4, $breakMatrix);
                 $this->markSlots($firstBreakIndex, 4, $breakMatrix);
+                $shift->first_break = $this->convertIndexToTime($firstBreakIndex); // To be referenced by YardAssignment logic
             } else {
                 $firstBreakIndex = null;
+                $shift->first_break = null;
             }
         }
-        $shift->first_break = $this->convertIndexToTime($firstBreakIndex); // To be referenced by YardAssignment logic
 
         $employee->update([
             'next_first_break' => $employee->next_first_break ?? $this->convertIndexToTime($firstBreakIndex),
@@ -261,25 +275,38 @@ class GoFetchShiftsJob implements ShouldQueue
                     Carbon::parse($shift->end_at)->greaterThanOrEqualTo($endOfHour);
 
                 $noBreaks = (!isset($shift->first_break) ||
-                        !(Carbon::parse($shift->first_break)->addMinutes(15)->greaterThan($startOfHour) &&
-                            Carbon::parse($shift->first_break)->lessThan($endOfHour))) &&
+                    !(Carbon::parse($shift->first_break)->between($startOfHour, $endOfHour, false) ||
+                        Carbon::parse($shift->first_break)->addMinutes(15)->between($startOfHour, $endOfHour, false))) &&
                     (!isset($shift->lunch_break) ||
-                        !(Carbon::parse($shift->lunch_break)->addMinutes(30)->greaterThan($startOfHour) &&
-                            Carbon::parse($shift->lunch_break)->lessThan($endOfHour)));
+                        !(Carbon::parse($shift->lunch_break)->between($startOfHour, $endOfHour, false) ||
+                            Carbon::parse($shift->lunch_break)->addMinutes(30)->between($startOfHour, $endOfHour, false)));
 
                 $notSuperHandoff = !str_contains($shift->role, self::SUPERVISOR) ||
                     !($startOfHour->between(Carbon::parse($shift->start_at), Carbon::parse($shift->start_at)->addMinutes(59)) ||
                         $endOfHour->between(Carbon::parse($shift->end_at)->subMinutes(59), Carbon::parse($shift->end_at)));
 
+
                 return $isWorking && $noBreaks && $notSuperHandoff;
             });
-            Log::info(count($availableEmployees) . ' employees available');
 
             for ($j = 0; $j < config('services.yardAssignments.numberOfYards'); $j++) {
-                $availableEmployees = $availableEmployees->sortBy([
-                    fn($employee) => $employee->yardHoursWorked[$j],
-                    fn($employee) => $employee->start_at,
-                ]);
+                $availableEmployees = $availableEmployees->sortBy(function($employee) use ($j) {
+                    return [$employee->yardHoursWorked[$j], $employee->start_at];
+                });
+
+                // Log $availableEmployees
+                $loggedEmployees = $availableEmployees->map(function ($employee) {
+                    $hoursWorked = collect($employee->yardHoursWorked)->map(function ($value, $index) {
+                        return "$index:$value";
+                    })->implode(', ');
+
+                    return $employee->first_name . ', ' . $hoursWorked;
+                })->implode(' / ');
+
+                Log::info('Available employees: ' . $loggedEmployees);
+
+
+
 
                 $assigned = false;
                 // Not an Employee object, it's a Homebase shift
@@ -322,7 +349,7 @@ class GoFetchShiftsJob implements ShouldQueue
             YardAssignment::where('yard_number', '99')
                 ->where('start_time', $startOfHour)
                 ->update(['description' => $availableEmployees->isNotEmpty()
-                    ? $availableEmployees->pluck('first_name')->implode(', ')
+                    ? $availableEmployees->sortBy('first_name')->pluck('first_name')->implode(', ')
                     : null]);
         }
     }
