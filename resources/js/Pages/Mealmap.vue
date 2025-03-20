@@ -7,7 +7,7 @@ const props = defineProps({
     photoUri: String,
 });
 
-const dogsPerPage = 4;
+const dogsPerPage = 6;
 const breaks = ref([]);
 const dogs = ref([]);
 const fohStaff = ref('');
@@ -95,7 +95,7 @@ onBeforeUnmount(() => {
                                 <font-awesome-icon :icon="['fas', 'bowl-food']" class="me-2"/>
                                 {{ feeding.type.trim() }}
                                 <span v-if="feeding.type && feeding.description">: </span>
-                                {{ feeding.description.trim().slice(0, 50) }}
+                                {{ feeding.description.trim() }}
                             </div>
                             <div v-for="medication in dog.medications" :key="medication.id"
                                  class="flex-col justify-center">
