@@ -75,12 +75,13 @@ Route::get('/current-time', function () {
 //    return 'Cleaning finished';
 //});
 //Route::get('/markForCleaningJob', function () {
+//    MarkCabinsForCleaningJob::dispatchSync();
 //    return 'Cleaning jobbed';
 //});
 Route::get('/fetch', function () {
+//    GoFetchListJob::dispatchSync(new FetchDataService());
     GoFetchEmployeesJob::dispatchSync();
     GoFetchShiftsJob::dispatchSync();
-//    MarkCabinsForCleaningJob::dispatchSync();
     return 'Jobs fetched';
 });
 
