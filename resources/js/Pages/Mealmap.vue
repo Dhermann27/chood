@@ -13,7 +13,7 @@ const dogs = ref([]);
 const fohStaff = ref('');
 const hours = ref([]);
 const localChecksum = ref('');
-let refreshInterval, rotationInterval;
+let refreshInterval;
 const currentDogIndex = ref(0);
 const imageCache = new Map();
 const cardHeight = computed(() => 800 / Math.min(Math.max(dogs.value.length, 3), dogsPerPage));
@@ -61,13 +61,11 @@ const progressBarStyle = computed(() => ({
 
 onMounted(() => {
     updateData();
-    refreshInterval = setInterval(updateData, 5000);
-    if (dogs.value.length > dogsPerPage) startRotation(); // Only rotate if more than dogsPerPage dogs
+    refreshInterval = setInterval(updateData, 15000);
 });
 
 onBeforeUnmount(() => {
     clearInterval(refreshInterval);
-    clearInterval(rotationInterval);
 });
 </script>
 
