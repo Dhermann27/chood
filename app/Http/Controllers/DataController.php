@@ -39,18 +39,18 @@ class DataController extends Controller
     function mealmap(string $checksum = null): JsonResponse
     {
         $assignments = YardAssignment::with('employee')->where(function ($query) {
-                $isSunday = Carbon::now()->isSunday();
-                if ($isSunday) {
-                    $query->whereNotBetween('start_time', ['10:00:00', '14:00:00']);
+            $isSunday = Carbon::now()->isSunday();
+            if ($isSunday) {
+                $query->whereNotBetween('start_time', ['10:00:00', '14:00:00']);
+            }
+        })->get()->groupBy('start_time')->map(function ($hourAssignments) {
+            return $hourAssignments->map(function ($assignment) {
+                if ($assignment->yard_number == 99) {
+                    return $assignment->description;
                 }
-            })->get()->groupBy('start_time')->map(function ($hourAssignments) {
-                return $hourAssignments->map(function ($assignment) {
-                    if ($assignment->yard_number == 99) {
-                        return $assignment->description;
-                    }
-                    return $assignment->employee;
-                });
+                return $assignment->employee;
             });
+        });
 
         $employees = Employee::whereNotNull('next_first_break')->orderBy('first_name')->get();
         $dogs = Dog::whereHas('feedings', function ($query) {
@@ -72,7 +72,21 @@ class DataController extends Controller
             $employees->unshift($nextBreak);
         }
 
-        $new_checksum = md5($assignments . $employees . $dogs);
+        // In DD's infinite wisdom, child tables updated_at are being continually updated
+        $md5Dogs = $dogs->map(function ($dog) {
+            $dogData = collect($dog->toArray());
+            $dogData['feedings'] = collect($dogData['feedings'])->map(function ($feeding) {
+                return collect($feeding)->except(['created_at', 'updated_at'])->toArray();
+            });
+            $dogData['medications'] = collect($dogData['medications'])->map(function ($medication) {
+                return collect($medication)->except(['created_at', 'updated_at'])->toArray();
+            });
+            $dogData['allergies'] = collect($dogData['allergies'])->map(function ($allergy) {
+                return collect($allergy)->except(['created_at', 'updated_at'])->toArray();
+            });
+            return $dogData->toArray();
+        });
+        $new_checksum = md5($assignments . $employees . $md5Dogs);
         if ($checksum !== $new_checksum) {
             $response = [
                 'breaks' => $employees,
