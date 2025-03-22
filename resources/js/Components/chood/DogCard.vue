@@ -4,7 +4,6 @@ import {computed, onMounted, onUnmounted, ref, watch} from "vue";
 const props = defineProps({
     photoUri: String,
     dogs: Array,
-    shortName: String,
     maxlength: Number,
     cardHeight: Number,
 });
@@ -71,11 +70,16 @@ onUnmounted(() => {
              :style="{ backgroundImage: currentDog.photoUri ? `url(${props.photoUri}${currentDog.photoUri})` : 'none'}">
 
             <div class="relative">
-                <div v-if="props.shortName || currentDog.cabin" class="absolute inset-y-0 left-1 flex flex-col py-1 chood-icon">
-                    <font-awesome-icon :icon="['fas', 'house-chimney-blank']" class="text-white text-2xl icon-with-outline"/>
-                    <span class="absolute inset-0 top-1 flex justify-center text-black font-bold">
-                        {{ props.shortName || currentDog.cabin?.short_name }}
-                    </span>
+                <div v-if="currentDog.left_icons" class="absolute inset-y-0 left-1 flex flex-col py-1 chood-icon">
+                    <div v-for="(iconData, index) in currentDog.left_icons" :key="index"
+                         class="flex items-center justify-center mt-1 chood-icon">
+                        <font-awesome-icon :icon="['fas', iconData.icon]"
+                                           class="text-white text-2xl icon-with-outline"/>
+                        <span v-if="iconData.text"
+                              class="absolute inset-0 top-2 flex justify-center text-black font-bold">
+                            {{ iconData.text }}
+                        </span>
+                    </div>
                 </div>
                 <div class="absolute inset-y-0 right-1 flex flex-col py-1 chood-icon">
                     <font-awesome-icon :icon="['fas', 'weight-hanging']" class="text-white text-2xl icon-with-outline"/>

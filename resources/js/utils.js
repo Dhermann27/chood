@@ -52,13 +52,15 @@ export function scaleObjects() {
                 faIcon.classList.remove('text-2xl');
                 faIcon.style.fontSize = size + 'px';
             }
-            icon.querySelector('span').style.fontSize = (Math.floor(size * .75)) + 'px';
+            if (icon.querySelector('span')) {
+                icon.querySelector('span').style.fontSize = (Math.floor(size * .75)) + 'px';
+            }
         })
     });
     const chyron = document.querySelector("#chyron");
     if (chyron) {
         const pct = chyron.offsetWidth / getTextWidth(chyron);
-        if (pct < 1.05) chyron.style.fontSize = (parseFloat(chyron.style.fontSize) * (pct - .07)) + 'px';
+        if (pct < 1.05) chyron.style.fontSize = (parseFloat(chyron.style.fontSize) * (pct - .09)) + 'px';
     }
 
 }

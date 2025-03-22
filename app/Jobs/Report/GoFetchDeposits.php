@@ -55,7 +55,7 @@ class GoFetchDeposits implements ShouldQueue, ShouldBeUnique
         foreach ($output['data'][0]['rows'] as $row) {
             if (!isset($data['deposits'][$row[$typeColIndex]])) {
                 $data['deposits'][$row[$typeColIndex]] = ['qty' => 0, 'total' => 0];
-                if($row[$typeColIndex] == self::CASH) GoFetchCashDetails::dispatch($this->reportId);
+                if ($row[$typeColIndex] == self::CASH) GoFetchCashDetails::dispatch($this->reportId);
             }
             $data['deposits'][$row[$typeColIndex]]['qty'] += $row[$qtyColIndex];
             $data['deposits'][$row[$typeColIndex]]['total'] += $row[$totColIndex];
@@ -63,6 +63,7 @@ class GoFetchDeposits implements ShouldQueue, ShouldBeUnique
 
         $report->update(['data' => $data]);
 
-        sleep(mt_rand(0, 1000) / 1000);
+        $delay = config('services.dd.queuedelay');
+        usleep(mt_rand($delay, $delay + 1000) * 1000);
     }
 }

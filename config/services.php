@@ -55,6 +55,7 @@ return [
 
         ],
         'nodepath' => env('NODE_PATH'),
+        'queue_delay' => env('QUEUE_DELAY'),
         'username' => env('DD_USERNAME'),
         'password' => env('DD_PASSWORD'),
         'sandbox_username' => env('SB_USERNAME'),

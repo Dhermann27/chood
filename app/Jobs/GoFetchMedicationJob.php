@@ -64,7 +64,7 @@ class GoFetchMedicationJob implements ShouldQueue
             }
         }
 
-        sleep(mt_rand(0, 1000) / 1000);
-
+        $delay = config('services.dd.queuedelay');
+        usleep(mt_rand($delay, $delay + 1000) * 1000);
     }
 }

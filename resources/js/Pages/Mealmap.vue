@@ -56,6 +56,7 @@ const currentDogs = computed(() => {
 const progressBarStyle = computed(() => ({
     left: (currentDogIndex.value / dogs.value.length) * 100 + '%',
     width: (Math.min(dogsPerPage, dogs.value.length - currentDogIndex.value) / dogs.value.length) * 100 + '%',
+    color: 'white',
 }));
 
 
@@ -77,9 +78,10 @@ onBeforeUnmount(() => {
                 <div class="text-3xl mb-2">Dog Feeding Instructions</div>
 
                 <div v-if="dogs && dogs?.length > dogsPerPage" class="flex justify-center gap-2 mb-4 w-full">
-                    <div class="h-6 bg-gray-200 rounded-full dark:bg-gray-700 w-3/4">
-                        <div class="relative h-6 bg-blue-600 rounded-full dark:bg-blue-500"
-                             :style="progressBarStyle"></div>
+                    <div class="h-6 bg-gray-200 rounded-full w-3/4">
+                        <div class="relative h-6 bg-blue-600 rounded-full text-center" :style="progressBarStyle">
+                            {{ currentDogIndex+1 }} - {{ Math.min(currentDogIndex + dogsPerPage, dogs?.length) }}
+                        </div>
                     </div>
                 </div>
 

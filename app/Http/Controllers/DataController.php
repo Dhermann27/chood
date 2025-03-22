@@ -90,7 +90,7 @@ class DataController extends Controller
         if ($checksum !== $new_checksum) {
             $response = [
                 'breaks' => $employees,
-                'dogs' => $dogs,
+                'dogs' => $dogs->makeHidden('photoUri'),
                 'fohStaff' => Cache::get('foh_staff'),
                 'hours' => $assignments,
                 'checksum' => $new_checksum,

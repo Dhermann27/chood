@@ -58,7 +58,7 @@ class GoFetchCashDetails implements ShouldQueue, ShouldBeUnique
             if (!isset($data['cash'][$row[$orderIdColIndex]])) {
                 $data['cash'][$row[$orderIdColIndex]] = [];
             }
-            $data['cash'][$row[$orderIdColIndex]]['date'] = $row[$dateColIndex].substr(0, 0, 10);
+            $data['cash'][$row[$orderIdColIndex]]['date'] = $row[$dateColIndex] . substr(0, 0, 10);
             $data['cash'][$row[$orderIdColIndex]]['firstName'] = $row[$firstNameColIndex];
             $data['cash'][$row[$orderIdColIndex]]['lastName'] = $row[$lastNameColIndex];
             $data['cash'][$row[$orderIdColIndex]]['items'] = $row[$itemsColIndex];
@@ -67,6 +67,7 @@ class GoFetchCashDetails implements ShouldQueue, ShouldBeUnique
 
         $report->update(['data' => $data]);
 
-        sleep(mt_rand(0, 1000) / 1000);
+        $delay = config('services.dd.queuedelay');
+        usleep(mt_rand($delay, $delay + 1000) * 1000);
     }
 }

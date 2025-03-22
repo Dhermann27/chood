@@ -17,7 +17,7 @@ class Dog extends Model
 
     protected $casts = ['checkin' => 'datetime', 'checkout' => 'datetime'];
 
-    protected $appends = ['size_letter'];
+    protected $appends = ['size_letter', 'left_icons'];
 
     public function getSizeLetterAttribute()
     {
@@ -26,6 +26,21 @@ class Dog extends Model
         else if ($this->weight >= 30) return 'M';
         else if ($this->weight >= 10) return 'S';
         else return 'XS';
+    }
+
+    public function getLeftIconsAttribute()
+    {
+        $icons = [];
+
+        // Add icon data based on some conditions
+        if ($this->cabin && $this->cabin->short_name) {
+            $icons[] = ['icon' => 'house-chimney-blank', 'text' => $this->cabin->short_name];
+        }
+        if ($this->gender) {
+            $icons[] = ['icon' => $this->gender == 'M' ? 'mars' : 'venus'];
+        }
+
+        return $icons;
     }
     public function allergies(): HasMany
     {
