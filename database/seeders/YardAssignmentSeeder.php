@@ -23,7 +23,7 @@ class YardAssignmentSeeder extends Seeder
                     'end_time' => $startTime->addHour()->subSecond()->format('H:i:s'),
                     'created_at' => Carbon::now()
                 ]);
-                $startTime->addMinute();
+                $startTime->addSecond();
             }
 
             // Reset for the next yard
