@@ -3,6 +3,7 @@ import {Head} from '@inertiajs/vue3';
 import {ref, onMounted, onBeforeUnmount} from 'vue';
 import Map from "@/Components/chood/Map.vue";
 import {fetchMapData} from "@/utils.js";
+import {ControlSchemes} from "@/controlSchemes.js";
 
 const props = defineProps({
     photoUri: String,
