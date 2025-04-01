@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {ref, computed, onMounted, onBeforeUnmount, nextTick} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
-import {formatTime, scaleObjects} from "@/utils.js";
+import {formatTime, getTextWidth} from "@/utils.js";
 
 const props = defineProps({
     size: String,
@@ -16,12 +16,14 @@ const currentGif = ref('/images/doggifs/dog1.webp');
 const randomPosition = ref({top: 0, left: 0});
 const localChecksum = ref('');
 let refreshIntervals = [];
+const currentLoadingIndex = ref(0);
+const chyron = ref(null);
 const columns = computed(() => Math.ceil(Math.sqrt((16 / 9) * dogs.value.length)));
 const rows = computed(() => Math.ceil(dogs.value.length / columns.value));
 const yardGridStyle = computed(() => getYardGridStyle(rows.value, columns.value));
 const cardWidth = computed(() => (1918 - (columns.value - 1) * 10) / columns.value);
 const cardHeight = computed(() => (978 - (rows.value - 1) * 10) / rows.value);
-const chyronStyle = computed(() => ({
+const chyronStyle = ref({
     height: '100px',
     textAlign: 'center',
     display: 'flex',
@@ -31,7 +33,16 @@ const chyronStyle = computed(() => ({
     gridColumn: '1 / -1',
     backgroundColor: '#9e1b32',
     color: 'white'
-}));
+});
+
+
+const handleImageLoaded = () => {
+    while (++currentLoadingIndex.value < dogs.value?.length) {
+        if (dogs.value[currentLoadingIndex.value].photoUri) {
+            break;
+        }
+    }
+};
 
 function getYardGridStyle(rows, columns) {
     return {
@@ -61,9 +72,14 @@ async function updateData() {
             nextBreak.value = response.data.nextBreak;
             nextLunch.value = response.data.nextLunch;
             localChecksum.value = response.data.checksum;
-            await nextTick(() => {
-                scaleObjects();
-            });
+
+            currentLoadingIndex.value = 0;
+            if (chyron.value) {
+                await nextTick();
+                const computedChyron = window.getComputedStyle(chyron.value);
+                const pct = 1920 / getTextWidth(chyron.value.innerText, computedChyron.font);
+                if (pct < 1.05) chyronStyle.value.fontSize = (parseFloat(computedChyron.fontSize) * (pct - .09)) + 'px';
+            }
         }
     } catch (error) {
         console.error('Error fetching data:', error);
@@ -94,13 +110,14 @@ onBeforeUnmount(() => {
     <Head title="Yardmap"/>
     <main class="w-full h-full">
         <div id="yardmap" class="items-center justify-center p-1" :style="yardGridStyle">
-            <div v-for="dog in dogs" :style="{height: cardHeight + 'px', width: cardWidth + 'px'}">
-                <DogCard :dogs="[dog]" :photoUri="props.photoUri" :card-width="cardWidth" :card-height="cardHeight"/>
+            <div v-for="(dog, index) in dogs" :id="index" :style="{height: cardHeight + 'px', width: cardWidth + 'px'}">
+                <DogCard :dogs="[dog]" :photoUri="props.photoUri" :card-width="cardWidth" :card-height="cardHeight"
+                         :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
             </div>
             <img v-if="dogs.length === 0" :src="currentGif" alt="Dancing Doggo"
                  :style="{ top: randomPosition.top + 'px', left: randomPosition.left + 'px', position: 'absolute' }"
             />
-            <div id="chyron" :style="chyronStyle">
+            <div ref="chyron" :style="chyronStyle">
                 <span v-for="assignment in assignments" class="pe-10">
                     {{ assignment.yard_number === 1 ? 'Small' : 'Large' }}:
                     {{ assignment.employee?.first_name ?? 'None' }}
@@ -117,3 +134,4 @@ onBeforeUnmount(() => {
         </div>
     </main>
 </template>
+

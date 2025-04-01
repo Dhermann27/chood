@@ -25,6 +25,7 @@ class GoFetchShiftsJob implements ShouldQueue
     const SHIFTS_URL_SUFFIX = '/shifts?start_date=TODAY&end_date=TODAY&open=false&with_note=false&date_filter=start_at';
     const BACK_OF_HOUSE = 'BOH';
     const SUPERVISOR = 'Supervisor';
+    const TRAINING = 'Training';
     const START_BREAKS_AT_INDEX = 3;
     const START_LUNCHES_AT_INDEX = 2 * 12 + 6;
 
@@ -271,6 +272,7 @@ class GoFetchShiftsJob implements ShouldQueue
             $availableEmployees = $shifts->filter(function ($shift) use ($startOfHour, $endOfHour) {
                 $isWorking = isset($shift->labor->scheduled_hours) &&
                     str_contains($shift->department, self::BACK_OF_HOUSE) &&
+                    !str_contains($shift->role, self::TRAINING) &&
                     Carbon::parse($shift->start_at)->lessThanOrEqualTo($startOfHour) &&
                     Carbon::parse($shift->end_at)->greaterThanOrEqualTo($endOfHour);
 

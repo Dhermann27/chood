@@ -20,7 +20,7 @@ class YardAssignmentSeeder extends Seeder
                 DB::table('yard_assignments')->insert([
                     'yard_number' => $i,
                     'start_time' => $startTime->format('H:i:s'),
-                    'end_time' => $startTime->addHour()->subMinute()->format('H:i:s'),
+                    'end_time' => $startTime->addHour()->subSecond()->format('H:i:s'),
                     'created_at' => Carbon::now()
                 ]);
                 $startTime->addMinute();

@@ -1,5 +1,5 @@
 <script setup>
-import {ref} from "vue";
+import {computed, ref} from "vue";
 import axios from 'axios';
 
 import DogCard from "@/Components/chood/DogCard.vue";
@@ -32,9 +32,22 @@ const showModal = ref(false);
 const modalType = ref('add'); // 'add' or 'edit'
 const isNewDog = ref(false);
 const hoveredCabinId = ref(null);
-
+const currentLoadingIndex = ref(0);
 
 const emit = defineEmits(['cabinClicked']);
+
+const cabinKeys = computed(() => {
+    return Object.keys(props.dogs).filter(cabinId => cabinId !== 'unassigned' && props.dogs[cabinId].length > 0);
+});
+
+const handleImageLoaded = () => {
+    while (++currentLoadingIndex.value < cabinKeys.value?.length) {
+        const dogIndex = parseInt(cabinKeys.value[currentLoadingIndex.value], 10);
+        if (props.dogs[dogIndex][0].photoUri) {
+            break;
+        }
+    }
+};
 
 const updateIsNewDog = (value) => {
     isNewDog.value = value;
@@ -164,18 +177,15 @@ const handleClick = (cabin) => {
 </script>
 <template>
     <div
-        v-for="cabin in cabins"
-        :key="cabin.id"
-        :class="['cabin', { 'cabin-empty': !props.dogs[cabin.id]}]"
+        v-for="cabin in cabins" :key="cabin.id" :class="['cabin', { 'cabin-empty': !props.dogs[cabin.id]}]"
         :style="cabinStyle(cabin)"
-        @mouseover="handleHover(cabin.id)"
-        @mouseleave="handleHoverLeave"
-        @click="handleClick(cabin)"
+        @mouseover="handleHover(cabin.id)" @mouseleave="handleHoverLeave" @click="handleClick(cabin)"
     >
         <div v-if="props.dogs[cabin.id] && props.dogs[cabin.id].length > 0" class="h-full w-full relative">
-            <DogCard :dogs="props.dogs[cabin.id]" :photoUri="photoUri" :maxlength="maxlength"
-                     :short-name="cabin.short_name" :card-height="cardHeight"/>
-            <div v-if="admin > 1 && props.dogs[cabin.id][0].is_inhouse === 0"
+            <DogCard :dogs="props.dogs[cabin.id]" :photoUri="photoUri" :maxlength="maxlength" :card-height="cardHeight"
+                     :shouldLoad="cabin.id === parseInt(cabinKeys[currentLoadingIndex], 10)"
+                     @imageLoaded="handleImageLoaded"/>
+            <div v-if="controls === ControlSchemes.MODAL && props.dogs[cabin.id][0].is_inhouse === 0"
                  class="absolute inset-y-0 left-0 flex flex-col justify-center py-1">
                 <button
                     @click="openModal( 'edit', cabin)"

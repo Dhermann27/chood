@@ -21,11 +21,12 @@ class Dog extends Model
 
     public function getSizeLetterAttribute()
     {
-        if ($this->weight == null) return '?';
+        if ($this->weight == null) return '?'; // TODO: Remove when icon is conditional
         else if ($this->weight > 40) return 'L';
-        else if ($this->weight >= 30) return 'M';
-        else if ($this->weight >= 10) return 'S';
-        else return 'XS';
+        else if ($this->weight >= 30) return 'LS';
+        else if ($this->weight >= 15) return 'S';
+        else if ($this->weight >= 10) return 'ST';
+        else return 'T';
     }
 
     public function getLeftIconsAttribute()

@@ -1,11 +1,9 @@
-function getTextWidth(text) {
+export function getTextWidth(text, font = '16px Arial') {
     const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
     const context = canvas.getContext("2d");
-    const computedStyle = window.getComputedStyle(text);
-    context.font = `${computedStyle.fontWeight} ${computedStyle.fontSize} ${computedStyle.fontFamily}`;
-    return context.measureText(text.textContent).width;
+    context.font = font;
+    return context.measureText(text).width;
 }
-
 
 export function formatTime(time) {
     if (time && typeof time === 'string' && time.includes(':')) {
@@ -34,34 +32,5 @@ export async function fetchMapData(uri, checksum) {
         console.error('Error fetching data:', error);
     }
     return false;
-}
-
-export function scaleObjects() {
-    const nameFields = document.querySelectorAll('.dog-name');
-    nameFields.forEach((name) => {
-        const pct = name.offsetWidth / getTextWidth(name);
-        if (pct < 1.05) name.style.fontSize = (parseFloat(name.style.fontSize) * (pct - .02)) + 'px';
-    });
-    const dogCards = document.querySelectorAll('.dog-boarder, .dog-daycamper');
-    dogCards.forEach((card) => {
-        const size = Math.min(Math.floor(card.offsetWidth / 7), 100);
-        const icons = card.querySelectorAll('.chood-icon');
-        icons.forEach((icon) => {
-            const faIcon = icon.querySelector('.icon-with-outline');
-            if (faIcon) {
-                faIcon.classList.remove('text-2xl');
-                faIcon.style.fontSize = size + 'px';
-            }
-            if (icon.querySelector('span')) {
-                icon.querySelector('span').style.fontSize = (Math.floor(size * .75)) + 'px';
-            }
-        })
-    });
-    const chyron = document.querySelector("#chyron");
-    if (chyron) {
-        const pct = chyron.offsetWidth / getTextWidth(chyron);
-        if (pct < 1.05) chyron.style.fontSize = (parseFloat(chyron.style.fontSize) * (pct - .09)) + 'px';
-    }
-
 }
 

@@ -56,6 +56,8 @@ return [
         ],
         'nodepath' => env('NODE_PATH'),
         'queue_delay' => env('QUEUE_DELAY'),
+        'mealmap_dpp' => env('MEALMAP_DOGS_PER_PAGE'),
+        'yards_to_open' => env('YARDS_TO_OPEN'),
         'username' => env('DD_USERNAME'),
         'password' => env('DD_PASSWORD'),
         'sandbox_username' => env('SB_USERNAME'),
