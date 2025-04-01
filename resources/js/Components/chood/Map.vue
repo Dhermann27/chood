@@ -4,6 +4,7 @@ import axios from 'axios';
 
 import DogCard from "@/Components/chood/DogCard.vue";
 import AssignmentModal from "@/Components/chood/AssignmentModal.vue";
+import {ControlSchemes} from "@/controlSchemes.js";
 
 const props = defineProps({
     photoUri: String,
