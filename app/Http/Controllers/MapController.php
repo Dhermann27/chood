@@ -45,6 +45,7 @@ class MapController extends Controller
 
     public function mealmap(): Response {
         return Inertia::render('Mealmap', [
+            'dogsPerPage' => intval(config('services.dd.mealmap_dpp')),
             'photoUri' => config('services.dd.uris.photo'),
         ]);
     }
