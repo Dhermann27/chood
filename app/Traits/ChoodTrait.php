@@ -20,9 +20,11 @@ trait ChoodTrait
         return Cabin::where('rho', '>', '0')->where('kappa', '>', '0')->whereBetween('id', [$start, $end])
             ->get()->map(function ($cabin) use ($subtractor, $end) {
                 $cabin->kappa += $subtractor;
-                if ($end == MapController::ROW_VIEWS['first'][1] && $cabin->id < 2000) {
-                    $cabin->rho += 5;
-                    $cabin->kappa -= 3;
+                if ($end == MapController::ROW_VIEWS['first'][1] && $cabin->id < 1500) {
+                    $cabin->rho = 6;
+                    if($cabin->id == 1000) $cabin->kappa = 7;
+                    if($cabin->id == 1001) $cabin->kappa = 9;
+                    if($cabin->id == 1002) $cabin->kappa = 10;
                 }
                 return $cabin;
             });
