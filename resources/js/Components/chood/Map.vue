@@ -13,7 +13,7 @@ const props = defineProps({
     dogs: Object,
     services: Array,
     outhouseDogs: Array,
-    admin: Number,
+    controls: ControlSchemes,
     maxlength: Number,
     cardWidth: Number,
     cardHeight: Number,
@@ -157,7 +157,7 @@ const cabinStyle = (cabin) => {
         width: props.cardWidth + 'px',
         height: (props.cardHeight * cabin.rowspan) + 'px',
         transition: 'background-color 0.3s ease',
-        cursor: props.admin > 0 && props.statuses?.[cabin.id] ? 'pointer' : 'auto',
+        cursor: props.controls !== ControlSchemes.NONE && props.statuses?.[cabin.id] ? 'pointer' : 'auto',
     };
 };
 
@@ -204,7 +204,7 @@ const handleClick = (cabin) => {
         </div>
         <div v-else>
             {{ cabin.short_name }}
-            <div v-if="admin > 1" @click="openModal( 'add', cabin) " class="cabin-icon">
+            <div v-if="controls === ControlSchemes.MODAL" @click="openModal( 'add', cabin) " class="cabin-icon">
                 <button class="bg-blue-100 text-blue-500 hover:text-blue-700 p-1 rounded-r-md">
                     <font-awesome-icon :icon="['fas', 'add']"/>
                 </button>
@@ -212,7 +212,7 @@ const handleClick = (cabin) => {
         </div>
     </div>
 
-    <AssignmentModal v-if="admin > 1 && showModal"
+    <AssignmentModal v-if="controls === ControlSchemes.MODAL && showModal"
                      :modalType="modalType" :cabins="cabins" :outhouseDogs="outhouseDogs" :services="services"
                      :assignment="assignment" :errorMessages="errorMessages" :photoUri="photoUri" :is-new-dog="isNewDog"
                      @closeModal="showModal = false" @submitForm="submitForm" @updateIsNewDog="updateIsNewDog"/>

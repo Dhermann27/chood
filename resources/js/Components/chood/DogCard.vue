@@ -66,7 +66,7 @@ watch(() => props.dogs, (newDogs) => {
 }, {immediate: true});
 
 
-watch(() => props.cardHeight, async (newHeight) => {
+watch([() => props.cardHeight, currentDog], async ([newHeight]) => {
     await nextTick();
 
     if (dogBanner.value) dogBanner.value.style.fontSize = `${newHeight * 0.05}px`;
@@ -147,7 +147,7 @@ onUnmounted(() => {
                         <font-awesome-icon :icon="['fas', iconData.icon]"
                                            class="text-white text-2xl icon-with-outline"/>
                         <span v-if="iconData.text"
-                              class="absolute inset-0 top-2 flex justify-center text-black font-bold">
+                              class="absolute inset-0 top-1 flex justify-center text-black font-bold">
                             {{ iconData.text }}
                         </span>
                     </div>

@@ -14,7 +14,7 @@ const fohStaff = ref('');
 const hours = ref([]);
 const localChecksum = ref('');
 let refreshInterval;
-const currentDogIndex = ref(0);
+const currentViewIndex = ref(0);
 const currentLoadingIndex = ref(0);
 const cardHeight = computed(() => 800 / Math.min(Math.max(dogs.value.length, 3), props.dogsPerPage));
 
@@ -36,9 +36,10 @@ async function updateData() {
             fohStaff.value = response.data.fohStaff;
             hours.value = response.data.hours;
             localChecksum.value = response.data.checksum;
+
         } else if (dogs.value.length > props.dogsPerPage) {
-            currentDogIndex.value += props.dogsPerPage;
-            if (currentDogIndex.value >= dogs.value.length) currentDogIndex.value = 0;
+            const maxChunks = Math.ceil(dogs.value.length / props.dogsPerPage);
+            currentViewIndex.value = (currentViewIndex.value + 1) % maxChunks;
         }
 
     } catch (error) {
@@ -46,16 +47,16 @@ async function updateData() {
     }
 }
 
-const currentDogs = computed(() => {
-    if (!dogs.value.length) return [];
-    const startIndex = currentDogIndex.value;
-    const endIndex = startIndex + props.dogsPerPage;
-    return dogs.value.slice(startIndex, endIndex);
-});
+const isVisible = (index) => {
+    const start = currentViewIndex.value * props.dogsPerPage;
+    const end = start + props.dogsPerPage;
+    return index >= start && index < end;
+};
 
 const progressBarStyle = computed(() => ({
-    left: (currentDogIndex.value / dogs.value.length) * 100 + '%',
-    width: (Math.min(props.dogsPerPage, dogs.value.length - currentDogIndex.value) / dogs.value.length) * 100 + '%',
+    left: ((currentViewIndex.value * props.dogsPerPage) / dogs.value.length) * 100 + '%',
+    width: (Math.min(props.dogsPerPage, dogs.value.length - currentViewIndex.value * props.dogsPerPage)
+        / dogs.value.length) * 100 + '%',
     color: 'white',
 }));
 
@@ -80,18 +81,20 @@ onBeforeUnmount(() => {
                 <div v-if="dogs && dogs?.length > props.dogsPerPage" class="flex justify-center gap-2 mb-4 w-full">
                     <div class="h-6 bg-gray-200 rounded-full w-3/4">
                         <div class="relative h-6 bg-blue-600 rounded-full text-center" :style="progressBarStyle">
-                            {{ currentDogIndex + 1 }} - {{
-                                Math.min(currentDogIndex + props.dogsPerPage, dogs?.length)
+                            {{ currentViewIndex * props.dogsPerPage + 1 }} - {{
+                                Math.min((currentViewIndex + 1) * props.dogsPerPage, dogs?.length)
                             }}
                         </div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 w-full ">
-                    <div v-for="(dog, index) in currentDogs" :key="index" class="flex pb-2 border-b-2">
+                    <div v-for="(dog, index) in dogs" :key="index" class="flex pb-2 border-b-2"
+                         v-show="isVisible(index)">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: '150px'}">
                             <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"
-                                     :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
+                                     :shouldLoad="index === currentLoadingIndex"
+                                     @imageLoaded="handleImageLoaded"/>
                         </div>
 
                         <div class="flex-grow flex flex-col items-start justify-center p-4 text-2xl">

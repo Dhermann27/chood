@@ -14,7 +14,7 @@ const dogs = ref([]);
 const statuses = ref({});
 const outhouseDogs = ref([]);
 const localChecksum = ref('');
-const admin = ref(0 );
+const controls = ref('none' );
 let refreshInterval;
 
 async function updateData() {
@@ -31,7 +31,7 @@ async function updateData() {
 // Fetch data when the component is mounted
 onMounted(() => {
     if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
-        admin.value = !navigator.userAgent.includes('Linux') ? 2 : 0;
+        controls.value = !navigator.userAgent.includes('Linux') ? ControlSchemes.MODAL : ControlSchemes.NONE;
     }
 
     updateData();
@@ -49,7 +49,7 @@ onBeforeUnmount(() => {
     <main class="w-full h-full">
         <div class="choodmap items-center justify-center p-1">
             <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :outhouse-dogs="outhouseDogs" :services="services"
-                 :photoUri="photoUri" :admin="admin" :maxlength="8" :card-width="96" :card-height="117"/>
+                 :photoUri="photoUri" :controls="controls" :maxlength="8" :card-width="96" :card-height="117"/>
         </div>
     </main>
 </template>

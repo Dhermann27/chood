@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cabin;
 use App\Models\CleaningStatus;
+use App\Models\Dog;
 use App\Models\Employee;
 use App\Traits\ChoodTrait;
 use Carbon\Carbon;
@@ -21,20 +23,24 @@ class TaskController extends Controller
     public function index(): \Inertia\Response
     {
         return Inertia::render('Task/TaskEntry', [
-            'employees' => Employee::where('is_working', '1')->orderBy('first_name')->get(),
             'cabins' => $this->getCabins(),
-            'statuses' => CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray()
+            'dogs' => $this->getDogsByCabin(),
+            'employees' => Employee::where('is_working', '1')->orderBy('first_name')->get(),
+            'statuses' => CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray(),
+            'photoUri' => config('services.dd.uris.photo'),
         ]);
     }
 
     // TODO: Add cool way to see status messages from others
     function getData(string $checksum = null): JsonResponse
     {
+        $dogs = $this->getDogsByCabin();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
         $employees = Employee::where('is_working', '1')->orderBy('first_name')->get();
-        $new_checksum = md5($employees->toJson() . json_encode($statuses));
+        $new_checksum = md5($dogs->toJson() . $employees->toJson() . json_encode($statuses));
         if ($checksum !== $new_checksum) {
             $response = [
+                'dogs' => $dogs,
                 'statuses' => $statuses,
                 'employees' => $employees,
                 'checksum' => $new_checksum,
@@ -73,6 +79,39 @@ class TaskController extends Controller
             return response()->json([
                 'error' => $e->getMessage(),
                 'message' => 'Cleaning status was not found.',
+            ], 404);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'Unknown error occurred.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function assignDogsToCabin(Request $request): JsonResponse
+    {
+        try {
+            $validatedData = $request->validate([
+                'cabin_id' => 'required|exists:cabins,id',
+                'dogsToAssign.*.id' => 'required|exists:dogs,id',
+            ]);
+
+            $cabin = Cabin::findOrFail($validatedData['cabin_id']);
+            $dogs = collect($validatedData['dogsToAssign']);
+            $names = $dogs->pluck('firstname')->toArray();
+            Dog::whereIn('id', $dogs->pluck('id')->toArray())->update(['cabin_id' => $validatedData['cabin_id']]);
+            return response()->json([
+                'message' => 'Dog(s) ' . implode(', ', $names) . ' assigned to Cabin ' . $cabin->cabinName], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'error' => $e->errors(),
+                'message' => 'There was a validation error.',
+            ], 422);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'message' => 'Cabin was not found.',
             ], 404);
         } catch (Exception $e) {
             return response()->json([

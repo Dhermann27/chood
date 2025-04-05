@@ -39,7 +39,8 @@ Route::prefix('task')->group(function () {
     Route::get('/', [TaskController::class, 'index']);
     Route::get('/data/{checksum?}', [TaskController::class, 'getData'])
         ->where('checksum', '[a-f0-9]{32}');
-    Route::post('/cleaned', [TaskController::class, 'markCleaned']);
+    Route::post('/cleanCabin', [TaskController::class, 'markCleaned']);
+    Route::post('/assignCabin', [TaskController::class, 'assignDogsToCabin']);
 });
 
 Route::prefix('api')->group(function () {
