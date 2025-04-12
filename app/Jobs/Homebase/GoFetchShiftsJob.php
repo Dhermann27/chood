@@ -26,6 +26,7 @@ class GoFetchShiftsJob implements ShouldQueue
     const BACK_OF_HOUSE = 'BOH';
     const SUPERVISOR = 'Supervisor';
     const TRAINING = 'Training';
+    const EVENT = 'Event';
     const START_BREAKS_AT_INDEX = 3;
     const START_LUNCHES_AT_INDEX = 2 * 12 + 6;
 
@@ -273,6 +274,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 $isWorking = isset($shift->labor->scheduled_hours) &&
                     str_contains($shift->department, self::BACK_OF_HOUSE) &&
                     !str_contains($shift->role, self::TRAINING) &&
+                    !str_contains($shift->role, self::EVENT) &&
                     Carbon::parse($shift->start_at)->lessThanOrEqualTo($startOfHour) &&
                     Carbon::parse($shift->end_at)->greaterThanOrEqualTo($endOfHour);
 
