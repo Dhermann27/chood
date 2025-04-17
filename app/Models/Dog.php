@@ -54,9 +54,11 @@ class Dog extends Model
 
         if ($this->dogServices) {
             foreach ($this->dogServices as $dogService) {
+                $start = Carbon::parse($dogService->scheduled_start);
                 if (in_array($dogService->service->category, config('services.dd.bath_service_cats')) &&
+                    $start->isToday() &&
                     !array_search('droplet', array_column($icons, 'icon'))) {
-                    $icons[] = ['icon' => 'droplet', 'text' => substr(Carbon::parse($dogService->scheduled_start)->format('ga'), 0, 2),
+                    $icons[] = ['icon' => 'droplet', 'text' => substr($start->format('ga'), 0, 2),
                         'transform' => 'grow-1', 'start' => $dogService->scheduled_start, 'checkout' => $this->checkout,
                         'completed' => $dogService->completed_at != null];
                 }
