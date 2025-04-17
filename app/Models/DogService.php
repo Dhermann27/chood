@@ -3,21 +3,20 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DogService extends Model
 {
-    protected $table = 'dog_service';
-    protected $fillable = ['dog_id', 'service_id', 'completed'];
+    protected $fillable = ['pet_id', 'service_id', 'scheduled_start', 'completed_at', 'completed_by'];
 
-    public function dog(): HasOne
+    public function dog(): BelongsTo
     {
-        return $this->hasOne(Dog::class, 'id', 'dog_id');
+        return $this->belongsTo(Dog::class, 'pet_id', 'pet_id');
     }
 
-    public function service(): HasOne
+    public function service(): BelongsTo
     {
-        return $this->hasOne(Service::class, 'id', 'service_id');
+        return $this->belongsTo(Service::class);
     }
 
 }

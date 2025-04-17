@@ -2,8 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\GoFetchServiceListJob;
 use App\Jobs\Homebase\GoFetchEmployeesJob;
 use App\Jobs\Homebase\GoFetchShiftsJob;
+use App\Services\FetchDataService;
 use Illuminate\Console\Command;
 
 class DeploymentCommand extends Command
@@ -25,10 +27,11 @@ class DeploymentCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): void
     {
         GoFetchEmployeesJob::dispatchSync();
         GoFetchShiftsJob::dispatchSync();
+        GoFetchServiceListJob::dispatchSync(new FetchDataService());
 
     }
 }

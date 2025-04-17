@@ -5,6 +5,8 @@ namespace App\Traits;
 use App\Http\Controllers\MapController;
 use App\Models\Cabin;
 use App\Models\Dog;
+use App\Models\Service;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
 trait ChoodTrait
@@ -22,9 +24,9 @@ trait ChoodTrait
                 $cabin->kappa += $subtractor;
                 if ($end == MapController::ROW_VIEWS['first'][1] && $cabin->id < 1500) {
                     $cabin->rho = 6;
-                    if($cabin->id == 1000) $cabin->kappa = 7;
-                    if($cabin->id == 1001) $cabin->kappa = 9;
-                    if($cabin->id == 1002) $cabin->kappa = 10;
+                    if ($cabin->id == 1000) $cabin->kappa = 7;
+                    if ($cabin->id == 1001) $cabin->kappa = 9;
+                    if ($cabin->id == 1002) $cabin->kappa = 10;
                 }
                 return $cabin;
             });
@@ -48,9 +50,22 @@ trait ChoodTrait
      */
     public function getDogs(bool $filterByCabinId = false, string $size = null): Collection
     {
-        $dogs = Dog::with('services', 'cabin');
+        $dogs = Dog::with('dogServices.service', 'cabin');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
         if ($size) $dogs->where('weight', $size == 'small' ? '<=' : '>=', $size == 'small' ? 40 : 30);
         return $dogs->orderBy('firstname')->get();
     }
+
+    public function getGroomingDogsToday()
+    {
+        $specialServiceIds = Service::whereIn('category', config('services.dd.special_service_cats'))->pluck('id');
+        $today = Carbon::today();
+
+        return Dog::whereHas('dogServices', function ($query) use ($specialServiceIds, $today) {
+            $query->whereDate('start', '<=', $today)
+                ->whereDate('end', '>=', $today)
+                ->whereIn('service_id', $specialServiceIds); // direct match
+        })->with('dogServices.service')->get(); // eager load
+    }
+
 }

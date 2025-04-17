@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Service;
 use App\Traits\ChoodTrait;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -22,7 +21,6 @@ class MapController extends Controller
         return Inertia::render('Fullmap', [
             'photoUri' => config('services.dd.uris.photo'),
             'cabins' => $this->getCabins(),
-            'services' => Service::all(),
         ]);
     }
 

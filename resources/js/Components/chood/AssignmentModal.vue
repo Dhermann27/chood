@@ -5,9 +5,8 @@ import 'vue-multiselect/dist/vue-multiselect.css';
 const props = defineProps({
     modalType: String,
     cabins: Array,
-    outhouseDogs: Array,
+    dogs: Array,
     isNewDog: Boolean,
-    services: Array,
     assignment: Object,
     errorMessages: Array,
     photoUri: String,
@@ -54,7 +53,7 @@ const closeModal = () => {
                             class="text-blue-600 hover:text-blue-800"
                         />
                     </div>
-                    <label class="text-lg font-medium">Check for future reservation</label>
+                    <label class="text-lg font-medium">Check for future boarding</label>
                 </div>
 
 
@@ -62,13 +61,8 @@ const closeModal = () => {
                     <!-- Dog Selection -->
                     <div class="mb-4">
                         <multiselect
-                            v-model="assignment.dogs" multiple
-                            :options="outhouseDogs"
-                            label="firstname"
-                            :searchable="true"
-                            :clearable="true"
-                            placeholder="Select Dog(s)"
-                        >
+                            v-model="assignment.dogs" multiple :options="dogs" label="firstname"
+                            :searchable="true" :clearable="true" placeholder="Select Dog(s)">
                             <template #option="props">
                                 <div v-if="props.option.id === 'new'" class="text-sm text-blue-500">
                                     Enter a new dog
@@ -100,20 +94,6 @@ const closeModal = () => {
                             id="lastname"
                             type="text"
                             class="mt-1 block w-full text-sm border border-gray-300 rounded-md p-2"
-                        />
-                    </div>
-
-                    <!-- Services (Multiselect) -->
-                    <div class="mb-4">
-                        <label for="service_ids" class="block text-xs font-medium text-gray-700">Services</label>
-                        <Multiselect
-                            v-model="assignment.services"
-                            :options="services"
-                            multiple
-                            track-by="id"
-                            label="name"
-                            placeholder="Select services"
-                            class="w-full text-sm"
                         />
                     </div>
                 </template>

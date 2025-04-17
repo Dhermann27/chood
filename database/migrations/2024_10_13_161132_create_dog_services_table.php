@@ -12,14 +12,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('dog_service', function (Blueprint $table) {
+        Schema::create('dog_services', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('dog_id')->constrained()->onDelete('cascade');
+            $table->foreignId('pet_id')->constrained('dogs', 'pet_id')->onDelete('cascade');
             $table->foreignId('service_id')->constrained()->onDelete('cascade');
-            $table->dateTime('completed')->nullable();
+            $table->dateTime('scheduled_start')->nullable();
+            $table->dateTime('completed_at')->nullable();
+            $table->string('completed_by')->nullable()->constrained('employees', 'homebase_user_id')->onDelete('cascade');
             $table->timestamps();
+
+            $table->index(['service_id', 'pet_id']);
+            $table->index(['service_id', 'scheduled_start']);
         });
-        DB::update('ALTER TABLE dog_service AUTO_INCREMENT = 1000');
+        DB::update('ALTER TABLE dog_services AUTO_INCREMENT = 1000');
     }
 
     /**
@@ -27,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('dog_service');
+        Schema::dropIfExists('dog_services');
     }
 };

@@ -14,8 +14,12 @@ return new class extends Migration
     {
         Schema::create('services', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('code');
+            $table->integer('dd_id')->unique()->nullable();
+            $table->string('name')->nullable();
+            $table->string('category')->index()->nullable();
+            $table->string('code')->nullable();
+            $table->integer('duration')->default(45000); // Full day
+            $table->tinyInteger('is_active')->default(true);
         });
         DB::update('ALTER TABLE services AUTO_INCREMENT = 1000');
     }

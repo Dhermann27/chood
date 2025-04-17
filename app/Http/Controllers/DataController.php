@@ -21,13 +21,11 @@ class DataController extends Controller
     {
         $dogs = $this->getDogsByCabin();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
-        $outhouseDogs = Dog::whereNull('cabin_id')->orderBy('firstname')->get(); // TODO: Unnecessary with unassigned dogs?
         $new_checksum = md5($dogs->toJson() . json_encode($statuses));
         if ($checksum !== $new_checksum) {
             $response = [
                 'dogs' => $dogs,
                 'statuses' => $statuses,
-                'outhouseDogs' => $outhouseDogs,
                 'checksum' => $new_checksum,
             ];
 

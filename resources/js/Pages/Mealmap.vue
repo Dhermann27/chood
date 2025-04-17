@@ -19,7 +19,8 @@ const currentLoadingIndex = ref(0);
 const cardHeight = computed(() => 800 / Math.min(Math.max(dogs.value.length, 3), props.dogsPerPage));
 
 const handleImageLoaded = () => {
-    while (++currentLoadingIndex.value < dogs.value?.length) {
+    currentLoadingIndex.value++;
+    for (; currentLoadingIndex.value < dogs.value.length; currentLoadingIndex.value++) {
         if (dogs.value[currentLoadingIndex.value].photoUri) {
             break;
         }

@@ -7,14 +7,12 @@ import {ControlSchemes} from "@/controlSchemes.js";
 
 const props = defineProps({
     photoUri: String,
-    cabins: Array,
-    services: Array
+    cabins: Array
 });
 const dogs = ref([]);
 const statuses = ref({});
-const outhouseDogs = ref([]);
 const localChecksum = ref('');
-const controls = ref('none' );
+const controls = ref(ControlSchemes.NONE);
 let refreshInterval;
 
 async function updateData() {
@@ -23,7 +21,6 @@ async function updateData() {
     if (response && localChecksum.value !== response.checksum) {
         dogs.value = response.dogs;
         statuses.value = response.statuses;
-        outhouseDogs.value = response.outhouseDogs;
         localChecksum.value = response.checksum;
     }
 }
@@ -48,8 +45,8 @@ onBeforeUnmount(() => {
     <Head title="Fullmap"/>
     <main class="w-full h-full">
         <div class="choodmap items-center justify-center p-1">
-            <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :outhouse-dogs="outhouseDogs" :services="services"
-                 :photoUri="photoUri" :controls="controls" :maxlength="8" :card-width="96" :card-height="117"/>
+            <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :photoUri="photoUri" :controls="controls"
+                 :maxlength="8" :card-width="96" :card-height="117"/>
         </div>
     </main>
 </template>

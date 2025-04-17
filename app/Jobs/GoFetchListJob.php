@@ -50,63 +50,72 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         ];
         $output = $this->fetchDataService->fetchData(config('services.dd.uris.inHouseList'), $payload)
             ->getData(true);
-        if (!isset($output['data']) || !is_array($output['data']) || count($output['data']) == 0) {
+        if (!isset($output['data']) || !is_array($output['data'])) { // Empty list depressing, but not an error
             throw new Exception("No data found: " . $output);
         }
-        $data = $output['data'][0];
-        $columns = collect($data['columns'])->pluck('index', 'filterKey');
 
-        // Delete removed dogs
-        $newIds = collect($data['rows'])->pluck(1)->toArray();
-        Dog::whereNotIn('pet_id', $newIds)->whereNotNull('pet_id')->delete();
+        if (count($output['data']) > 0) {
+            $data = $output['data'][0];
+            $columns = collect($data['columns'])->pluck('index', 'filterKey');
 
-        $cabins = Cabin::all()->pluck('id', 'cabinName');
-        $services = Service::all()->pluck('id', 'code');
+            // Delete removed dogs
+            $serviceIds = collect($data['rows'])->pluck(1)->toArray();
+            Dog::whereNotIn('pet_id', $serviceIds)->whereNotNull('pet_id')->delete();
 
-        foreach ($data['rows'] as $row) {
-            $updateValues = $this->getFilteredValues($row, $columns, $cabins);
-            $dog = Dog::whereRaw('MATCH(firstname) AGAINST (? IN BOOLEAN MODE) AND MATCH(lastname) AGAINST (? IN BOOLEAN MODE)',
-                [$updateValues['firstname'], $updateValues['lastname']]);
-            $dog = $dog->first();
-            if ($dog) {
-                $dog->update(array_merge($updateValues, ['pet_id' => $row[$columns['petId']]]));
-            } else {
-                $dog = Dog::updateOrCreate(['pet_id' => $row[$columns['petId']]], $updateValues);
-            }
+            $cabins = Cabin::all()->pluck('id', 'cabinName');
+            $services = Service::all();
+            $serviceMap = $services->pluck('id', 'code');
+            $specialServiceIds = $services->whereIn('category', config('services.dd.special_service_cats'))
+                ->pluck('id')->toArray();
 
-            $existingIds = DogService::where('dog_id', $dog->id)->pluck('service_id')->toArray();
-            $newCodes = explode(',', $row[$columns['serviceCode']]);
-            $newIds = [];
-            foreach ($newCodes as $code) {
-                if ($services->has($code)) {
-                    $newIds[] = $services[$code]; // Map code to ID
+            foreach ($data['rows'] as $row) {
+                $updateValues = $this->getFilteredValues($row, $columns, $cabins);
+                $dog = Dog::whereRaw('MATCH(firstname) AGAINST (? IN BOOLEAN MODE) AND MATCH(lastname) AGAINST (? IN BOOLEAN MODE)',
+                    [$updateValues['firstname'], $updateValues['lastname']]);
+                $dog = $dog->first();
+                if ($dog) {
+                    $dog->update(array_merge($updateValues, ['pet_id' => $row[$columns['petId']]]));
+                } else {
+                    $dog = Dog::updateOrCreate(['pet_id' => $row[$columns['petId']]], $updateValues);
                 }
-            }
-            $idsToDelete = array_diff($existingIds, $newIds);
-            if (count($idsToDelete) > 0) {
-                DogService::where('dog_id', $dog->id)->whereIn('service_id', $idsToDelete)->delete();
-            }
 
-            foreach ($newIds as $serviceId) {
-                DogService::updateOrCreate(['dog_id' => $dog->id, 'service_id' => $serviceId]);
-            }
-
-            GoFetchDogJob::dispatch($dog->pet_id);
-            if ($row[$columns['feedingAttributeCount']] > 0) {
-                GoFetchFeedingJob::dispatch($dog->pet_id, $dog->accountId);
-            } else {
-                Feeding::where('pet_id', $dog->pet_id)->delete();
-            }
-            if ($row[$columns['medicationAttributeCount']] > 0 ||
+                GoFetchDogJob::dispatch($dog->pet_id);
+                if ($row[$columns['feedingAttributeCount']] > 0) {
+                    GoFetchFeedingJob::dispatch($dog->pet_id, $dog->accountId);
+                } else {
+                    Feeding::where('pet_id', $dog->pet_id)->delete();
+                }
+                if ($row[$columns['medicationAttributeCount']] > 0 ||
                     $row[$columns['medicalConditionsAttributeCount']] > 0) {
-                GoFetchMedicationJob::dispatch($dog->pet_id, $dog->accountId);
-            } else {
-                Medication::where('pet_id', $dog->pet_id)->delete();
-            }
-            if ($row[$columns['allergiesAttributeCount']] > 0) {
-                GoFetchAllergyJob::dispatch($dog->pet_id, $dog->accountId);
-            } else {
-                Allergy::where('pet_id', $dog->pet_id)->delete();
+                    GoFetchMedicationJob::dispatch($dog->pet_id, $dog->accountId);
+                } else {
+                    Medication::where('pet_id', $dog->pet_id)->delete();
+                }
+                if ($row[$columns['allergiesAttributeCount']] > 0) {
+                    GoFetchAllergyJob::dispatch($dog->pet_id, $dog->accountId);
+                } else {
+                    Allergy::where('pet_id', $dog->pet_id)->delete();
+                }
+
+
+                $serviceCodes = array_map('trim', explode(',', $row[$columns['serviceCode']]));
+                $serviceIds = [];
+                foreach ($serviceCodes as $code) {
+                    if ($serviceMap->has($code)) {
+                        $serviceIds[] = $serviceMap[$code]; // Map code to ID
+                    } else {
+                        throw new Exception('Unknown service code: ' . $code);
+                    }
+                }
+                DogService::where('pet_id', $dog->pet_id)->whereNotIn('service_id', $serviceIds)->delete();
+
+                foreach ($serviceIds as $serviceId) {
+                    DogService::firstOrCreate(['pet_id' => $dog->pet_id, 'service_id' => $serviceId]);
+                }
+                if (array_intersect($serviceIds, $specialServiceIds)) {
+                    GoFetchBookingJob::dispatch($row[$columns['bookingId']]);
+                }
+
             }
         }
     }

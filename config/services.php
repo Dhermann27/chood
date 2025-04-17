@@ -38,9 +38,10 @@ return [
     'dd' => [
         'uris' => [
             'base' => env('BASE_URI'),
-            'allergy' => env('BASE_URI') . env('ALLERGY_URI'),
             'auth' => env('BASE_URI') . env('AUTH_URI'),
             'inHouseList' => env('BASE_URI') . env('IN_HOUSE_LIST_URI'),
+            'allergy' => env('BASE_URI') . env('ALLERGY_URI'),
+            'booking' => env('BASE_URI') . env('BOOKING_URI'),
             'card' => env('BASE_URI') . env('CARD_URI'),
             'feeding' => env('BASE_URI') . env('FEEDING_URI'),
             'med' => env('BASE_URI') . env('MED_URI'),
@@ -52,11 +53,15 @@ return [
                 'packages' => env('BASE_URI') . env('REPORT_URI') . env('PACKAGES_SUFFIX'),
                 'services' => env('BASE_URI') . env('REPORT_URI') . env('SERVICES_SUFFIX'),
             ],
+            'servicelist' => env('BASE_URI') . env('SERVICELIST_URI'),
 
         ],
+        'mealmap_dpp' => env('MEALMAP_DOGS_PER_PAGE'),
         'nodepath' => env('NODE_PATH'),
         'queue_delay' => env('QUEUE_DELAY'),
-        'mealmap_dpp' => env('MEALMAP_DOGS_PER_PAGE'),
+        'special_service_cats' => array_map('trim', explode(',', env('SPECIAL_SERVICE_CATEGORIES'))),
+        'bath_service_cats' => array_map('trim', explode(',', env('BATH_SERVICE_CATEGORIES'))),
+        'fsg_service_cats' => array_map('trim', explode(',', env('FSG_SERVICE_CATEGORIES'))),
         'yards_to_open' => env('YARDS_TO_OPEN'),
         'username' => env('DD_USERNAME'),
         'password' => env('DD_PASSWORD'),

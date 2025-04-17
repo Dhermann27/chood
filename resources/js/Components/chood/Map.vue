@@ -1,5 +1,5 @@
 <script setup>
-import {computed, ref} from "vue";
+import {computed, ref, watch} from "vue";
 import axios from 'axios';
 
 import DogCard from "@/Components/chood/DogCard.vue";
@@ -11,8 +11,6 @@ const props = defineProps({
     cabins: Array,
     statuses: Object,
     dogs: Object,
-    services: Array,
-    outhouseDogs: Array,
     controls: ControlSchemes,
     maxlength: Number,
     cardWidth: Number,
@@ -25,9 +23,8 @@ const assignment = ref({
     lastname: '',
     dogs: [],
     cabin_id: null,
-    services: []
 });
-const cabins = ref(props.cabins); // Why?
+const cabins = ref(props.cabins);
 const errorMessages = ref([]);
 const showModal = ref(false);
 const modalType = ref('add'); // 'add' or 'edit'
@@ -40,15 +37,31 @@ const emit = defineEmits(['cabinClicked']);
 const cabinKeys = computed(() => {
     return Object.keys(props.dogs).filter(cabinId => cabinId !== 'unassigned' && props.dogs[cabinId].length > 0);
 });
+const getCurrentCabinKey = () => {
+    if (cabinKeys.value && currentLoadingIndex.value <= cabinKeys.value.length) {
+        return parseInt(cabinKeys.value[currentLoadingIndex.value]);
+    } else {
+        if (!cabinKeys.value) {
+            console.warn('cabinKeys.value false');
+        } else {
+            console.warn('Index out of range', cabinKeys.value.length, currentLoadingIndex.value);
+        }
+        return null;
+    }
+};
 
 const handleImageLoaded = () => {
-    while (++currentLoadingIndex.value < cabinKeys.value?.length) {
-        const dogIndex = parseInt(cabinKeys.value[currentLoadingIndex.value], 10);
-        if (props.dogs[dogIndex][0].photoUri) {
+    currentLoadingIndex.value++;
+    for (; currentLoadingIndex.value < cabinKeys.value.length; currentLoadingIndex.value++) {
+        if (props.dogs[cabinKeys.value[currentLoadingIndex.value]]?.some(dog => dog.photoUri)) {
             break;
         }
     }
-};
+}
+
+watch(() => props.dogs, () => {
+    currentLoadingIndex.value = 0;
+});
 
 const updateIsNewDog = (value) => {
     isNewDog.value = value;
@@ -63,7 +76,6 @@ function openModal(type, cabin) {
             assignment.value.id = props.dogs[cabin.id][0].id;
             assignment.value.firstname = props.dogs[cabin.id][0].firstname;
             assignment.value.lastname = props.dogs[cabin.id][0].lastname;
-            assignment.value.services = props.dogs[cabin.id][0].services;
         } else {
             isNewDog.value = false;
             assignment.value.dogs = props.dogs[cabin.id];
@@ -75,7 +87,7 @@ function openModal(type, cabin) {
 
 function closeModal() {
     showModal.value = false;
-    assignment.value = {id: null, firstname: '', lastname: '', dogs: [], cabin_id: null, services: []};
+    assignment.value = {id: null, firstname: '', lastname: '', dogs: [], cabin_id: null};
 }
 
 async function submitForm() {
@@ -94,11 +106,10 @@ async function submitForm() {
                 lastname: assignment.value.lastname,
                 dogs: assignment.value.dogs,
                 cabin_id: assignment.value.cabin_id,
-                service_ids: assignment.value.services,
             },
         });
 
-        assignment.value = {id: null, firstname: '', lastname: '', dogs: [], cabin_id: null, services: []};
+        assignment.value = {id: null, firstname: '', lastname: '', dogs: [], cabin_id: null};
         closeModal();
     } catch (error) {
         if (error.response && error.response.status === 419) {
@@ -184,7 +195,7 @@ const handleClick = (cabin) => {
     >
         <div v-if="props.dogs[cabin.id] && props.dogs[cabin.id].length > 0" class="h-full w-full relative">
             <DogCard :dogs="props.dogs[cabin.id]" :photoUri="photoUri" :maxlength="maxlength" :card-height="cardHeight"
-                     :shouldLoad="cabin.id === parseInt(cabinKeys[currentLoadingIndex], 10)"
+                     :shouldLoad="cabin.id === getCurrentCabinKey()"
                      @imageLoaded="handleImageLoaded"/>
             <div v-if="controls === ControlSchemes.MODAL && props.dogs[cabin.id][0].is_inhouse === 0"
                  class="absolute inset-y-0 left-0 flex flex-col justify-center py-1">
@@ -213,7 +224,7 @@ const handleClick = (cabin) => {
     </div>
 
     <AssignmentModal v-if="controls === ControlSchemes.MODAL && showModal"
-                     :modalType="modalType" :cabins="cabins" :outhouseDogs="outhouseDogs" :services="services"
-                     :assignment="assignment" :errorMessages="errorMessages" :photoUri="photoUri" :is-new-dog="isNewDog"
+                     :modalType="modalType" :cabins="cabins" :dogs="props.dogs['unassigned']" :assignment="assignment"
+                     :errorMessages="errorMessages" :photoUri="photoUri" :is-new-dog="isNewDog"
                      @closeModal="showModal = false" @submitForm="submitForm" @updateIsNewDog="updateIsNewDog"/>
 </template>

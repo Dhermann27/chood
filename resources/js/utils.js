@@ -24,7 +24,6 @@ export async function fetchMapData(uri, checksum) {
             return {
                 dogs: response.data.dogs,
                 statuses: response.data.statuses,
-                outhouseDogs: response.data.outhouseDogs,
                 checksum: response.data.checksum,
             }
         }

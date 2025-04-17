@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Dog extends Model
 {
@@ -17,12 +18,11 @@ class Dog extends Model
 
     protected $casts = ['checkin' => 'datetime', 'checkout' => 'datetime'];
 
-    protected $appends = ['size_letter', 'left_icons'];
+    protected $appends = ['left_icons', 'right_icons'];
 
-    public function getSizeLetterAttribute()
+    public function getSizeLetter()
     {
-        if ($this->weight == null) return '?'; // TODO: Remove when icon is conditional
-        else if ($this->weight > 40) return 'L';
+        if ($this->weight > 40) return 'L';
         else if ($this->weight >= 30) return 'LS';
         else if ($this->weight >= 15) return 'S';
         else if ($this->weight >= 10) return 'ST';
@@ -43,6 +43,29 @@ class Dog extends Model
 
         return $icons;
     }
+
+    public function getRightIconsAttribute()
+    {
+        $icons = [];
+
+        if ($this->weight) {
+            $icons[] = ['icon' => 'weight-hanging', 'text' => $this->getSizeLetter()];
+        }
+
+        if ($this->dogServices) {
+            foreach ($this->dogServices as $dogService) {
+                if (in_array($dogService->service->category, config('services.dd.bath_service_cats')) &&
+                    !array_search('droplet', array_column($icons, 'icon'))) {
+                    $icons[] = ['icon' => 'droplet', 'text' => substr(Carbon::parse($dogService->scheduled_start)->format('ga'), 0, 2),
+                        'transform' => 'grow-1', 'start' => $dogService->scheduled_start, 'checkout' => $this->checkout,
+                        'completed' => $dogService->completed_at != null];
+                }
+            }
+        }
+
+        return $icons;
+    }
+
     public function allergies(): HasMany
     {
         return $this->hasMany(Allergy::class, 'pet_id', 'pet_id');
@@ -63,8 +86,14 @@ class Dog extends Model
         return $this->hasMany(Medication::class, 'pet_id', 'pet_id');
     }
 
-    public function services(): BelongsToMany
+    public function dogServices(): HasMany
     {
-        return $this->belongsToMany(Service::class, 'dog_service', 'dog_id', 'service_id');
+        return $this->hasMany(DogService::class, 'pet_id', 'pet_id');
     }
+
+    public function services(): HasManyThrough
+    {
+        return $this->hasManyThrough(Service::class, DogService::class, 'pet_id', 'id', 'pet_id', 'service_id');
+    }
+
 }
