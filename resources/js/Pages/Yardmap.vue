@@ -119,7 +119,7 @@ onBeforeUnmount(() => {
             />
             <div ref="chyron" :style="chyronStyle">
                 <span v-for="assignment in assignments" class="pe-10">
-                    {{ assignment.yard_number === 1 ? 'Small' : 'Large' }}:
+                    {{ assignment.yard_number === 0 ? 'Small' : 'Large' }}:
                     {{ assignment.employee?.first_name ?? 'None' }}
                 </span>
                 <span v-if="nextBreak" class="pe-10">

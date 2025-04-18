@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('homebase_user_id')->nullable();
             $table->text('description')->nullable();
             $table->timestamps();
+
+            $table->index('start_time', 'yard_number');
         });
         DB::update('ALTER TABLE yard_assignments AUTO_INCREMENT = 1000');
     }

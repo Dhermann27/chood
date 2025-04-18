@@ -343,7 +343,7 @@ class GoFetchShiftsJob implements ShouldQueue
                         $this->assignEmployee($j, $startOfHour, $employee, $shifts, $lastYard);
                     } else {
                         // Nobody wants to work these days
-                        YardAssignment::where('yard_number', $j + 1)
+                        YardAssignment::where('yard_number', $j)
                             ->where('start_time', $startOfHour)
                             ->update(['homebase_user_id' => null]);
                     }
@@ -367,7 +367,7 @@ class GoFetchShiftsJob implements ShouldQueue
      */
     public function assignEmployee(int $j, Carbon $startHour, $employee, mixed &$shifts, array &$lastYard): void
     {
-        YardAssignment::where('yard_number', $j + 1)
+        YardAssignment::where('yard_number', $j)
             ->where('start_time', $startHour->format('H:i:s'))
             ->update(['homebase_user_id' => $employee->user_id]);
 

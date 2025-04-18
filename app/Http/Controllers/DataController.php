@@ -8,13 +8,18 @@ use App\Models\Employee;
 use App\Models\YardAssignment;
 use App\Traits\ChoodTrait;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Validation\ValidationException;
 use stdClass;
 
 class DataController extends Controller
 {
+    const BREAK_COLUMNS = ['next_first_break', 'next_lunch_break', 'next_second_break'];
     use ChoodTrait;
 
     function fullmap(string $checksum = null): JsonResponse
@@ -50,7 +55,19 @@ class DataController extends Controller
             });
         });
 
-        $employees = Employee::whereNotNull('next_first_break')->orderBy('first_name')->get();
+        $employees = Employee::whereNotNull('next_first_break')->orderBy('first_name')->get()
+            ->map(function ($employee) {
+                if ($employee->next_first_break) {
+                    $employee->next_first_break = Carbon::parse($employee->next_first_break)->format('h:ia');
+                }
+                if ($employee->next_lunch_break) {
+                    $employee->next_lunch_break = Carbon::parse($employee->next_lunch_break)->format('h:ia');
+                }
+                if ($employee->next_second_break) {
+                    $employee->next_second_break = Carbon::parse($employee->next_second_break)->format('h:ia');
+                }
+                return $employee;
+            });
         $dogs = Dog::whereHas('feedings', function ($query) {
             $query->whereRaw('DATE(feedings.modified_at) >= DATE(dogs.checkin)');
         })->orWhereHas('medications', function ($query) {
@@ -66,7 +83,7 @@ class DataController extends Controller
 
             $nextBreak = new stdClass();
             $nextBreak->first_name = 'Everyone';
-            $nextBreak->next_first_break = '10:00:00';
+            $nextBreak->next_first_break = '10:00am';
             $employees->unshift($nextBreak);
         }
 
@@ -98,6 +115,86 @@ class DataController extends Controller
         }
         return Response::json(false);
 
+    }
+
+    function assignYard(Request $request): JsonResponse
+    {
+
+        try {
+            $validatedData = $request->validate([
+                'hour' => 'required|exists:yard_assignments,start_time',
+                'yard' => 'required|exists:yard_assignments,yard_number',
+                'homebase_user_id' => 'nullable|exists:employees,homebase_user_id',
+            ]);
+
+            $yas = YardAssignment::where('start_time', $validatedData['hour'])->get();
+
+            if ($validatedData['homebase_user_id']) {
+                $ya = $yas->firstWhere('yard_number', 99);
+                $floaters = explode(', ', $ya->description);
+                $employee = Employee::find($validatedData['homebase_user_id']);
+                $floaters = array_filter($floaters, function ($name) use ($employee) {
+                    return trim($name) !== $employee->first_name;
+                });
+                $ya->update(['description' => count($floaters) > 0 ? implode(', ', $floaters) : null]);
+            }
+
+            $yas->firstWhere('yard_number', $validatedData['yard'])
+                ->update(['homebase_user_id' => $validatedData['homebase_user_id']]);
+
+            return response()->json([
+                'message' => 'Joy.',
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'errors' => $e->errors(),
+                'message' => 'There was a validation error.',
+            ], 422);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while creating the assignment.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    function assignBreak(Request $request): JsonResponse
+    {
+        try {
+            $validatedData = $request->validate([
+                'next_first_break' => 'nullable|date_format:h:ia',
+                'next_lunch_break' => 'nullable|date_format:h:ia',
+                'next_second_break' => 'nullable|date_format:h:ia',
+                'homebase_user_id' => 'nullable|exists:employees,homebase_user_id',
+            ]);
+
+            foreach (self::BREAK_COLUMNS as $field) {
+                if (!empty($validatedData[$field])) {
+                    $validatedData[$field] = Carbon::createFromFormat('h:ia', $validatedData[$field])->format('H:i:s');
+                }
+            }
+
+            Employee::findOrFail($validatedData['homebase_user_id'])->update(
+                Arr::only($validatedData, self::BREAK_COLUMNS)
+            );
+
+            return response()->json([
+                'message' => 'Happy.',
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'errors' => $e->errors(),
+                'message' => 'There was a validation error.',
+            ], 422);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while creating the assignment.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     function yardmap(string $size, string $checksum = null): JsonResponse

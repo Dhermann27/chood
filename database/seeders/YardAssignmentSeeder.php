@@ -15,7 +15,7 @@ class YardAssignmentSeeder extends Seeder
     {
         $startTime = Carbon::createFromTime(config('services.yardAssignments.startHourOfDay'), 0);
 
-        for ($i = 1; $i <= config('services.yardAssignments.numberOfYards'); $i++) {
+        for ($i = 0; $i < config('services.yardAssignments.numberOfYards'); $i++) {
             for ($j = 0; $j < config('services.yardAssignments.numberOfHours'); $j++) {
                 DB::table('yard_assignments')->insert([
                     'yard_number' => $i,
