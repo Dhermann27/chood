@@ -36,8 +36,7 @@ let rotationInterval = null;
 const emit = defineEmits(['imageLoaded']);
 
 const isBoarder = (dog) => {
-    if (dog.services && dog.services.length > 0) return dog.services.some(service => service.id === 1000 || service.id === 1001);
-    if (dog.service_ids) return dog.service_ids.includes('1000') || dog.service_ids.includes('1001');
+    if (dog.dog_services && dog.dog_services.length > 0) return dog.dog_services.some(service => service.service.name.includes('Boarding'));
     return false;
 }
 
@@ -178,7 +177,7 @@ onUnmounted(() => {
                          class="relative flex items-center justify-center mt-2">
 
                         <font-awesome-icon :icon="['fas', iconData.icon]" :transform="iconData.transform"
-                                           :class="['text-2xl icon-with-outline', getTimeColor(iconData)]" />
+                                           :class="['text-2xl icon-with-outline', getTimeColor(iconData)]"/>
 
                         <span v-if="iconData.text"
                               class="absolute inset-0 flex items-center justify-center text-black font-bold text-sm pointer-events-none">
