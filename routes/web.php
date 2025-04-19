@@ -27,6 +27,7 @@ Route::get('/fullmap{i?}', [MapController::class, 'fullmap'])->where('i', '1|2|3
 Route::get('/rowmap{i}', [MapController::class, 'rowmap'])->where('i', 'first|mid|last');
 Route::get('/yardmap{i}', [MapController::class, 'yardmap'])->where('i', 'small|large');
 Route::get('/mealmap', [MapController::class, 'mealmap']);
+Route::get('/groommap', [MapController::class, 'groommap']);
 
 
 Route::prefix('depositfinder')->group(function () {
@@ -54,6 +55,9 @@ Route::prefix('api')->group(function () {
         ->where('checksum', '[a-f0-9]{32}');
     Route::post('/mealmap/yard', [DataController::class, 'assignYard']);
     Route::post('/mealmap/break', [DataController::class, 'assignBreak']);
+
+    Route::get('/groommap/{checksum?}', [DataController::class, 'groommap'])
+        ->where('checksum', '[a-f0-9]{32}');
 
     Route::post('/dog', [AssignmentController::class, 'storeAssignment']);
     Route::put('/dog', [AssignmentController::class, 'updateAssignment']);

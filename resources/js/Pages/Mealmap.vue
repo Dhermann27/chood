@@ -1,4 +1,5 @@
 <script setup>
+import {Head} from '@inertiajs/vue3';
 import {computed, onBeforeUnmount, onMounted, ref, watchEffect} from "vue";
 import {formatTime} from "@/utils.js";
 import DogCard from "@/Components/chood/DogCard.vue";
@@ -150,6 +151,7 @@ onBeforeUnmount(() => {
 
 
 <template>
+    <Head title="Mealmap"/>
     <div class="h-full w-full flex flex-col items-center justify-center">
         <div class="w-full grid grid-cols-2 gap-4 h-full">
             <div class="flex flex-col ps-3 items-center divider pt-10">

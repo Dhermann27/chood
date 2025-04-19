@@ -56,16 +56,24 @@ trait ChoodTrait
         return $dogs->orderBy('firstname')->get();
     }
 
-    public function getGroomingDogsToday()
+    /**
+     * @return Collection
+     */
+    public function getGroomingDogsToday(): Collection
     {
         $specialServiceIds = Service::whereIn('category', config('services.dd.special_service_cats'))->pluck('id');
         $today = Carbon::today();
 
-        return Dog::whereHas('dogServices', function ($query) use ($specialServiceIds, $today) {
-            $query->whereDate('start', '<=', $today)
-                ->whereDate('end', '>=', $today)
-                ->whereIn('service_id', $specialServiceIds); // direct match
-        })->with('dogServices.service')->get(); // eager load
+        return Dog::select('dogs.*')->distinct()->join('dog_services', 'dog_services.pet_id', '=', 'dogs.pet_id')
+            ->whereIn('dog_services.service_id', $specialServiceIds)
+            ->whereDate('dog_services.scheduled_start', $today)
+            ->with(['dogServices' => function ($query) use ($specialServiceIds, $today) {
+                $query->whereIn('service_id', $specialServiceIds)
+                    ->whereDate('scheduled_start', $today)
+                    ->orderBy('scheduled_start');
+            }, 'dogServices.service',
+            ])->get()->sortBy(fn($dog) => optional($dog->dogServices->first())->scheduled_start)->values();
+
     }
 
 }

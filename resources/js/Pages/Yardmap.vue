@@ -78,7 +78,7 @@ async function updateData() {
                 await nextTick();
                 const computedChyron = window.getComputedStyle(chyron.value);
                 const pct = 1920 / getTextWidth(chyron.value.innerText, computedChyron.font);
-                if (pct < 1.05) chyronStyle.value.fontSize = (parseFloat(computedChyron.fontSize) * (pct - .09)) + 'px';
+                if (pct < 1.05) chyronStyle.value.fontSize = (parseFloat(computedChyron.fontSize) * (pct - .085)) + 'px';
             }
         }
     } catch (error) {

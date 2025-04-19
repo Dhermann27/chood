@@ -61,5 +61,12 @@ class MapController extends Controller
         ]);
     }
 
+    public function groommap(): Response
+    {
+        return Inertia::render('Groommap', [
+            'photoUri' => config('services.dd.uris.photo'),
+        ]);
+    }
+
 
 }

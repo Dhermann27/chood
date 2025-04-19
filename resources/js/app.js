@@ -11,7 +11,8 @@ import { fas, far } from '@awesome.me/kit-ed8e499057/icons';
 library.add(fas.faEdit, fas.faTrash, fas.faPlus, fas.faWeightHanging, fas.faSpinnerThird, fas.faBroom,
     fas.faCheckSquare, far.faSquare, fas.faBadgeCheck, fas.faRotateLeft, fas.faCowbellCirclePlus, fas.faClipboard,
     fas.faHouseCircleCheck, fas.faHouseChimneyBlank, fas.faBowlFood, fas.faPrescriptionBottlePill, fas.faHandDots,
-    fas.faNoteMedical, fas.faMars, fas.faVenus, fas.faDroplet, fas.faCircle);
+    fas.faNoteMedical, fas.faMars, fas.faVenus, fas.faDroplet, fas.faCircle, fas.faSoap, fas.faPumpSoap, fas.faWind,
+    fas.faBrush, fas.faTooth, fas.faEarListen, fas.faEye);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

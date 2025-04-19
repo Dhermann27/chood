@@ -251,4 +251,17 @@ class DataController extends Controller
         return Response::json(false);
 
     }
+
+    function groommap(string $checksum = null): JsonResponse
+    {
+        $dogs = $this->getGroomingDogsToday();
+        $new_checksum  = md5($dogs->toJson());
+        if ($checksum !== $new_checksum) {
+            return Response::json([
+                'dogs' => $dogs,
+                'checksum' => $new_checksum,
+            ]);
+        }
+        return Response::json(false);
+    }
 }

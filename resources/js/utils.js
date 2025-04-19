@@ -6,8 +6,11 @@ export function getTextWidth(text, font = '16px Arial') {
 }
 
 export function formatTime(time) {
-    if (time && typeof time === 'string' && time.includes(':')) {
-        let [hours, minutes] = time.split(":");
+    if (time && typeof time === 'string') {
+        // Extract time part if the string contains a date
+        const timeString = time.includes(' ') ? time.split(' ')[1] : time;
+
+        let [hours, minutes] = timeString.split(":");
         hours = parseInt(hours, 10);
         const suffix = hours >= 12 ? "pm" : "am";
         hours = hours % 12 || 12; // Convert to 12-hour format (0 becomes 12)
