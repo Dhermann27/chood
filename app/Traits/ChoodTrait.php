@@ -66,14 +66,13 @@ trait ChoodTrait
 
         return Dog::select('dogs.*')->distinct()->join('dog_services', 'dog_services.pet_id', '=', 'dogs.pet_id')
             ->whereIn('dog_services.service_id', $specialServiceIds)
-            ->whereDate('dog_services.scheduled_start', $today)
+            ->whereDate('dog_services.scheduled_start', config('services.dd.sandbox_service_condition'), $today)
             ->with(['dogServices' => function ($query) use ($specialServiceIds, $today) {
                 $query->whereIn('service_id', $specialServiceIds)
-                    ->whereDate('scheduled_start', $today)
+                    ->whereDate('scheduled_start', config('services.dd.sandbox_service_condition'), $today)
                     ->orderBy('scheduled_start');
             }, 'dogServices.service',
             ])->get()->sortBy(fn($dog) => optional($dog->dogServices->first())->scheduled_start)->values();
-
     }
 
 }

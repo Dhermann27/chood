@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\Rotation;
 use App\Traits\ChoodTrait;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -58,6 +59,7 @@ class MapController extends Controller
             'dogsPerPage' => intval(config('services.dd.mealmap_dpp')),
             'photoUri' => config('services.dd.uris.photo'),
             'employees' => $groupedEmployees,
+            'rotations' => Rotation::orderBy('start_time')->get(),
         ]);
     }
 

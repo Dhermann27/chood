@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\Employee;
-use App\Models\YardAssignment;
+use App\Models\EmployeeYardRotation;
+use App\Models\RotationYardView;
+use App\Models\Yard;
 use App\Traits\ChoodTrait;
 use Carbon\Carbon;
 use Exception;
@@ -13,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Validation\ValidationException;
 use stdClass;
@@ -41,19 +44,15 @@ class DataController extends Controller
 
     function mealmap(string $checksum = null): JsonResponse
     {
-        $assignments = YardAssignment::with('employee')->where(function ($query) {
-            $isSunday = Carbon::now()->isSunday();
-            if ($isSunday) {
-                $query->whereNotBetween('start_time', ['10:00:00', '14:00:00']);
-            }
-        })->get()->groupBy('start_time')->map(function ($hourAssignments) {
-            return $hourAssignments->map(function ($assignment) {
-                if ($assignment->yard_number == 99) {
-                    return $assignment->description;
-                }
-                return $assignment->employee;
+        $yards = Yard::orderBy('display_order')->get();
+
+        $assignments = RotationYardView::orderBy('rotation_id')->orderBy('display_order')->get()
+            ->groupBy('rotation_id')->map(function ($rotationGroup) {
+                return $rotationGroup->groupBy('yard_id')->map(function ($yardGroup) {
+                    return $yardGroup->pluck('homebase_user_id')->filter()
+                        ->map(fn($id) => ['homebase_user_id' => $id])->values();
+                });
             });
-        });
 
         $employees = Employee::whereNotNull('next_first_break')->orderBy('first_name')->get()
             ->map(function ($employee) {
@@ -72,7 +71,7 @@ class DataController extends Controller
             $query->whereRaw('DATE(feedings.modified_at) >= DATE(dogs.checkin)');
         })->orWhereHas('medications', function ($query) {
             $query->whereRaw('DATE(medications.modified_at) >= DATE(dogs.checkin)');
-        })->orWhereHas('allergies')->with(['feedings', 'medications', 'allergies', 'cabin', 'services'])
+        })->orWhereHas('allergies')->with(['feedings', 'medications', 'allergies', 'cabin', 'dogServices.service'])
             ->orderBy('cabin_id')->orderBy('firstname')->get();
 
 
@@ -101,13 +100,14 @@ class DataController extends Controller
             });
             return $dogData->toArray();
         });
-        $new_checksum = md5($assignments . $employees . $md5Dogs);
+        $new_checksum = md5(json_encode($assignments) . $employees . $md5Dogs);
         if ($checksum !== $new_checksum) {
             $response = [
                 'breaks' => $employees,
                 'dogs' => $dogs,
                 'fohStaff' => Cache::get('foh_staff'),
-                'hours' => $assignments,
+                'assignments' => $assignments,
+                'yards' => $yards,
                 'checksum' => $new_checksum,
             ];
 
@@ -119,28 +119,40 @@ class DataController extends Controller
 
     function assignYard(Request $request): JsonResponse
     {
-
         try {
             $validatedData = $request->validate([
-                'hour' => 'required|exists:yard_assignments,start_time',
-                'yard' => 'required|exists:yard_assignments,yard_number',
-                'homebase_user_id' => 'nullable|exists:employees,homebase_user_id',
+                'rotation_id' => 'required|exists:rotations,id',
+                'yard_id' => 'required|exists:yards,id',
+                'homebase_user_id' => 'array',
+                'homebase_user_id.*' => 'nullable|exists:employees,homebase_user_id',
             ]);
 
-            $yas = YardAssignment::where('start_time', $validatedData['hour'])->get();
+            $homebaseUserIds = $validatedData['homebase_user_id'] ?? [];
 
-            if ($validatedData['homebase_user_id']) {
-                $ya = $yas->firstWhere('yard_number', 99);
-                $floaters = explode(', ', $ya->description);
-                $employee = Employee::find($validatedData['homebase_user_id']);
-                $floaters = array_filter($floaters, function ($name) use ($employee) {
-                    return trim($name) !== $employee->first_name;
-                });
-                $ya->update(['description' => count($floaters) > 0 ? implode(', ', $floaters) : null]);
+            if (!empty($homebaseUserIds)) {
+                EmployeeYardRotation::where('rotation_id', $validatedData['rotation_id'])
+                    ->whereNot('yard_id', $validatedData['yard_id'])
+                    ->whereIn('homebase_user_id', $homebaseUserIds)->delete();
+
+                EmployeeYardRotation::where('rotation_id', $validatedData['rotation_id'])
+                    ->where('yard_id', $validatedData['yard_id'])
+                    ->whereNotIn('homebase_user_id', $homebaseUserIds)->delete();
+
+                $rows = collect($homebaseUserIds)->map(function ($userId) use ($validatedData) {
+                    return [
+                        'rotation_id' => $validatedData['rotation_id'],
+                        'yard_id' => $validatedData['yard_id'],
+                        'homebase_user_id' => $userId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                })->toArray();
+                DB::table('employee_yard_rotations')->insertOrIgnore($rows);
+            } else {
+                EmployeeYardRotation::where('rotation_id', $validatedData['rotation_id'])
+                    ->where('yard_id', $validatedData['yard_id'])->delete();
             }
 
-            $yas->firstWhere('yard_number', $validatedData['yard'])
-                ->update(['homebase_user_id' => $validatedData['homebase_user_id']]);
 
             return response()->json([
                 'message' => 'Joy.',
@@ -172,7 +184,8 @@ class DataController extends Controller
 
             foreach (self::BREAK_COLUMNS as $field) {
                 if (!empty($validatedData[$field])) {
-                    $validatedData[$field] = Carbon::createFromFormat('h:ia', $validatedData[$field])->format('H:i:s');
+                    $validatedData[$field] = Carbon::createFromFormat('h:ia', $validatedData[$field])
+                        ->format('H:i:s');
                 }
             }
 
@@ -201,17 +214,22 @@ class DataController extends Controller
     {
         $now = Carbon::now();
         $dogs = $this->getDogs(false, $size);
-        $assignments = YardAssignment::where('yard_number', '!=', '99')->where('start_time', '<=', $now)
-            ->where('end_time', '>=', $now)->orderBy('yard_number')->with('employee')->get();
+        $assignments = EmployeeYardRotation::join('rotations', 'employee_yard_rotations.rotation_id', '=', 'rotations.id')
+            ->join('yards', 'employee_yard_rotations.yard_id', '=', 'yards.id')
+            ->where('employee_yard_rotations.yard_id', '!=', 999)
+            ->whereTime('rotations.start_time', '<=', $now)
+            ->whereTime('rotations.end_time', '>=', $now)
+            ->orderBy('yards.display_order')->with('employee', 'rotation', 'yard')->get();
+
         if ($now->isSunday() && $now->hour < 12) {
             $nextBreak = new \stdClass();
             $nextBreak->first_name = 'Everyone';
             $nextBreak->next_break = '10:00:00';
             $nextLunch = null;
         } else {
-            $nextFirstBreak = Employee::whereNotNull('next_first_break')->where('next_first_break', '>=', $now)
+            $nextFirstBreak = Employee::whereNotNull('next_first_break')->whereTime('next_first_break', '>=', $now)
                 ->orderBy('next_first_break')->first();
-            $nextSecondBreak = Employee::whereNotNull('next_second_break')->where('next_second_break', '>=', $now)
+            $nextSecondBreak = Employee::whereNotNull('next_second_break')->whereTime('next_second_break', '>=', $now)
                 ->orderBy('next_second_break')->first();
             $nextBreak = null;
             if ($nextFirstBreak && $nextSecondBreak) {
@@ -231,7 +249,7 @@ class DataController extends Controller
                 $nextBreak->next_break = $nextSecondBreak->next_second_break;
             }
 
-            $nextLunch = Employee::whereNotNull('next_lunch_break')->where('next_lunch_break', '>=', $now)
+            $nextLunch = Employee::whereNotNull('next_lunch_break')->whereTime('next_lunch_break', '>=', $now)
                 ->orderBy('next_lunch_break')->first();
         }
 
@@ -255,7 +273,7 @@ class DataController extends Controller
     function groommap(string $checksum = null): JsonResponse
     {
         $dogs = $this->getGroomingDogsToday();
-        $new_checksum  = md5($dogs->toJson());
+        $new_checksum = md5($dogs->toJson());
         if ($checksum !== $new_checksum) {
             return Response::json([
                 'dogs' => $dogs,

@@ -62,6 +62,7 @@ return [
         'special_service_cats' => array_map('trim', explode(',', env('SPECIAL_SERVICE_CATEGORIES'))),
         'bath_service_cats' => array_map('trim', explode(',', env('BATH_SERVICE_CATEGORIES'))),
         'fsg_service_cats' => array_map('trim', explode(',', env('FSG_SERVICE_CATEGORIES'))),
+        'sandbox_service_condition' => env('SB_SERVICE_CONDITION', '='),
         'yards_to_open' => env('YARDS_TO_OPEN'),
         'username' => env('DD_USERNAME'),
         'password' => env('DD_PASSWORD'),
@@ -72,11 +73,5 @@ return [
     'homebase' => [
         'api_key' => env('HOMEBASE_API_KEY'),
         'loc_id' => env('HOMEBASE_LOCATION_ID'),
-    ],
-
-    'yardAssignments' => [
-        'numberOfYards' => 2,
-        'numberOfHours' => 10,
-        'startHourOfDay' => 8,
     ],
 ];

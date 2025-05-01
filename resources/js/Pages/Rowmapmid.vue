@@ -15,9 +15,12 @@ let refreshInterval;
 
 async function updateData() {
     const response = await fetchMapData(`/api/fullmap/`, localChecksum.value);
-
     if (response && localChecksum.value !== response.checksum) {
-        dogs.value = response.dogs;
+        dogs.value = Object.fromEntries(
+            Object.entries(response.dogs).filter(([cabinId]) =>
+                new Set(props.cabins.map(c => c.id)).has(Number(cabinId))
+            )
+        );
         statuses.value = response.statuses;
         localChecksum.value = response.checksum;
     }

@@ -1,4 +1,5 @@
 <script setup>
+import {Head} from '@inertiajs/vue3';
 import {onMounted, ref} from 'vue'
 import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
 import Map from "@/Components/chood/Map.vue";
@@ -134,10 +135,11 @@ onMounted(() => {
 </script>
 
 <template>
+    <Head title="Task Entry"/>
     <div class="flex flex-col items-center h-screen p-4">
         <template v-if="step === 1">
             <h1 class="text-lg font-semibold mb-4">Hi! Huaryoo?</h1>
-            <div class="grid grid-cols-4 gap-4 w-full max-h-[75vh] overflow-y-auto">
+            <div class="grid grid-cols-4 gap-4 w-full h-full overflow-y-auto">
                 <button
                     v-for="employee in employees"
                     :key="employee.id"

@@ -6,8 +6,13 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TaskController;
+use App\Jobs\GoFetchServiceListJob;
 use App\Jobs\Homebase\GoFetchEmployeesJob;
 use App\Jobs\Homebase\GoFetchShiftsJob;
+use App\Jobs\MarkCabinsForCleaningJob;
+use App\Models\Cabin;
+use App\Models\CleaningStatus;
+use App\Services\FetchDataService;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -69,28 +74,29 @@ Route::get('/current-time', function () {
     return DB::table('migrations')->select(DB::raw('NOW() AS now'))->first();
 });
 
-// TODO: REMOVE Testing only
-//Route::get('/markForCleaning', function () {
-//    $cabinIds = Cabin::inRandomOrder()->limit(12)->pluck('id');
-//
-//    // Use the factory to create 12 cleaning statuses
-//    foreach ($cabinIds as $cabinId) {
-//        CleaningStatus::factory()->create([
-//            'cabin_id' => $cabinId, // Assign each unique cabin ID
-//        ]);
-//    }
-//    return 'Cleaning finished';
-//});
-//Route::get('/markForCleaningJob', function () {
-//    MarkCabinsForCleaningJob::dispatchSync();
-//    return 'Cleaning jobbed';
-//});
-Route::get('/fetch', function () {
-//    GoFetchListJob::dispatchSync(new FetchDataService());
-    GoFetchEmployeesJob::dispatchSync();
-    GoFetchShiftsJob::dispatchSync();
-    return 'Jobs fetched';
-});
+if (app()->environment('local')) {
+    Route::get('/markForCleaning', function () {
+        $cabinIds = Cabin::inRandomOrder()->limit(12)->pluck('id');
+
+        // Use the factory to create 12 cleaning statuses
+        foreach ($cabinIds as $cabinId) {
+            CleaningStatus::factory()->create([
+                'cabin_id' => $cabinId, // Assign each unique cabin ID
+            ]);
+        }
+        return 'Rando cabins marked for cleaning';
+    });
+    Route::get('/markForCleaningJob', function () {
+        MarkCabinsForCleaningJob::dispatchSync();
+        return 'Cleaning jobbed';
+    });
+    Route::get('/fetch', function () {
+        GoFetchServiceListJob::dispatchSync(new FetchDataService());
+        GoFetchEmployeesJob::dispatchSync();
+        GoFetchShiftsJob::dispatchSync();
+        return 'Jobs fetched';
+    });
+}
 
 Route::get('/note', function () {
     return view('note');

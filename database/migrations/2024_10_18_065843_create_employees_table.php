@@ -12,8 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('employees', function (Blueprint $table) {
-            $table->string('homebase_user_id')->unique();
-            $table->index('homebase_user_id');
+            $table->unsignedBigInteger('homebase_user_id')->unique();
             $table->string('first_name');
             $table->string('last_name');
             $table->tinyInteger('is_working')->default('0');

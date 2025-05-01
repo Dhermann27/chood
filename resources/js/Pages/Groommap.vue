@@ -117,13 +117,13 @@ onBeforeUnmount(() => {
         <div class="text-3xl my-2 text-center">Today's Grooming Schedule</div>
         <div id="yardmap" class="items-center justify-center p-1" :style="yardGridStyle">
             <template v-for="(dog, index) in displayDogs" :id="dog.id">
-                <div class="rounded-tr-2xl rounded-br-2xl shadow-xl p-4"
+                <div class="rounded-tl-2xl rounded-bl-2xl shadow-xl py-4"
                      :style="{height: cardHeight + 'px', width: cardWidth + 'px'}">
                     <DogCard :dogs="[dog]" :photoUri="props.photoUri" :card-width="cardWidth" :card-height="cardHeight"
                              :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
                 </div>
                 <div
-                    class="bg-yellow-100 text-3xl rounded-tl-2xl rounded-bl-2xl shadow-inner p-4 h-full">
+                    class="bg-yellow-100 text-3xl rounded-tr-2xl rounded-br-2xl shadow-inner p-4 h-full">
                     <div>Checkout: {{ formatTime(dog.checkout) }}</div>
                     <div v-for="service in dog.dog_services" :key="service.id" class="my-5 overflow-y-hidden">
                         <div class="font-bold text-blue-700">{{ service.service.name }}</div>

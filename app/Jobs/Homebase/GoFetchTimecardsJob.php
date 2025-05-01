@@ -22,6 +22,19 @@ class GoFetchTimecardsJob implements ShouldQueue
     const TIMECARDS_URL_SUFFIX = '/timecards?start_date=TODAY&end_date=TODAY&date_filter=clock_in';
 
     /**
+     * Create a new job instance.
+     */
+    public function __construct()
+    {
+        $this->onQueue('high');
+    }
+    
+    public function shouldDispatch(): bool
+    {
+        return !app()->isDownForMaintenance();
+    }
+
+    /**
      * Execute the job.
      *
      * @return void

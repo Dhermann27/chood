@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('cleaning_status', function (Blueprint $table) {
             $table->foreignId('cabin_id')->unique()->constrained()->onDelete('cascade');
-            $table->string('homebase_user_id')->nullable();
+            $table->unsignedBigInteger('homebase_user_id')->nullable();
             $table->foreign('homebase_user_id')->references('homebase_user_id')->on('employees')
                 ->onDelete('set null');
             $table->enum('cleaning_type', ['daily', 'deep']);

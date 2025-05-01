@@ -16,7 +16,7 @@ class Dog extends Model
     protected $fillable = ['accountId', 'pet_id', 'firstname', 'lastname', 'gender', 'photoUri', 'weight', 'cabin_id',
         'is_inhouse', 'checkin', 'checkout'];
 
-    protected $casts = ['checkin' => 'datetime', 'checkout' => 'datetime'];
+    protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s'];
 
     protected $appends = ['left_icons', 'right_icons'];
 
@@ -55,12 +55,20 @@ class Dog extends Model
         if ($this->dogServices) {
             foreach ($this->dogServices as $dogService) {
                 $start = Carbon::parse($dogService->scheduled_start);
-                if (in_array($dogService->service->category, config('services.dd.bath_service_cats')) &&
-                    $start->isToday() &&
-                    !array_search('droplet', array_column($icons, 'icon'))) {
-                    $icons[] = ['icon' => 'droplet', 'text' => substr($start->format('ga'), 0, 2),
-                        'transform' => 'grow-1', 'start' => $dogService->scheduled_start, 'checkout' => $this->checkout,
-                        'completed' => $dogService->completed_at != null];
+                $today = Carbon::today();
+                if (config('services.dd.sandbox_service_condition') === '<=' ? $start->lessThanOrEqualTo($today)
+                    : $start->isSameDay($today)) {
+                    if (in_array($dogService->service->category, config('services.dd.bath_service_cats')) &&
+                        !array_search('droplet', array_column($icons, 'icon'))) {
+                        $icons[] = ['icon' => 'droplet', 'text' => substr($start->format('ga'), 0, 2),
+                            'transform' => 'grow-1', 'start' => $dogService->scheduled_start, 'checkout' => $this->checkout,
+                            'completed' => $dogService->completed_at != null];
+                    } elseif (in_array($dogService->service->category, config('services.dd.fsg_service_cats')) &&
+                        !array_search('sheep', array_column($icons, 'icon'))) {
+                        $icons[] = ['icon' => 'sheep', 'text' => substr($start->format('ga'), 0, 2),
+                            'transform' => 'grow-1 right-2', 'start' => $dogService->scheduled_start, 'checkout' => $this->checkout,
+                            'completed' => $dogService->completed_at != null];
+                    }
                 }
             }
         }
@@ -93,7 +101,7 @@ class Dog extends Model
         return $this->hasMany(DogService::class, 'pet_id', 'pet_id');
     }
 
-    public function services(): HasManyThrough
+    public function services(): HasManyThrough // Only use if no schedule information is needed
     {
         return $this->hasManyThrough(Service::class, DogService::class, 'pet_id', 'id', 'pet_id', 'service_id');
     }

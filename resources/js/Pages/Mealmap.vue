@@ -13,6 +13,7 @@ const props = defineProps({
     dogsPerPage: Number,
     photoUri: String,
     employees: Array,
+    rotations: Array,
 });
 
 const controls = ref(ControlSchemes.NONE);
@@ -20,7 +21,8 @@ const inputRefs = ref({});
 const breaks = ref([]);
 const dogs = ref([]);
 const fohStaff = ref('');
-const hours = ref([]);
+const assignments = ref({});
+const yards = ref([]);
 const localChecksum = ref('');
 let refreshInterval;
 const currentViewIndex = ref(0);
@@ -50,7 +52,8 @@ async function updateData() {
             breaks.value = {...response.data.breaks};
             dogs.value = response.data.dogs;
             fohStaff.value = response.data.fohStaff;
-            hours.value = {...response.data.hours};
+            assignments.value = {...response.data.assignments};
+            yards.value = response.data.yards;
             localChecksum.value = response.data.checksum;
         } else if (dogs.value.length > props.dogsPerPage) {
             const maxChunks = Math.ceil(dogs.value.length / props.dogsPerPage);
@@ -75,6 +78,7 @@ const progressBarStyle = computed(() => ({
     color: 'white',
 }));
 
+// Next three methods are all so Vue3 detects changes inside the nested objects
 function matchEmployeeInGroups(employee) {
     for (const group of props.employees) {
         const match = group.employees.find(e => e.homebase_user_id === employee.homebase_user_id);
@@ -84,37 +88,48 @@ function matchEmployeeInGroups(employee) {
 }
 
 function matchByHour() {
-    for (const hour in hours.value) {
-        hours.value[hour] = hours.value[hour].map(employee => {
-            if (!employee || !employee.homebase_user_id) return employee;
-            return matchEmployeeInGroups(employee) ?? employee;
-        })
+    for (const rotationId in assignments.value) {
+        for (const yardId in assignments.value[rotationId]) {
+            assignments.value[rotationId][yardId] = (assignments.value[rotationId][yardId] || []).map(employee => {
+                if (!employee || !employee.homebase_user_id) return employee;
+                return matchEmployeeInGroups(employee) ?? employee;
+            });
+        }
     }
 }
 
+
 watchEffect(() => {
-    if (props.employees.length && Object.keys(hours.value).length) matchByHour();
+    if (props.employees.length && Object.keys(assignments.value).length) matchByHour();
 });
 
-const handleYardChange = async (hour, yard, newEmployee) => {
-    const select = inputRefs.value[`multiselect-${hour}-${yard}`];
+const handleYardChange = async (rotationId, yardId) => {
+    const select = inputRefs.value[`multiselect-${rotationId}-${yardId}`];
+
+    if (!Array.isArray(assignments.value[rotationId]?.[yardId])) {
+        assignments.value[rotationId][yardId] = assignments.value[rotationId][yardId]
+            ? [assignments.value[rotationId][yardId]] : [];
+    }
+
     try {
         select.style.backgroundColor = 'gray';
+
         await axios.post('/api/mealmap/yard', {
-            hour: hour,
-            yard: yard,
-            homebase_user_id: newEmployee?.homebase_user_id || null,
+            rotation_id: rotationId,
+            yard_id: yardId,
+            homebase_user_id: assignments.value[rotationId][yardId].map(e => e.homebase_user_id),
         });
+
         select.style.backgroundColor = 'green';
     } catch (error) {
-        console.log('Error handling Yard Change ', error);
+        console.log('Error handling Yard Change', error);
         select.style.backgroundColor = 'red';
     }
+
     setTimeout(() => {
         select.style.backgroundColor = '';
     }, 5000);
 };
-
 
 const handleBreakChange = async (eventData, homebase_user_id, break_name) => {
     const select = inputRefs.value[`timepick-${homebase_user_id}-${break_name}`];
@@ -153,8 +168,8 @@ onBeforeUnmount(() => {
 <template>
     <Head title="Mealmap"/>
     <div class="h-full w-full flex flex-col items-center justify-center">
-        <div class="w-full grid grid-cols-2 gap-4 h-full">
-            <div class="flex flex-col ps-3 items-center divider pt-10">
+        <div class="w-full grid grid-cols-2 print:grid-cols-1 gap-4 h-full">
+            <div class="flex flex-col ps-3 items-center divider pt-10 print:hidden">
                 <div class="text-3xl mb-2">Dog Feeding Instructions</div>
 
                 <div v-if="dogs && dogs?.length > props.dogsPerPage" class="flex justify-center gap-2 mb-4 w-full">
@@ -167,7 +182,7 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 gap-4 w-full ">
+                <div class="grid grid-cols-1 gap-4 w-full">
                     <div v-for="(dog, index) in dogs" :key="index" class="flex pb-2 border-b-2"
                          v-show="isVisible(index)">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: '150px'}">
@@ -204,7 +219,7 @@ onBeforeUnmount(() => {
             </div>
 
 
-            <div class="flex flex-col items-center pt-10">
+            <div class="flex flex-col items-center pt-10 print:flex">
                 <div class="text-3xl mb-2">Daily Rotation</div>
                 <div v-if="fohStaff" class="text-base mb-2">{{ fohStaff }}</div>
 
@@ -212,53 +227,31 @@ onBeforeUnmount(() => {
                     <thead>
                     <tr>
                         <th>&nbsp;</th>
-                        <th>Small Yard</th>
-                        <th>Large Yard</th>
-                        <th>Floaters</th>
+                        <th v-for="yard in yards" :key="yard.id">{{ yard.name }}</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <tr v-for="(assignments, hour) in hours" :key="hour" :id="hour">
-                        <td class="border border-black px-4 py-2">{{ formatTime(hour) }}</td>
-                        <td class="border border-black px-4 py-2"
-                            :ref="el => setInputRef(`multiselect-${String(hour)}-0`, el)">
-                            <template v-if="controls === ControlSchemes.NONE">
-                                {{ assignments[0]?.first_name }}
-                            </template>
-                            <template v-else>
-                                <multiselect :key="`multiselect-${String(hour)}-0`"
-                                             :id="`multiselect-${String(hour)}-0`"
-                                             v-model="hours[hour][0]" :options="employees" group-label="status"
-                                             group-values="employees" :group-select="true" label="first_name"
-                                             track-by="homebase_user_id" :searchable="true" :clearable="true"
-                                             placeholder="Unassigned"
-                                             @select="handleYardChange(hour, 0, $event)"
-                                             @remove="handleYardChange(hour, 0, null)">
-                                </multiselect>
-                            </template>
+                    <tr v-for="rotation in props.rotations" :key="rotation.id">
+                        <td class="border border-black px-4 py-2">{{ rotation.label }}</td>
+                        <td v-for="yard in yards" :key="yard.id" class="border border-black px-4 py-2"
+                            :ref="el => setInputRef(`multiselect-${rotation.id}-${yard.id}`, el)">
+                            <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
+                                {{ (assignments[rotation.id]?.[yard.id] || []).map(e => e.first_name).join(', ') }}
+                            </div>
+                            <multiselect v-if="controls !== ControlSchemes.NONE" class="print-hide"
+                                         :key="`multiselect-${rotation.id}-${yard.id}`"
+                                         :id="`multiselect-${rotation.id}-${yard.id}`"
+                                         v-model="assignments[rotation.id][yard.id]" :options="employees"
+                                         group-label="status" group-values="employees" :group-select="true"
+                                         label="first_name" track-by="homebase_user_id" :searchable="true"
+                                         :clearable="true" placeholder="Unassigned" :multiple="yard.id === 999"
+                                         @select="() => handleYardChange(rotation.id, yard.id)"
+                                         @remove="() => handleYardChange(rotation.id, yard.id)">
+                            </multiselect>
                         </td>
-                        <td class="border border-black px-4 py-2"
-                            :ref="el => setInputRef(`multiselect-${String(hour)}-1`, el)">
-                            <template v-if="controls === ControlSchemes.NONE">
-                                {{ assignments[1]?.first_name }}
-                            </template>
-                            <template v-else>
-                                <multiselect :key="`multiselect-${String(hour)}-1`"
-                                             :id="`multiselect-${String(hour)}-1`"
-                                             v-model="hours[hour][1]" :options="employees" group-label="status"
-                                             group-values="employees" :group-select="true" label="first_name"
-                                             track-by="homebase_user_id" :searchable="true" :clearable="true"
-                                             placeholder="Unassigned"
-                                             @select="handleYardChange(hour, 1, $event)"
-                                             @remove="handleYardChange(hour, 1, null)">
-                                </multiselect>
-                            </template>
-                        </td>
-                        <td class="border border-black px-4 py-2">{{ assignments[2] }}</td>
                     </tr>
                     </tbody>
                 </table>
-
 
                 <table class="mx-5 bg-blue-200 m-10">
                     <thead>
@@ -274,42 +267,39 @@ onBeforeUnmount(() => {
                         <td class="border border-black px-4 py-2">{{ employee.first_name }}</td>
                         <td class="border border-black px-4 py-2"
                             :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_first_break`, el)">
-                            <template v-if="controls === ControlSchemes.NONE">
+                            <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                                 {{ employee.next_first_break }}
-                            </template>
-                            <template v-else>
-                                <VueTimepicker :id="`timepick-${String(employee.homebase_user_id)}-next_first_break`"
-                                               v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
-                                               :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                               placeholder="None"
-                                               @change="handleBreakChange($event, employee.homebase_user_id, 'next_first_break')"/>
-                            </template>
+                            </div>
+                            <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
+                                           :id="`timepick-${String(employee.homebase_user_id)}-next_first_break`"
+                                           v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
+                                           :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
+                                           placeholder="None"
+                                           @change="handleBreakChange($event, employee.homebase_user_id, 'next_first_break')"/>
                         </td>
                         <td class="border border-black px-4 py-2"
                             :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_lunch_break`, el)">
-                            <template v-if="controls === ControlSchemes.NONE">
+                            <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                                 {{ employee.next_lunch_break }}
-                            </template>
-                            <template v-else>
-                                <VueTimepicker :id="`timepick-${String(employee.homebase_user_id)}-next_lunch_break`"
-                                               v-model="employee.next_lunch_break" format="HH:mma" :minute-interval="5"
-                                               :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                               placeholder="None"
-                                               @change="handleBreakChange($event, employee.homebase_user_id, 'next_lunch_break')"/>
-                            </template>
+                            </div>
+                            <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
+                                           :id="`timepick-${String(employee.homebase_user_id)}-next_lunch_break`"
+                                           v-model="employee.next_lunch_break" format="HH:mma" :minute-interval="5"
+                                           :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
+                                           placeholder="None"
+                                           @change="handleBreakChange($event, employee.homebase_user_id, 'next_lunch_break')"/>
                         </td>
                         <td class="border border-black px-4 py-2"
                             :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_second_break`, el)">
-                            <template v-if="controls === ControlSchemes.NONE">
+                            <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                                 {{ employee.next_second_break }}
-                            </template>
-                            <template v-else>
-                                <VueTimepicker :id="`timepick-${String(employee.homebase_user_id)}-next_second_break`"
-                                               v-model="employee.next_second_break" format="HH:mma" :minute-interval="5"
-                                               :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                               placeholder="None"
-                                               @change="handleBreakChange($event, employee.homebase_user_id, 'next_second_break')"/>
-                            </template>
+                            </div>
+                            <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
+                                           :id="`timepick-${String(employee.homebase_user_id)}-next_second_break`"
+                                           v-model="employee.next_second_break" format="HH:mma" :minute-interval="5"
+                                           :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
+                                           placeholder="None"
+                                           @change="handleBreakChange($event, employee.homebase_user_id, 'next_second_break')"/>
                         </td>
                     </tr>
                     </tbody>
@@ -322,5 +312,11 @@ onBeforeUnmount(() => {
 <style scoped>
 .divider {
     border-right: 10px solid #9e1b32;
+}
+
+@media print {
+    .print-hide {
+        display: none !important;
+    }
 }
 </style>
