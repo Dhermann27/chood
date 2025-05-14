@@ -68,7 +68,7 @@ class GoFetchBookingJob implements ShouldQueue
             }
         }
 
-//        $delay = config('services.dd.queuedelay'); Unnecessary due to enormous data payload size
+//        $delay = config('services.dd.queue_delay'); Unnecessary due to enormous data payload size
 //        usleep(mt_rand($delay, $delay + 1000) * 1000);
     }
 }

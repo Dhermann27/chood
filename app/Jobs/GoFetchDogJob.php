@@ -52,7 +52,7 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
             Log::warning('Dog data missing: ' . $this->petId);
         }
 
-        $delay = config('services.dd.queuedelay');
+        $delay = config('services.dd.queue_delay');
         usleep(mt_rand($delay, $delay + 1000) * 1000);
     }
 

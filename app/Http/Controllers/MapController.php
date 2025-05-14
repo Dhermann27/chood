@@ -45,16 +45,13 @@ class MapController extends Controller
 
     public function mealmap(): Response
     {
-        $groupedEmployees = Employee::orderBy('first_name')->get()->groupBy(function ($employee) {
-            return $employee->is_working ? 'Scheduled' : 'Unscheduled';
-        })->map(function ($group, $status) {
-            return [
-                'status' => $status,
-                'employees' => $group,
-            ];
-        })->sortBy(function ($group) {
-            return $group['status'] === 'Scheduled' ? 0 : 1;
-        })->values()->all();
+        $groupedEmployees = Employee::with('shift')->orderBy('first_name')->get()
+            ->groupBy(function ($employee) {
+                return $employee->shift && $employee->shift->is_working ? 'Scheduled' : 'Unscheduled';
+            })->map(function ($group, $status) {
+                return ['status' => $status, 'employees' => $group];
+            })->sortBy(fn($group) => $group['status'] === 'Scheduled' ? 0 : 1)->values()->all();
+
         return Inertia::render('Mealmap', [
             'dogsPerPage' => intval(config('services.dd.mealmap_dpp')),
             'photoUri' => config('services.dd.uris.photo'),

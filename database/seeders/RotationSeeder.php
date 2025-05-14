@@ -20,6 +20,7 @@ class RotationSeeder extends Seeder
                 'start_time' => $start,
                 'end_time' => $end,
                 'label' => date('ga', strtotime($start)) . '-' . date('ga', strtotime($end)),
+                'is_sunday_hour' => ($hour >= 10 && $hour <= 14) ? 0 : 1,
             ]);
         }
     }

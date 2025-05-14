@@ -59,7 +59,7 @@ class GoFetchPackages implements ShouldQueue, ShouldBeUnique
 
         $report->update(['data' => $data]);
 
-        $delay = config('services.dd.queuedelay');
+        $delay = config('services.dd.queue_delay');
         usleep(mt_rand($delay, $delay + 1000) * 1000);
     }
 

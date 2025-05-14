@@ -22,10 +22,14 @@ class TaskController extends Controller
 
     public function index(): \Inertia\Response
     {
+        $employees = Employee::whereHas('shift', function ($query) {
+            $query->where('is_working', true);
+        })->orderBy('first_name')->get();
+
         return Inertia::render('Task/TaskEntry', [
             'cabins' => $this->getCabins(),
             'dogs' => $this->getDogsByCabin(),
-            'employees' => Employee::where('is_working', '1')->orderBy('first_name')->get(),
+            'employees' => $employees,
             'statuses' => CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray(),
             'photoUri' => config('services.dd.uris.photo'),
         ]);
@@ -36,7 +40,9 @@ class TaskController extends Controller
     {
         $dogs = $this->getDogsByCabin();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
-        $employees = Employee::where('is_working', '1')->orderBy('first_name')->get();
+        $employees = Employee::whereHas('shift', function ($query) {
+            $query->where('is_working', true);
+        })->orderBy('first_name')->get();
         $new_checksum = md5($dogs->toJson() . $employees->toJson() . json_encode($statuses));
         if ($checksum !== $new_checksum) {
             $response = [

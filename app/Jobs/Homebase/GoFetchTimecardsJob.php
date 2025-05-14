@@ -2,7 +2,7 @@
 
 namespace App\Jobs\Homebase;
 
-use App\Models\Employee;
+use App\Models\Shift;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,7 +28,7 @@ class GoFetchTimecardsJob implements ShouldQueue
     {
         $this->onQueue('high');
     }
-    
+
     public function shouldDispatch(): bool
     {
         return !app()->isDownForMaintenance();
@@ -54,18 +54,18 @@ class GoFetchTimecardsJob implements ShouldQueue
 
             if ($response->successful()) {
                 $timecards = json_decode($response->getBody()->getContents());
-                $presentUserIds = [];
+                $presentUserIds = collect($timecards)->filter(fn($tc) => $tc->clock_out === null)
+                    ->pluck('user_id')->all();
 
-                foreach ($timecards as $timecard) {
-                    if ($timecard->clock_out === null) {
-                        $presentUserIds[] = $timecard->user_id;
-                    }
+                foreach ($presentUserIds as $homebaseId) {
+                    Shift::updateOrCreate(
+                        ['homebase_user_id' => $homebaseId],
+                        ['is_working' => 1]
+                    );
                 }
 
-                Employee::whereIn('homebase_user_id', $presentUserIds)->where('is_working', '!=', 1)
-                    ->update(['is_working' => 1]);
-
-                Employee::whereNotIn('homebase_user_id', $presentUserIds)->where('is_working', '!=', 0)
+                Shift::whereNotIn('homebase_user_id', $presentUserIds)
+                    ->where('is_working', 1)
                     ->update(['is_working' => 0]);
 
             } else {

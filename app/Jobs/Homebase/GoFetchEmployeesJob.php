@@ -37,21 +37,22 @@ class GoFetchEmployeesJob implements ShouldQueue
             ])->get($url);
 
             if ($response->successful()) {
-                $employees = json_decode($response->getBody()->getContents());
+                $employees = collect(json_decode($response->getBody()->getContents()));
+                $homebaseIds = $employees->pluck('id');
+
                 foreach ($employees as $employee) {
-                    Employee::updateOrCreate(['homebase_user_id' => $employee->id], [
-                        'homebase_user_id' => $employee->id,
-                        'first_name' => $employee->first_name,
-                        'last_name' => $employee->last_name
-                    ]);
+                    Employee::updateOrCreate(['homebase_user_id' => $employee->id],
+                        ['first_name' => $employee->first_name, 'last_name' => $employee->last_name]);
                 }
+
+                Employee::whereNotIn('homebase_user_id', $homebaseIds)->delete();
 
             } else {
                 Log::error('Failed to fetch data from Homebase API', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
-                throw new \Exception('Failed to fetch Homebase employees.');
+                throw new Exception('Failed to fetch Homebase employees.');
             }
         } catch (ConnectionException $e) {
             Log::error('Connection to Homebase API failed.', ['error' => $e->getMessage()]);

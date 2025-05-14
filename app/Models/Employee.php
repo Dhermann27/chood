@@ -19,4 +19,10 @@ class Employee extends Model
     {
         return $this->hasMany(EmployeeYardRotation::class);
     }
+    
+    public function shift()
+    {
+        return $this->hasOne(Shift::class, 'homebase_user_id', 'homebase_user_id');
+    }
+
 }

@@ -7,6 +7,7 @@ use App\Models\Dog;
 use App\Models\Employee;
 use App\Models\EmployeeYardRotation;
 use App\Models\RotationYardView;
+use App\Models\Shift;
 use App\Models\Yard;
 use App\Traits\ChoodTrait;
 use Carbon\Carbon;
@@ -18,7 +19,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Validation\ValidationException;
-use stdClass;
 
 class DataController extends Controller
 {
@@ -54,19 +54,19 @@ class DataController extends Controller
                 });
             });
 
-        $employees = Employee::whereNotNull('next_first_break')->orderBy('first_name')->get()
-            ->map(function ($employee) {
-                if ($employee->next_first_break) {
-                    $employee->next_first_break = Carbon::parse($employee->next_first_break)->format('h:ia');
-                }
-                if ($employee->next_lunch_break) {
-                    $employee->next_lunch_break = Carbon::parse($employee->next_lunch_break)->format('h:ia');
-                }
-                if ($employee->next_second_break) {
-                    $employee->next_second_break = Carbon::parse($employee->next_second_break)->format('h:ia');
-                }
-                return $employee;
-            });
+        $employees = Employee::whereHas('shift')->with('shift')->get()->map(function ($employee) {
+            $shift = $employee->shift;
+
+            return [
+                'homebase_user_id' => $employee->homebase_user_id,
+                'first_name' => $employee->first_name,
+                'next_first_break' => optional($shift->next_first_break ? Carbon::parse($shift->next_first_break) : null)->format('h:ia'),
+                'next_lunch_break' => optional($shift->next_lunch_break ? Carbon::parse($shift->next_lunch_break) : null)->format('h:ia'),
+                'next_second_break' => optional($shift->next_second_break ? Carbon::parse($shift->next_second_break) : null)->format('h:ia'),
+            ];
+        })->sortBy('first_name')->values();
+
+
         $dogs = Dog::whereHas('feedings', function ($query) {
             $query->whereRaw('DATE(feedings.modified_at) >= DATE(dogs.checkin)');
         })->orWhereHas('medications', function ($query) {
@@ -75,16 +75,18 @@ class DataController extends Controller
             ->orderBy('cabin_id')->orderBy('firstname')->get();
 
 
-        if (Carbon::today()->isSunday()) {
-            $employees = $employees->filter(function ($employee) {
-                return $employee->next_first_break !== '10:00:00' || $employee->next_second_break !== null;
-            });
+        if (now()->isSunday()) {
+            $employees = $employees->filter(fn($e) => $e['next_first_break'] !== '10:00am' || $e['next_second_break'] !== null
+            );
 
-            $nextBreak = new stdClass();
-            $nextBreak->first_name = 'Everyone';
-            $nextBreak->next_first_break = '10:00am';
-            $employees->unshift($nextBreak);
+            $employees->prepend([
+                'first_name' => 'Everyone',
+                'next_first_break' => '10:00am',
+                'next_lunch_break' => null,
+                'next_second_break' => null,
+            ]);
         }
+
 
         // In DD's infinite wisdom, child tables updated_at are being continually updated
         $md5Dogs = $dogs->map(function ($dog) {
@@ -179,7 +181,7 @@ class DataController extends Controller
                 'next_first_break' => 'nullable|date_format:h:ia',
                 'next_lunch_break' => 'nullable|date_format:h:ia',
                 'next_second_break' => 'nullable|date_format:h:ia',
-                'homebase_user_id' => 'nullable|exists:employees,homebase_user_id',
+                'homebase_user_id' => 'required|exists:employees,homebase_user_id',
             ]);
 
             foreach (self::BREAK_COLUMNS as $field) {
@@ -189,9 +191,8 @@ class DataController extends Controller
                 }
             }
 
-            Employee::findOrFail($validatedData['homebase_user_id'])->update(
-                Arr::only($validatedData, self::BREAK_COLUMNS)
-            );
+            Shift::where('homebase_user_id', $validatedData['homebase_user_id'])
+                ->update(Arr::only($validatedData, self::BREAK_COLUMNS));
 
             return response()->json([
                 'message' => 'Happy.',
