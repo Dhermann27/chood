@@ -11,6 +11,6 @@ class Shift extends Model
 
     public function employee()
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Employee::class, 'homebase_user_id', 'homebase_user_id');
     }
 }

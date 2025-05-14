@@ -228,9 +228,11 @@ class DataController extends Controller
             $nextBreak->next_break = '10:00:00';
             $nextLunch = null;
         } else {
-            $nextFirstBreak = Employee::whereNotNull('next_first_break')->whereTime('next_first_break', '>=', $now)
+            $nextFirstBreak = Shift::with('employee')->whereNotNull('next_first_break')
+                ->whereTime('next_first_break', '>=', $now)
                 ->orderBy('next_first_break')->first();
-            $nextSecondBreak = Employee::whereNotNull('next_second_break')->whereTime('next_second_break', '>=', $now)
+            $nextSecondBreak = Shift::with('employee')->whereNotNull('next_second_break')
+                ->whereTime('next_second_break', '>=', $now)
                 ->orderBy('next_second_break')->first();
             $nextBreak = null;
             if ($nextFirstBreak && $nextSecondBreak) {
@@ -250,7 +252,8 @@ class DataController extends Controller
                 $nextBreak->next_break = $nextSecondBreak->next_second_break;
             }
 
-            $nextLunch = Employee::whereNotNull('next_lunch_break')->whereTime('next_lunch_break', '>=', $now)
+            $nextLunch = Shift::with('employee')->whereNotNull('next_lunch_break')
+                ->whereTime('next_lunch_break', '>=', $now)
                 ->orderBy('next_lunch_break')->first();
         }
 
