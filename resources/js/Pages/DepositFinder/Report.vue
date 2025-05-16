@@ -289,7 +289,7 @@ const copyToClipboard = async (text) => {
                             <td>{{ results.tips.qty }}</td>
                             <td>{{ formatCurrency(results.tips.total) }}
                                 <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                   @click="() => copyToClipboard(trainingPackagesTotal)"
+                                                   @click="() => copyToClipboard(results.tips.total)"
                                 />
                             </td>
                         </tr>
@@ -298,7 +298,7 @@ const copyToClipboard = async (text) => {
                             <td>{{ results.product.qty }}</td>
                             <td>{{ formatCurrency(results.product.total) }}
                                 <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                   @click="() => copyToClipboard(trainingPackagesTotal)"
+                                                   @click="() => copyToClipboard(results.product.total)"
                                 />
                             </td>
                         </tr>
@@ -307,7 +307,7 @@ const copyToClipboard = async (text) => {
                             <td>N/A</td>
                             <td>{{ formatCurrency(results.tax.total) }}
                                 <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                   @click="() => copyToClipboard(trainingPackagesTotal)"
+                                                   @click="() => copyToClipboard(results.tax.total)"
                                 />
                             </td>
                         </tr>

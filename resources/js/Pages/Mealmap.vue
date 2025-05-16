@@ -264,17 +264,22 @@ onBeforeUnmount(() => {
                     </thead>
                     <tbody>
                     <tr v-for="employee in breaks">
-                        <td class="border border-black px-4 py-2">{{ employee.first_name }}</td>
+                        <td class="border border-black px-4 py-2">{{ employee.first_name }}
+                            <template v-if="employee.shift_start && employee.shift_end">
+                                ({{ formatTime(employee.shift_start) }}-{{ formatTime(employee.shift_end) }})
+                            </template>
+                        </td>
                         <td class="border border-black px-4 py-2"
                             :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_first_break`, el)">
-                            <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
+                            <div
+                                :class="[controls !== ControlSchemes.NONE  && employee.first_name !== 'Everyone' ? 'hidden' : '', 'print:block']">
                                 {{ employee.next_first_break }}
                             </div>
-                            <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
+                            <VueTimepicker v-if="controls !== ControlSchemes.NONE && employee.first_name !== 'Everyone'"
                                            :id="`timepick-${String(employee.homebase_user_id)}-next_first_break`"
                                            v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
                                            :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                           placeholder="None"
+                                           placeholder="None" class="print-hide"
                                            @change="handleBreakChange($event, employee.homebase_user_id, 'next_first_break')"/>
                         </td>
                         <td class="border border-black px-4 py-2"

@@ -54,12 +54,16 @@ class DataController extends Controller
                 });
             });
 
-        $employees = Employee::whereHas('shift')->with('shift')->get()->map(function ($employee) {
+        $employees = Employee::whereHas('shift', function ($query) {
+            $query->whereNotNull('start_time');
+        })->with('shift')->get()->map(function ($employee) {
             $shift = $employee->shift;
 
             return [
                 'homebase_user_id' => $employee->homebase_user_id,
                 'first_name' => $employee->first_name,
+                'shift_start' => $shift->start_time,
+                'shift_end' => $shift->end_time,
                 'next_first_break' => optional($shift->next_first_break ? Carbon::parse($shift->next_first_break) : null)->format('h:ia'),
                 'next_lunch_break' => optional($shift->next_lunch_break ? Carbon::parse($shift->next_lunch_break) : null)->format('h:ia'),
                 'next_second_break' => optional($shift->next_second_break ? Carbon::parse($shift->next_second_break) : null)->format('h:ia'),
@@ -76,8 +80,7 @@ class DataController extends Controller
 
 
         if (now()->isSunday()) {
-            $employees = $employees->filter(fn($e) => $e['next_first_break'] !== '10:00am' || $e['next_second_break'] !== null
-            );
+            $employees = $employees->filter(fn($e) => $e['next_first_break'] !== '10:00am' || $e['next_second_break'] !== null);
 
             $employees->prepend([
                 'first_name' => 'Everyone',

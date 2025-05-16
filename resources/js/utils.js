@@ -14,7 +14,7 @@ export function formatTime(time) {
         hours = parseInt(hours, 10);
         const suffix = hours >= 12 ? "pm" : "am";
         hours = hours % 12 || 12; // Convert to 12-hour format (0 becomes 12)
-        return `${hours}:${minutes}${suffix}`;
+        return `${hours}:${minutes}${suffix}`.replace(/:00/i, '');
     }
     return null;
 }

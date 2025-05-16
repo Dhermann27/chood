@@ -62,9 +62,8 @@ class GoFetchShiftsJob implements ShouldQueue
                     $query->where('is_sunday_hour', 1);
                 })->orderBy('start_time')->get();
 
-
                 $homebaseShifts = collect(json_decode($response->getBody()->getContents()))
-                    ->sortBy('start_at')
+                    ->sortBy(['start_at', 'role'])
                     ->map(function ($shift) use ($yards) {
                         $shift->yardHoursWorked = $yards->pluck('id')->mapWithKeys(fn($id) => [$id => 0])->toArray();
                         return $shift;
@@ -123,12 +122,7 @@ class GoFetchShiftsJob implements ShouldQueue
     public function assignBreaks(mixed &$homebaseShift, array $breakMatrix, int $firstHourOfDay): array
     {
         $choodShift = Shift::firstOrNew(['homebase_user_id' => $homebaseShift->user_id]);
-
-        if (config('logging.channels.' . config('logging.default') . '.level') === 'info') {
-            $employeeName = Employee::findOrFail($homebaseShift->user_id)->first_name;
-        } else {
-            $employeeName = $homebaseShift->user_id;
-        }
+        $employeeName = Employee::findOrFail($homebaseShift->user_id)->first_name;
 
         $shiftStartIndex = $this->convertTimeToIndex(Carbon::parse($homebaseShift->start_at), $firstHourOfDay);
         $shiftEndIndex = $this->convertTimeToIndex(Carbon::parse($homebaseShift->end_at)->subHours(1), $firstHourOfDay);
@@ -310,9 +304,9 @@ class GoFetchShiftsJob implements ShouldQueue
                         Carbon::parse($shift->lunch_break)->addMinutes(30)->between($startOfHour, $endOfHour, false)));
 
                 $notSuperHandoff = !str_contains($shift->role, self::SUPERVISOR) ||
-                    !($startOfHour->between(Carbon::parse($shift->start_at), Carbon::parse($shift->start_at)->addMinutes(59)) ||
-                        $endOfHour->between(Carbon::parse($shift->end_at)->subMinutes(59), Carbon::parse($shift->end_at)));
-
+                    ($startOfHour->format('H:i:s') !== '08:00:00' &&
+                        !$startOfHour->between(Carbon::parse($shift->start_at), Carbon::parse($shift->start_at)->addMinutes(59)) &&
+                        !$endOfHour->between(Carbon::parse($shift->end_at)->subMinutes(59), Carbon::parse($shift->end_at)));
                 return $isWorking && $noBreaks && $notSuperHandoff;
             });
 

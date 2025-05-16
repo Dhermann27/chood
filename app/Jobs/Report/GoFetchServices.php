@@ -43,19 +43,29 @@ class GoFetchServices implements ShouldQueue, ShouldBeUnique
         $data = $report->data;
 
         $output = $fetchDataService->fetchData(config('services.dd.uris.reports.services'), $payload)
-            ->getData(true);;
-        foreach ($output['data'][0]['columns'] as $index => $column) {
-            if ($column['filterKey'] === 'category') $typeColIndex = $index;
-            if ($column['filterKey'] === 'count') $qtyColIndex = $index;
-            if ($column['filterKey'] === 'total') $totColIndex = $index;
-        }
+            ->getData(true);
+        $columnMap = array_flip(array_column($output['data'][0]['columns'], 'filterKey'));
+        $typeColIndex = $columnMap['category'] ?? null;
+        $qtyColIndex = $columnMap['count'] ?? null;
+        $totColIndex = $columnMap['total'] ?? null;
 
         $data['services'] = [];
+        $groomingLabels = ['Bath', 'Basic Grooming', 'Full Service Grooming'];
         foreach ($output['data'][0]['rows'] as $row) {
-            if (!isset($data['services'][$row[$typeColIndex]])) $data['services'][$row[$typeColIndex]] = ['qty' => 0, 'total' => 0];
-            $data['services'][$row[$typeColIndex]]['qty'] += $row[$qtyColIndex];
-            $data['services'][$row[$typeColIndex]]['total'] += $row[$totColIndex];
+            $key = in_array($row[$typeColIndex], $groomingLabels) ? 'Grooming' : $row[$typeColIndex];
+
+            if (!isset($data['services'][$key])) {
+                $data['services'][$key] = ['qty' => 0, 'total' => 0];
+            }
+            $data['services'][$key]['qty'] += $row[$qtyColIndex];
+            $data['services'][$key]['total'] += $row[$totColIndex];
         }
+
+        $customOrder = ['Daycare', 'Boarding', 'Enrichment', 'Grooming', 'Training'];
+
+        $data['services'] = collect($data['services'])->sortBy(function ($value, $key) use ($customOrder) {
+                $index = array_search($key, $customOrder);
+                return $index !== false ? $index : (count($customOrder) + 0.001) . $key;})->all();
 
         $report->update(['data' => $data]);
 
