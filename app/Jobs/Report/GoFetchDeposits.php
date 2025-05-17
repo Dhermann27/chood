@@ -28,7 +28,7 @@ class GoFetchDeposits implements ShouldQueue, ShouldBeUnique
         $this->onQueue('high');
     }
 
-    public function uniqueId()
+    public function uniqueId(): string
     {
         return '1000' . $this->reportId; // 1000 is the Deposits Report
     }

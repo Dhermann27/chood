@@ -27,7 +27,7 @@ class GoFetchCashDetails implements ShouldQueue, ShouldBeUnique
         $this->onQueue('high');
     }
 
-    public function uniqueId()
+    public function uniqueId(): string
     {
         return '1001' . $this->reportId; // 1001 is the Deposit Details Report
     }

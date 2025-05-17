@@ -28,7 +28,7 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
         $this->petId = $petId;
     }
 
-    public function uniqueId()
+    public function uniqueId(): string
     {
         return $this->petId;
     }

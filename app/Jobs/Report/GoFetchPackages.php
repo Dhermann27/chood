@@ -27,7 +27,7 @@ class GoFetchPackages implements ShouldQueue, ShouldBeUnique
         $this->onQueue('high');
     }
 
-    public function uniqueId()
+    public function uniqueId(): string
     {
         return '2000' . $this->reportId; // 2000 is the Packages Report
     }

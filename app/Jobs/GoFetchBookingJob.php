@@ -7,6 +7,7 @@ use App\Models\DogService;
 use App\Models\Service;
 use App\Services\FetchDataService;
 use Exception;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -14,7 +15,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class GoFetchBookingJob implements ShouldQueue
+class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -29,7 +30,7 @@ class GoFetchBookingJob implements ShouldQueue
         $this->bookingId = $bookingId;
     }
 
-    public function uniqueId()
+    public function uniqueId(): string
     {
         return 'booking' . $this->bookingId;
     }

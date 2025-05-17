@@ -6,13 +6,14 @@ use App\Models\Medication;
 use App\Services\FetchDataService;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class GoFetchMedicationJob implements ShouldQueue
+class GoFetchMedicationJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -29,7 +30,7 @@ class GoFetchMedicationJob implements ShouldQueue
         $this->accountId = $accountId;
     }
 
-    public function uniqueId()
+    public function uniqueId(): string
     {
         return 'med' . $this->petId . $this->accountId;
     }

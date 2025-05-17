@@ -5,6 +5,7 @@ namespace App\Jobs\Homebase;
 use App\Models\Shift;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -14,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class GoFetchTimecardsJob implements ShouldQueue
+class GoFetchTimecardsJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -73,7 +74,7 @@ class GoFetchTimecardsJob implements ShouldQueue
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
-                throw new \Exception('Failed to fetch Homebase timecards.');
+                throw new Exception('Failed to fetch Homebase timecards.');
             }
         } catch (ConnectionException $e) {
             Log::error('Connection to Homebase API failed.', ['error' => $e->getMessage()]);

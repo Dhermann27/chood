@@ -6,13 +6,14 @@ use App\Models\Feeding;
 use App\Services\FetchDataService;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class GoFetchFeedingJob implements ShouldQueue
+class GoFetchFeedingJob implements ShouldQueue, ShouldBeUnique
 {
 
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -30,7 +31,7 @@ class GoFetchFeedingJob implements ShouldQueue
         $this->accountId = $accountId;
     }
 
-    public function uniqueId()
+    public function uniqueId(): string
     {
         return 'feed' . $this->petId . $this->accountId;
     }

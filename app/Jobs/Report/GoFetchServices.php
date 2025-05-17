@@ -27,7 +27,7 @@ class GoFetchServices implements ShouldQueue, ShouldBeUnique
         $this->onQueue('high');
     }
 
-    public function uniqueId()
+    public function uniqueId(): string
     {
         return '3000' . $this->reportId; // 3000 is the Services Report
     }
