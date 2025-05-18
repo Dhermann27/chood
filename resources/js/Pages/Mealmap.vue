@@ -12,7 +12,6 @@ import 'vue3-timepicker/dist/VueTimepicker.css';
 const props = defineProps({
     dogsPerPage: Number,
     photoUri: String,
-    employees: Array,
     rotations: Array,
 });
 
@@ -20,6 +19,7 @@ const controls = ref(ControlSchemes.NONE);
 const inputRefs = ref({});
 const breaks = ref([]);
 const dogs = ref([]);
+const employees = ref([]);
 const fohStaff = ref('');
 const assignments = ref({});
 const yards = ref([]);
@@ -49,10 +49,11 @@ async function updateData() {
         const response = await axios.get(`/api/mealmap/${localChecksum.value}`);
 
         if (response.data && localChecksum.value !== response.data.checksum) {
+            assignments.value = {...response.data.assignments};
             breaks.value = {...response.data.breaks};
             dogs.value = response.data.dogs;
+            employees.value = response.data.employees;
             fohStaff.value = response.data.fohStaff;
-            assignments.value = {...response.data.assignments};
             yards.value = response.data.yards;
             localChecksum.value = response.data.checksum;
         } else if (dogs.value.length > props.dogsPerPage) {
@@ -80,7 +81,7 @@ const progressBarStyle = computed(() => ({
 
 // Next three methods are all so Vue3 detects changes inside the nested objects
 function matchEmployeeInGroups(employee) {
-    for (const group of props.employees) {
+    for (const group of employees.value) {
         const match = group.employees.find(e => e.homebase_user_id === employee.homebase_user_id);
         if (match) return match;
     }
@@ -100,7 +101,7 @@ function matchByHour() {
 
 
 watchEffect(() => {
-    if (props.employees.length && Object.keys(assignments.value).length) matchByHour();
+    if (employees.value && Object.keys(assignments.value).length) matchByHour();
 });
 
 const handleYardChange = async (rotationId, yardId) => {

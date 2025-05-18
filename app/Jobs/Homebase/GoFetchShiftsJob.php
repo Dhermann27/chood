@@ -247,27 +247,31 @@ class GoFetchShiftsJob implements ShouldQueue
 
 
     /**
-     * @param Collection $shifts
+     * @param Collection $homebaseShifts
      * @return Collection
      */
-    public function assignSundayMorningBreaks(Collection $shifts): Collection
+    public function assignSundayMorningBreaks(Collection $homebaseShifts): Collection
     {
-        $shiftsBeforeNoon = $shifts->filter(function ($shift) {
-            $startAt = Carbon::parse($shift->start_at);
-            return $startAt->lt(Carbon::createFromTime(12, 0, 0));
-        });
-        $shiftIdsBeforeNoon = $shiftsBeforeNoon->pluck('id');
-        $shiftUserIdsBeforeNoon = $shiftsBeforeNoon->pluck('user_id');
-        $tenAm = Carbon::createFromTime(10, 0, 0);
-        Shift::whereIn('homebase_user_id', $shiftUserIdsBeforeNoon)
-            ->update(['next_first_break' => $tenAm,
-                'next_lunch_break' => null,
-                'next_second_break' => null
-            ]);
+        Shift::insert(
+            $homebaseShifts->filter(fn($shift) =>
+                Carbon::parse($shift->start_at)->lt(Carbon::createFromTime(12, 0)) &&
+                str_contains($shift->department, self::BACK_OF_HOUSE)
+            )->map(function ($shift) {
+                    return [
+                        'homebase_user_id' => $shift->user_id,
+                        'start_time' => Carbon::parse($shift->start_at)->format('Y-m-d H:i:s'),
+                        'end_time' => Carbon::parse($shift->end_at)->format('Y-m-d H:i:s'),
+                        'next_first_break' => Carbon::createFromTime(10, 0),
+                        'next_lunch_break' => null,
+                        'next_second_break' => null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                })->toArray());
 
-        return $shifts->reject(function ($shift) use ($shiftIdsBeforeNoon) {
-            return in_array($shift->id, $shiftIdsBeforeNoon->toArray());
-        });
+        return $homebaseShifts
+            ->filter(fn($shift) => Carbon::parse($shift->start_at)->gte(Carbon::createFromTime(12, 0)));
+
     }
 
     /**

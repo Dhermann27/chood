@@ -54,7 +54,7 @@ class DataController extends Controller
                 });
             });
 
-        $employees = Employee::whereHas('shift', function ($query) {
+        $breaks = Employee::whereHas('shift', function ($query) {
             $query->whereNotNull('start_time');
         })->with('shift')->get()->map(function ($employee) {
             $shift = $employee->shift;
@@ -70,7 +70,6 @@ class DataController extends Controller
             ];
         })->sortBy('first_name')->values();
 
-
         $dogs = Dog::whereHas('feedings', function ($query) {
             $query->whereRaw('DATE(feedings.modified_at) >= DATE(dogs.checkin)');
         })->orWhereHas('medications', function ($query) {
@@ -78,18 +77,12 @@ class DataController extends Controller
         })->orWhereHas('allergies')->with(['feedings', 'medications', 'allergies', 'cabin', 'dogServices.service'])
             ->orderBy('cabin_id')->orderBy('firstname')->get();
 
-
-        if (now()->isSunday()) {
-            $employees = $employees->filter(fn($e) => $e['next_first_break'] !== '10:00am' || $e['next_second_break'] !== null);
-
-            $employees->prepend([
-                'first_name' => 'Everyone',
-                'next_first_break' => '10:00am',
-                'next_lunch_break' => null,
-                'next_second_break' => null,
-            ]);
-        }
-
+        $groupedEmployees = Employee::with('shift')->orderBy('first_name')->get()
+            ->groupBy(function ($employee) {
+                return $employee->shift && $employee->shift->is_working ? 'Scheduled' : 'Unscheduled';
+            })->map(function ($group, $status) {
+                return ['status' => $status, 'employees' => $group];
+            })->sortBy(fn($group) => $group['status'] === 'Scheduled' ? 0 : 1)->values()->all();
 
         // In DD's infinite wisdom, child tables updated_at are being continually updated
         $md5Dogs = $dogs->map(function ($dog) {
@@ -105,13 +98,14 @@ class DataController extends Controller
             });
             return $dogData->toArray();
         });
-        $new_checksum = md5(json_encode($assignments) . $employees . $md5Dogs);
+        $new_checksum = md5(json_encode($assignments) . $breaks . json_encode($groupedEmployees) . $md5Dogs);
         if ($checksum !== $new_checksum) {
             $response = [
-                'breaks' => $employees,
-                'dogs' => $dogs,
-                'fohStaff' => Cache::get('foh_staff'),
                 'assignments' => $assignments,
+                'breaks' => $breaks,
+                'dogs' => $dogs,
+                'employees' => $groupedEmployees,
+                'fohStaff' => Cache::get('foh_staff'),
                 'yards' => $yards,
                 'checksum' => $new_checksum,
             ];
@@ -226,9 +220,10 @@ class DataController extends Controller
             ->orderBy('yards.display_order')->with('employee', 'rotation', 'yard')->get();
 
         if ($now->isSunday() && $now->hour < 12) {
-            $nextBreak = new \stdClass();
-            $nextBreak->first_name = 'Everyone';
-            $nextBreak->next_break = '10:00:00';
+            $nextBreak = [
+                'employee' => ['first_name' => 'Everyone'],
+                'next_break' => '10:00:00',
+            ];
             $nextLunch = null;
         } else {
             $nextFirstBreak = Shift::with('employee')->whereNotNull('next_first_break')

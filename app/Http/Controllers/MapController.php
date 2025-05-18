@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Employee;
 use App\Models\Rotation;
 use App\Traits\ChoodTrait;
 use Inertia\Inertia;
@@ -45,18 +44,12 @@ class MapController extends Controller
 
     public function mealmap(): Response
     {
-        $groupedEmployees = Employee::with('shift')->orderBy('first_name')->get()
-            ->groupBy(function ($employee) {
-                return $employee->shift && $employee->shift->is_working ? 'Scheduled' : 'Unscheduled';
-            })->map(function ($group, $status) {
-                return ['status' => $status, 'employees' => $group];
-            })->sortBy(fn($group) => $group['status'] === 'Scheduled' ? 0 : 1)->values()->all();
-
         return Inertia::render('Mealmap', [
             'dogsPerPage' => intval(config('services.dd.mealmap_dpp')),
             'photoUri' => config('services.dd.uris.photo'),
-            'employees' => $groupedEmployees,
-            'rotations' => Rotation::orderBy('start_time')->get(),
+            'rotations' => Rotation::when(now()->isSunday(), function ($query) {
+                $query->where('is_sunday_hour', 1);
+            })->orderBy('start_time')->get(),
         ]);
     }
 
