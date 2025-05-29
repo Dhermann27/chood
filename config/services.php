@@ -48,6 +48,8 @@ return [
             'photo' => env('BASE_URI') . env('PHOTO_URI'),
             'reports' => [
                 'overall' => env('BASE_URI') . env('REPORT_URI') . env('OVERALL_SUFFIX'),
+                'accrual_packages' => env('BASE_URI') . env('REPORT_URI') . env('ACC_PACKAGES_SUFFIX'),
+                'accrual_services' => env('BASE_URI') . env('REPORT_URI') . env('ACC_SERVICES_SUFFIX'),
                 'deposits' => env('BASE_URI') . env('REPORT_URI') . env('DEPOSITS_SUFFIX'),
                 'depositDetails' => env('BASE_URI') . env('REPORT_URI') . env('DEPOSITS_DETAILS_SUFFIX'),
                 'packages' => env('BASE_URI') . env('REPORT_URI') . env('PACKAGES_SUFFIX'),
@@ -68,6 +70,11 @@ return [
         'password' => env('DD_PASSWORD'),
         'sandbox_username' => env('SB_USERNAME'),
         'sandbox_password' => env('SB_PASSWORD'),
+    ],
+
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'engine' => env('OPENAI_ENGINE'),
     ],
 
     'homebase' => [

@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\Report\GoFetchDeposits;
-use App\Jobs\Report\GoFetchPackages;
-use App\Jobs\Report\GoFetchServices;
+use App\Jobs\Report\GoFetchReports;
 use App\Models\Report;
 use App\Services\FetchDataService;
 use Exception;
@@ -105,9 +103,7 @@ class ReportController extends Controller
                 ['username' => $validatedData['username'], 'report_date' => $validatedData['date'], 'data' => $data]
             );
 
-            GoFetchDeposits::dispatch($report->id);
-            GoFetchPackages::dispatch($report->id);
-            GoFetchServices::dispatch($report->id);
+            GoFetchReports::dispatch($report->id, $validatedData['username']);
 
             return response()->json($report);
 
@@ -122,6 +118,53 @@ class ReportController extends Controller
 
     public function results($reportId): JsonResponse
     {
-        return response()->json(Report::findOrFail($reportId));
+        $report = Report::findOrFail($reportId);
+        $data = $report->data;
+
+        $customOrder = ['Daycare', 'Boarding', 'Enrichment', 'Grooming', 'Training'];
+
+        // Sort services and acc_services (if they exist)
+        foreach (['services', 'acc_services'] as $key) {
+            if (!empty($data[$key])) {
+                $data[$key] = collect($data[$key])
+                    ->sortBy(fn($v, $k) => array_search($k, $customOrder) ?? PHP_INT_MAX)
+                    ->all();
+            }
+        }
+
+        // Merge and apply the same sort to combined_services
+        $data['combined_services'] = $this->mergeGroups(
+            $data['services'] ?? [], $data['acc_services'] ?? [],
+        );
+
+        $data['combined_services'] = collect($data['combined_services'])
+            ->sortBy(fn($v, $k) => array_search($k, $customOrder) ?? PHP_INT_MAX)
+            ->all();
+
+        // Merge packages without custom sort
+        $data['combined_packages'] = $this->mergeGroups(
+            $data['packages'] ?? [], $data['accrual_packages'] ?? [],
+        );
+
+        $report->data = $data;
+        return response()->json($report);
     }
+
+
+    private function mergeGroups(array $primary = [], array $secondary = [], string $prefix1 = 'sold', string $prefix2 = 'used'): array
+    {
+        $allKeys = collect($primary)->keys()
+            ->merge(array_keys($secondary))
+            ->unique();
+
+        return $allKeys->mapWithKeys(function ($key) use ($primary, $secondary, $prefix1, $prefix2) {
+            return [$key => [
+                "{$prefix1}_qty" => $primary[$key]['qty'] ?? 0,
+                "{$prefix1}_total" => $primary[$key]['total'] ?? 0,
+                "{$prefix2}_qty" => $secondary[$key]['qty'] ?? 0,
+                "{$prefix2}_total" => $secondary[$key]['total'] ?? 0,
+            ]];
+        })->sortKeys()->toArray();
+    }
+
 }

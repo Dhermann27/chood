@@ -112,7 +112,7 @@ class FetchDataService
      * @param Report $report
      * @return array
      */
-    public function createPayload(Report $report, bool $getCash = false): array
+    public function createPayload(Report $report): array
     {
         return [
             "username" => $report->username,

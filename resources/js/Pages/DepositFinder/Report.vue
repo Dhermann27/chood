@@ -88,7 +88,7 @@ function pollResults(reportId) {
                 const response = await axios.get('/depositfinder/results/' + reportId);
 
                 results.value = response.data.data;
-                if ('services' in results.value) clearInterval(pollInterval);
+                if ('acc_services' in results.value) clearInterval(pollInterval);
 
             } catch (error) {
                 errorMessage.value = error.response?.data?.output || 'Error fetching results';
