@@ -11,16 +11,15 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class GoFetchReports implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(
-        public readonly string $reportId,
-        public readonly string $username
-    )
+    public function __construct(public readonly string $reportId, public readonly string $username)
     {
+        $this->onQueue('high');
     }
 
 
@@ -67,6 +66,11 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
     private function sumByKeys(array $output, array $keys): array
     {
         [$typeKey, $qtyKey, $totalKey] = $keys;
+        if (!isset($output['data'][0]['columns']) || !is_array($output['data'][0]['columns'])) {
+            Log::warning("Missing or malformed 'data' in report output", ['output' => $output]);
+            return [];
+        }
+
         $columns = array_flip(array_column($output['data'][0]['columns'], 'filterKey'));
 
         $typeIndex = $columns[$typeKey] ?? null;
