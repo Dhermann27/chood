@@ -28,38 +28,41 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
         return $this->username;
     }
 
+    /**
+     * @throws Exception
+     */
     public function handle(FetchDataService $fetchDataService): void
     {
         $report = Report::findOrFail($this->reportId);
         $payload = $fetchDataService->createPayload($report);
-        $data = $report->data;
+        $reportData = $report->data ?? [];
 
-        $this->processGroup($fetchDataService, $payload, $report, 'deposits', ['paymentType', 'count', 'total'], 'deposits');
+        $this->processGroup($fetchDataService, $payload, $reportData, 'deposits', ['paymentType', 'qty', 'total']);
+        $reportData['cash'] = $this->processCashDeposits($fetchDataService, $report);
 
-        $cash = $this->processCashDeposits($fetchDataService, $report);
-        $report->data = array_merge($report->data, ['cash' => $cash]);
-        $report->updated_at = now(); // force polling-visible timestamp change
-        $report->save();
-        usleep(mt_rand(config('services.dd.queue_delay'), config('services.dd.queue_delay') + 1000) * 1000);
+        $this->saveAndSleep($report, $reportData);
 
-        $this->processGroup($fetchDataService, $payload, $report, 'accrual_packages', ['packageName', 'count', 'total'], 'acc_packages');
-        $this->processGroup($fetchDataService, $payload, $report, 'accrual_services', ['category', 'count', 'total'], 'acc_services');
-        $this->processGroup($fetchDataService, $payload, $report, 'packages', ['packageName', 'count', 'total'], 'packages');
-        $this->processGroup($fetchDataService, $payload, $report, 'services', ['category', 'count', 'total'], 'services');
+        // Step 2: Service/package groups
+        $this->processGroup($fetchDataService, $payload, $reportData, 'packages', ['packageName', 'count', 'total']);
+        $this->processGroup($fetchDataService, $payload, $reportData, 'accrual_packages', ['packageName', 'count', 'rtTotal']);
+        $this->processGroup($fetchDataService, $payload, $reportData, 'services', ['category', 'count', 'total']);
 
+        $payload = $fetchDataService->createConstrainedPayload($report, 'packages', 'eq', '1');
+        $this->processGroup($fetchDataService, $payload, $reportData, 'accrual_services', ['categoryName', 'count', 'rtTotal']);
 
-        $report->update(['data' => array_merge($report->data, $data)]);
+        $reportData['accrual_total'] = $this->computeAccrualTotal($reportData);
+        $this->saveAndSleep($report, $reportData);
     }
 
-    private function processGroup(FetchDataService $service, array $payload, Report $report, string $uriKey, array $columns, string $dataKey): void
+
+    /**
+     * @throws Exception
+     */
+    private function processGroup(FetchDataService $service, array $payload, array &$reportData, string $uriKey, array $columns): void
     {
         $output = $service->fetchData(config("services.dd.uris.reports.$uriKey"), $payload)->getData(true);
         $result = $this->sumByKeys($output, $columns);
-        $report->data = array_merge($report->data, [$dataKey => $result]);
-        $report->updated_at = now(); // force polling-visible timestamp change
-        $report->save();
-
-        usleep(mt_rand(config('services.dd.queue_delay'), config('services.dd.queue_delay') + 1000) * 1000);
+        $reportData[$uriKey] = $result;
     }
 
 
@@ -127,6 +130,36 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
         }
 
         return $data;
+    }
+
+    private function computeAccrualTotal(array $reportData): array
+    {
+        $sum = [
+            'qty' => 0,
+            'total' => 0.0,
+        ];
+
+        foreach (['accrual_packages', 'accrual_services'] as $key) {
+            if (!empty($reportData[$key])) {
+                foreach ($reportData[$key] as $entry) {
+                    $sum['qty'] += $entry['qty'] ?? 0;
+                    $sum['total'] += $entry['total'] ?? 0;
+                }
+            }
+        }
+
+        $sum['total'] = round($sum['total'], 2);
+        return $sum;
+    }
+
+
+    private function saveAndSleep(Report $report, array $data): void
+    {
+        $report->data = $data;
+        $report->updated_at = now();
+        $report->save();
+
+        usleep(mt_rand(config('services.dd.queue_delay'), config('services.dd.queue_delay') + 1000) * 1000);
     }
 
 

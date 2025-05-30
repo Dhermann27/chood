@@ -88,7 +88,7 @@ function pollResults(reportId) {
                 const response = await axios.get('/depositfinder/results/' + reportId);
 
                 results.value = response.data.data;
-                if ('acc_services' in results.value) clearInterval(pollInterval);
+                if ('accrual_services' in results.value) clearInterval(pollInterval);
 
             } catch (error) {
                 errorMessage.value = error.response?.data?.output || 'Error fetching results';
@@ -104,12 +104,40 @@ function pollResults(reportId) {
 const copyToClipboard = async (text) => {
     try {
         await navigator.clipboard.writeText(text);
-        // console.log('Text copied to clipboard');
+        console.log('Text copied to clipboard: ' + text);
     } catch (err) {
-        // console.error('Failed to copy text: ', err);
+        console.error('Failed to copy text: ', err);
     }
 };
 
+const copyFullReport = async () => {
+    const node = document.getElementById('report-table-wrapper');
+    if (!node) return;
+
+    const clone = node.cloneNode(true);
+    const button = clone.querySelector('button');
+    if (button) button.remove();
+
+    // Optional: force full width for better paste appearance
+    clone.style.width = '85%';
+    clone.style.maxWidth = 'none';
+    clone.style.boxShadow = 'none';
+
+    // Serialize to HTML
+    const html = clone.outerHTML;
+
+    try {
+        await navigator.clipboard.write([
+            new ClipboardItem({
+                'text/html': new Blob([html], { type: 'text/html' }),
+                'text/plain': new Blob([clone.textContent ?? ''], { type: 'text/plain' }),
+            }),
+        ]);
+        console.log('Report copied to clipboard.');
+    } catch (err) {
+        console.error('Copy to clipboard failed:', err);
+    }
+};
 </script>
 
 <template>
@@ -174,149 +202,239 @@ const copyToClipboard = async (text) => {
                     </div>
                 </form>
             </div>
-
-            <div v-if="results && started"
+            <div v-if="results && started" id="report-table-wrapper"
                  class="w-2/3 max-w-full min-w-0 mt-8 p-8 bg-white shadow-md rounded-lg">
-                <h3 class="text-xl font-bold mb-4">Date: {{ results?.report_date ?? date }}</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold">Date: {{ results?.report_date ?? date }}</h3>
+                    <button id="copy-report-button" @click="copyFullReport"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded shadow"
+                    >
+                        Copy Report to Clipboard
+                    </button>
+                </div>
                 <table class="min-w-full table-auto bg-white rounded-lg">
                     <thead>
-                    <tr class="bg-gray-100 border-b text-left font-semibold text-gray-600">
-                        <th class="px-4 py-2">Category</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-600">Quantity</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-600">Total Amount</th>
+                    <tr class="bg-gray-100 border-b text-center font-semibold text-gray-600">
+                        <th class="px-4 py-2 text-left" rowspan="2">Category</th>
+                        <th class="px-4 py-2 font-semibold text-gray-600" colspan="2">Paid</th>
+                        <th class="px-4 py-2 font-semibold text-gray-600" colspan="2">Used</th>
+                    </tr>
+                    <tr class="bg-gray-100 border-b text-center font-semibold text-gray-600">
+                        <th class="px-4 py-2 font-semibold text-gray-600">Quantity</th>
+                        <th class="px-4 py-2 font-semibold text-gray-600">Total Amount</th>
+                        <th class="px-4 py-2 font-semibold text-gray-600">Quantity</th>
+                        <th class="px-4 py-2 font-semibold text-gray-600">Total Amount</th>
                     </tr>
                     </thead>
                     <tbody>
 
-                    <tr class="bg-gray-200">
-                        <td colspan="3" class="text-lg font-semibold">Daily Deposit</td>
+                    <tr class="bg-gray-200 text-gray-700">
+                        <td colspan="5" class="text-lg font-semibold">Overall</td>
                     </tr>
                     <template v-if="!('deposits' in results)">
                         <tr>
-                            <td colspan="3" class="text-center">
+                            <td colspan="5" class="text-center py-4">
                                 <font-awesome-icon :icon="['fas', 'spinner-third']" spin
-                                                   class="text-6xl text-gray-600"/>
+                                                   class="text-6xl text-gray-600 py-5"/>
                             </td>
                         </tr>
                     </template>
-                    <template v-else-if="Object.keys(results?.deposits).length > 0">
-                        <tr v-for="(result, key) in results.deposits" :key="key"
-                            class="border-b hover:bg-gray-50">
-                            <td>{{ key }}</td>
-                            <td>{{ result.qty }}</td>
-                            <td>
-                                {{ formatCurrency(result.total) }}
-                                <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                   @click="() => copyToClipboard(result.total)"
-                                />
-                            </td>
-                        </tr>
+                    <template v-else>
+                        <template v-if="Object.keys(results.deposits).length > 0">
+                            <tr v-for="(result, key) in results.deposits" :key="key" class="border-b hover:bg-gray-50">
+                                <td class="font-medium">{{ key }}</td>
+                                <td class="text-center">{{ result.qty }}</td>
+                                <td class="text-right">
+                                    {{ formatCurrency(result.total) }}
+                                    <font-awesome-icon :icon="['fas', 'clipboard']"
+                                                       class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                                       @click="() => copyToClipboard(result.total)"/>
+                                </td>
+
+
+                                <template v-if="key === 'Transafe Credit Card'">
+                                    <td v-if="'accrual_total' in results" class="text-center">
+                                        {{ results.accrual_total.qty }}
+                                    </td>
+                                    <td v-if="'accrual_total' in results" class="text-right">
+                                        {{ formatCurrency(results.accrual_total.total) }}
+                                    </td>
+                                    <td v-else colspan="2" class="text-center">
+                                        <font-awesome-icon :icon="['fas', 'spinner-third']" spin
+                                                           class="text-xl text-gray-500 py-2"/>
+                                    </td>
+                                </template>
+
+                                <template v-else>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                </template>
+                            </tr>
+                        </template>
+                        <!-- No deposit data, but accrual_total exists -->
+                        <template v-else-if="'accrual_total' in results">
+                            <tr class="border-b hover:bg-gray-50">
+                                <td colspan="3" class="text-right font-semibold">Accruals Total</td>
+                                <td class="text-center">{{ results.accrual_total.qty }}</td>
+                                <td class="text-right">{{ formatCurrency(results.accrual_total.total) }}</td>
+                            </tr>
+                        </template>
+
+                        <!-- No deposits, no accrual_total yet -->
+                        <template v-else>
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-gray-500 italic">
+                                    No deposit data available.
+                                </td>
+                            </tr>
+                        </template>
                     </template>
-                    <tr v-else class="border-b hover:bg-gray-50">
-                        <td colspan="3">
-                            No deposits found for the specified date range.
-                        </td>
-                    </tr>
 
 
                     <tr class="bg-gray-200 text-gray-700">
-                        <td colspan="3" class="text-lg font-semibold">Packages Sold</td>
+                        <td colspan="5" class="text-lg font-semibold">Packages</td>
                     </tr>
+
                     <template v-if="!('packages' in results)">
                         <tr>
-                            <td colspan="3" class="text-center">
+                            <td colspan="5" class="text-center">
                                 <font-awesome-icon :icon="['fas', 'spinner-third']" spin
-                                                   class="text-6xl text-gray-600"/>
+                                                   class="text-6xl text-gray-600 py-5"/>
                             </td>
                         </tr>
                     </template>
-                    <template v-else-if="Object.keys(results?.packages).length > 0">
-                        <tr v-for="(result, key) in results.packages" :key="key"
+
+                    <template v-else-if="Object.keys(results?.combined_packages || {}).length > 0">
+                        <tr v-for="(row, name) in results.combined_packages" :key="name"
                             class="border-b hover:bg-gray-50">
-                            <td>{{ key }}</td>
-                            <td>{{ result.qty }}</td>
-                            <td>{{ formatCurrency(result.total) }}</td>
+                            <td>{{ name }}</td>
+                            <td class="text-center">{{ row.sold_qty }}</td>
+                            <td class="text-right">
+                                {{ formatCurrency(row.sold_total) }}
+                                <font-awesome-icon
+                                    :icon="['fas', 'clipboard']"
+                                    class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                    @click="() => copyToClipboard(row.sold_total)"
+                                />
+                            </td>
+
+                            <template v-if="'accrual_packages' in results">
+                                <td class="text-center">{{ row.used_qty }}</td>
+                                <td class="text-right">{{ formatCurrency(row.used_total) }}</td>
+                            </template>
+                            <template v-else>
+                                <td colspan="2" class="text-center">
+                                    <font-awesome-icon :icon="['fas', 'spinner-third']" spin
+                                                       class="text-xl text-gray-500 py-2"/>
+                                </td>
+                            </template>
                         </tr>
                     </template>
+
                     <tr v-else class="border-b hover:bg-gray-50">
-                        <td colspan="3">
-                            No packages found for the specified date range.
-                        </td>
+                        <td colspan="5">No packages found for the specified date range.</td>
                     </tr>
 
 
                     <tr class="bg-gray-200">
-                        <td colspan="3" class="text-lg font-semibold">Services Sold</td>
+                        <td colspan="5" class="text-lg font-semibold">Services</td>
                     </tr>
                     <template v-if="!('services' in results)">
                         <tr>
-                            <td colspan="3" class="text-center">
+                            <td colspan="5" class="text-center">
                                 <font-awesome-icon :icon="['fas', 'spinner-third']" spin
-                                                   class="text-6xl text-gray-600"/>
+                                                   class="text-6xl text-gray-600 py-5"/>
                             </td>
                         </tr>
                     </template>
-                    <template v-else-if="Object.keys(results?.services).length > 0">
-                        <tr v-for="(result, key) in results.services" :key="key"
-                            class="border-b hover:bg-gray-50">
-                            <td>{{ key }}</td>
-                            <td>{{ result.qty }}</td>
-                            <td>
-                                {{ formatCurrency(result.total) }}
-                                <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                   @click="() => copyToClipboard(result.total)"
+                    <template v-else-if="Object.keys(results?.combined_services || {}).length > 0">
+                        <tr
+                            v-for="(row, name) in results.combined_services" :key="name"
+                            class="border-b hover:bg-gray-50"
+                        >
+                            <td>{{ name }}</td>
+                            <td class="text-center">{{ row.sold_qty }}</td>
+                            <td class="text-right">
+                                {{ formatCurrency(row.sold_total) }}
+                                <font-awesome-icon
+                                    :icon="['fas', 'clipboard']"
+                                    class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                    @click="() => copyToClipboard(row.sold_total)"
                                 />
-                                <div v-if="key === 'Day Care'" class="text-sm italic">
-                                    w/Packages: {{ formatCurrency(result.total + daycarePackageTotal) }}
-                                    <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                       @click="() => copyToClipboard(result.total + daycarePackageTotal)"
+                                <div v-if="name === 'Day Care'" class="text-sm italic text-gray-600">
+                                    w/Packages:
+                                    {{ formatCurrency((row.sold_total || 0) + daycarePackageTotal) }}
+                                    <font-awesome-icon
+                                        :icon="['fas', 'clipboard']"
+                                        class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                        @click="() => copyToClipboard((row.sold_total || 0) + daycarePackageTotal)"
                                     />
                                 </div>
                             </td>
+
+                            <template v-if="'accrual_services' in results">
+                                <td class="text-center">{{ row.used_qty || 0 }}</td>
+                                <td class="text-right">{{ formatCurrency(row.used_total) }}</td>
+                            </template>
+                            <template v-else>
+                                <td colspan="2" class="text-center">
+                                    <font-awesome-icon :icon="['fas', 'spinner-third']" spin
+                                                       class="text-xl text-gray-500"/>
+                                </td>
+                            </template>
                         </tr>
-                        <tr v-if="trainingPackagesTotal > 0.0" class="border-b hover:bg-gray-50">
-                            <td>Training</td>
-                            <td>N/A</td>
-                            <td>
-                                {{ formatCurrency(trainingPackagesTotal) }}
-                                <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                   @click="() => copyToClipboard(trainingPackagesTotal)"
-                                />
-                            </td>
-                        </tr>
-                        <tr v-if="results?.tips" class="border-b hover:bg-gray-50">
-                            <td>Tips Payable</td>
-                            <td>{{ results.tips.qty }}</td>
-                            <td>{{ formatCurrency(results.tips.total) }}
-                                <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                   @click="() => copyToClipboard(results.tips.total)"
-                                />
-                            </td>
-                        </tr>
-                        <tr v-if="results?.product" class="border-b hover:bg-gray-50">
-                            <td>Retail Products</td>
-                            <td>{{ results.product.qty }}</td>
-                            <td>{{ formatCurrency(results.product.total) }}
-                                <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                   @click="() => copyToClipboard(results.product.total)"
-                                />
-                            </td>
-                        </tr>
-                        <tr v-if="results?.tax" class="border-b hover:bg-gray-50">
-                            <td>Sales Tax to Pay</td>
-                            <td>N/A</td>
-                            <td>{{ formatCurrency(results.tax.total) }}
-                                <font-awesome-icon :icon="['fas', 'clipboard']" class="cursor-pointer text-blue-500"
-                                                   @click="() => copyToClipboard(results.tax.total)"
-                                />
+                    </template>
+
+                    <tr class="bg-gray-200">
+                        <td colspan="5" class="text-lg font-semibold">Other</td>
+                    </tr>
+                    <template v-if="!('tips' in results)">
+                        <tr>
+                            <td colspan="5" class="text-center">
+                                <font-awesome-icon :icon="['fas', 'spinner-third']" spin
+                                                   class="text-6xl text-gray-600 py-5"/>
                             </td>
                         </tr>
                     </template>
-                    <tr v-else class="border-b hover:bg-gray-50">
-                        <td colspan="3">
-                            No services found for the specified date range.
-                        </td>
-                    </tr>
+                    <template v-else>
+                        <tr v-if="results?.tips" class="border-b hover:bg-gray-50">
+                            <td>Tips Payable</td>
+                            <td class="text-center">{{ results.tips.qty }}</td>
+                            <td class="text-right">{{ formatCurrency(results.tips.total) }}
+                                <font-awesome-icon :icon="['fas', 'clipboard']"
+                                                   class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                                   @click="() => copyToClipboard(results.tips.total)"
+                                />
+                            </td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                        </tr>
+                        <tr v-if="results?.product" class="border-b hover:bg-gray-50">
+                            <td>Retail Products</td>
+                            <td class="text-center">{{ results.product.qty }}</td>
+                            <td class="text-right">{{ formatCurrency(results.product.total) }}
+                                <font-awesome-icon :icon="['fas', 'clipboard']"
+                                                   class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                                   @click="() => copyToClipboard(results.product.total)"
+                                />
+                            </td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                        </tr>
+                        <tr v-if="results?.tax" class="border-b hover:bg-gray-50">
+                            <td>Sales Tax to Pay</td>
+                            <td>&nbsp;</td>
+                            <td class="text-right">{{ formatCurrency(results.tax.total) }}
+                                <font-awesome-icon :icon="['fas', 'clipboard']"
+                                                   class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                                   @click="() => copyToClipboard(results.tax.total)"
+                                />
+                            </td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                        </tr>
+                    </template>
+
                     </tbody>
                 </table>
 

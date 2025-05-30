@@ -123,27 +123,32 @@ class ReportController extends Controller
 
         $customOrder = ['Daycare', 'Boarding', 'Enrichment', 'Grooming', 'Training'];
 
-        // Sort services and acc_services (if they exist)
-        foreach (['services', 'acc_services'] as $key) {
-            if (!empty($data[$key])) {
-                $data[$key] = collect($data[$key])
-                    ->sortBy(fn($v, $k) => array_search($k, $customOrder) ?? PHP_INT_MAX)
-                    ->all();
+        $services = $data['services'] ?? [];
+        $accrual = $data['accrual_services'] ?? [];
+        $combined = $this->mergeGroups($services, $accrual);
+
+        $combined['Training'] = $combined['Training'] ?? [
+            'sold_qty' => 0, 'sold_total' => 0,
+            'used_qty' => 0, 'used_total' => 0,
+        ];
+        $trainingPackageTotal = 0;
+        $trainingPackageQty = 0;
+
+        foreach (($data['packages'] ?? []) as $name => $entry) {
+            if (stripos($name, 'train') !== false) {
+                $trainingPackageQty += $entry['qty'] ?? 0;
+                $trainingPackageTotal += $entry['total'] ?? 0;
             }
         }
-
-        // Merge and apply the same sort to combined_services
-        $data['combined_services'] = $this->mergeGroups(
-            $data['services'] ?? [], $data['acc_services'] ?? [],
-        );
-
-        $data['combined_services'] = collect($data['combined_services'])
+        $combined['Training']['sold_qty'] += $trainingPackageQty;
+        $combined['Training']['sold_total'] += $trainingPackageTotal;
+        
+        $data['combined_services'] = collect($combined)
             ->sortBy(fn($v, $k) => array_search($k, $customOrder) ?? PHP_INT_MAX)
             ->all();
 
-        // Merge packages without custom sort
         $data['combined_packages'] = $this->mergeGroups(
-            $data['packages'] ?? [], $data['accrual_packages'] ?? [],
+            $data['packages'] ?? [], $data['accrual_packages'] ?? []
         );
 
         $report->data = $data;
