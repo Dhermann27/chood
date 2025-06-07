@@ -86,11 +86,9 @@ const bannerStyle = computed(() => {
     if (categories.includes('Boarding')) {
         return {label: 'Sleepover', class: 'bg-caregiver'};
     }
-
-    if (categories.includes('Day')) {
+    if (categories.includes('Day Care') || categories.includes('Daycare')) {
         return {label: 'Daycamper', class: 'bg-meadow'};
     }
-
     if (categories.includes('Interview')) {
         return {label: 'Orientation', class: 'bg-greyhound'};
     }
