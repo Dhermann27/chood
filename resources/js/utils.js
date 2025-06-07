@@ -1,8 +1,16 @@
-export function getTextWidth(text, font = '16px Arial') {
-    const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
-    const context = canvas.getContext("2d");
-    context.font = font;
-    return context.measureText(text).width;
+export function getFittedFontSize(el, maxWidth, minFontSize = 10, decrement = 2) {
+    const canvas = getFittedFontSize.canvas || (getFittedFontSize.canvas = document.createElement('canvas'));
+    const context = canvas.getContext('2d');
+
+    const computed = window.getComputedStyle(el);
+    let fontSize = parseFloat(computed.fontSize);
+
+    while (fontSize > minFontSize) {
+        context.font = `${fontSize}px ${computed.fontFamily}`;
+        if (context.measureText(el.innerText).width <= maxWidth * 0.8) break;
+        fontSize -= decrement;
+    }
+    return `${fontSize}px`;
 }
 
 export function formatTime(time) {

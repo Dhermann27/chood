@@ -61,6 +61,7 @@ return [
         'mealmap_dpp' => env('MEALMAP_DOGS_PER_PAGE'),
         'nodepath' => env('NODE_PATH'),
         'queue_delay' => env('QUEUE_DELAY'),
+        'regular_service_cats' => array_map('trim', explode(',', env('REGULAR_SERVICE_CATEGORIES'))),
         'special_service_cats' => array_map('trim', explode(',', env('SPECIAL_SERVICE_CATEGORIES'))),
         'bath_service_cats' => array_map('trim', explode(',', env('BATH_SERVICE_CATEGORIES'))),
         'fsg_service_cats' => array_map('trim', explode(',', env('FSG_SERVICE_CATEGORIES'))),

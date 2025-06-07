@@ -114,11 +114,11 @@ onBeforeUnmount(() => {
 <template>
     <Head title="Groommap"/>
     <main class="w-full h-full ">
-        <div class="text-3xl my-2 text-center">Today's Grooming Schedule</div>
+        <div class="text-3xl font-header my-2 text-center">Today's Grooming Schedule</div>
         <div id="yardmap" class="items-center justify-center p-1" :style="yardGridStyle">
             <template v-for="(dog, index) in displayDogs" :id="dog.id">
-                <div class="rounded-tl-2xl rounded-bl-2xl shadow-xl py-4"
-                     :style="{height: cardHeight + 'px', width: cardWidth + 'px'}">
+                <div class="rounded-tl-2xl rounded-bl-2xl shadow-xl py-4 h-full"
+                     :style="{ width: cardWidth + 'px'}">
                     <DogCard :dogs="[dog]" :photoUri="props.photoUri" :card-width="cardWidth" :card-height="cardHeight"
                              :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
                 </div>
@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
                     class="bg-yellow-100 text-3xl rounded-tr-2xl rounded-br-2xl shadow-inner p-4 h-full">
                     <div>Checkout: {{ formatTime(dog.checkout) }}</div>
                     <div v-for="service in dog.dog_services" :key="service.id" class="my-5 overflow-y-hidden">
-                        <div class="font-bold text-blue-700">{{ service.service.name }}</div>
+                        <div class="font-bold text-caregiver">{{ service.service.name }}</div>
                         <div class="text-gray-600">Start: {{ formatTime(service.scheduled_start) }}</div>
 
                         <ol v-if="service.service.category === 'Bath'" class="mt-3 list-none text-gray-800">
@@ -141,7 +141,7 @@ onBeforeUnmount(() => {
             </template>
             <template v-if="dogs.length > 8">
                 <div
-                    class="col-span-2 bg-red-200 rounded-2xl shadow-xl flex items-center justify-center text-4xl h-full">
+                    class="col-span-2 bg-crimson rounded-2xl shadow-xl flex items-center justify-center text-4xl h-full">
                     Plus {{ dogs.length - 7 }} More
                 </div>
             </template>

@@ -12,7 +12,7 @@ library.add(fas.faEdit, fas.faTrash, fas.faPlus, fas.faWeightHanging, fas.faSpin
     fas.faCheckSquare, far.faSquare, fas.faBadgeCheck, fas.faRotateLeft, fas.faCowbellCirclePlus, fas.faClipboard,
     fas.faHouseCircleCheck, fas.faHouseChimneyBlank, fas.faBowlFood, fas.faPrescriptionBottlePill, fas.faHandDots,
     fas.faNoteMedical, fas.faMars, fas.faVenus, fas.faDroplet, fas.faSheep, fas.faSoap, fas.faPumpSoap, fas.faWind,
-    fas.faBrush, fas.faTooth, fas.faEarListen, fas.faEye);
+    fas.faBrush, fas.faTooth, fas.faEarListen, fas.faEye, fas.faAlarmClock);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

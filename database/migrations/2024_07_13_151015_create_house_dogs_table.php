@@ -26,6 +26,8 @@ return new class extends Migration {
             $table->tinyInteger('is_inhouse')->default(1);
             $table->dateTime('checkin')->nullable();
             $table->dateTime('checkout')->nullable();
+            $table->timestamp('rest_starts_at')->nullable();
+            $table->integer('rest_duration_minutes')->nullable();
             $table->timestamps();
         });
         DB::update('ALTER TABLE dogs AUTO_INCREMENT = 1000');

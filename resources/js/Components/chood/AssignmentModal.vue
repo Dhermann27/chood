@@ -28,7 +28,7 @@ const closeModal = () => {
 </script>
 
 <template>
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div class="fixed inset-0 bg-DEFAULT bg-opacity-50 flex justify-center items-center">
         <div class="bg-white p-6 rounded-lg w-96">
             <h3 class="text-lg font-semibold mb-4">
                 {{ (modalType === 'add' ? 'Add ' : 'Edit ') }} Cabin Assignment
@@ -38,7 +38,7 @@ const closeModal = () => {
                 <div class="mb-4">
                     <label for="cabin-select">Select Cabin</label>
                     <select id="cabin-select" v-model="props.assignment.cabin_id" required
-                            class="mt-1 block w-full text-sm border border-gray-300 rounded-md p-2">
+                            class="mt-1 block w-full text-sm border border-greyhound rounded-md p-2">
                         <option disabled value="">Please select a cabin</option>
                         <option v-for="cabin in cabins" :key="cabin.id" :value="cabin.id">
                             {{ cabin.short_name }}
@@ -50,7 +50,7 @@ const closeModal = () => {
                     <div @click="toggleNewDog" class="cursor-pointer text-3xl">
                         <font-awesome-icon
                             :icon="props.isNewDog ? ['fas', 'square-check'] : ['far', 'square']"
-                            class="text-blue-600 hover:text-blue-800"
+                            class="text-caregiver hover:text-caregiver"
                         />
                     </div>
                     <label class="text-lg font-medium">Check for future boarding</label>
@@ -64,7 +64,7 @@ const closeModal = () => {
                             v-model="assignment.dogs" multiple :options="dogs" label="firstname"
                             :searchable="true" :clearable="true" placeholder="Select Dog(s)">
                             <template #option="props">
-                                <div v-if="props.option.id === 'new'" class="text-sm text-blue-500">
+                                <div v-if="props.option.id === 'new'" class="text-sm text-caregiver">
                                     Enter a new dog
                                 </div>
                                 <div v-else>
@@ -78,28 +78,28 @@ const closeModal = () => {
                 </template>
                 <template v-else>
                     <div class="mb-4">
-                        <label for="name" class="block text-xs font-medium text-gray-700">Dog Name</label>
+                        <label for="name" class="block text-xs font-medium text-greyhound">Dog Name</label>
                         <input
                             v-model="assignment.firstname"
                             id="firstname"
                             type="text"
-                            class="mt-1 block w-full text-sm border border-gray-300 rounded-md p-2"
+                            class="mt-1 block w-full text-sm border border-greyhound rounded-md p-2"
                         />
                     </div>
 
                     <div class="mb-4">
-                        <label for="name" class="block text-xs font-medium text-gray-700">Family Name</label>
+                        <label for="name" class="block text-xs font-medium text-greyhound">Family Name</label>
                         <input
                             v-model="assignment.lastname"
                             id="lastname"
                             type="text"
-                            class="mt-1 block w-full text-sm border border-gray-300 rounded-md p-2"
+                            class="mt-1 block w-full text-sm border border-greyhound rounded-md p-2"
                         />
                     </div>
                 </template>
 
                 <div v-if="errorMessages.length > 0"
-                     class="p-4 mb-4 bg-red-100 border border-red-500 text-red-700 rounded">
+                     class="p-4 mb-4 bg-alerted border rounded">
                     <div v-for="message in errorMessages" :key="message" class="font-semibold">
                         {{ message }}
                     </div>
@@ -107,9 +107,9 @@ const closeModal = () => {
 
                 <div class="flex justify-between">
                     <button type="button" @click="closeModal"
-                            class="px-4 py-2 bg-gray-400 text-white rounded-md text-xs hover:bg-gray-500">Cancel
+                            class="px-4 py-2 bg-greyhound text-white rounded-md text-xs">Cancel
                     </button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700">
+                    <button type="submit" class="px-4 py-2 bg-caregiver text-white rounded-md text-xs hover:bg-caregiver">
                         {{ modalType === 'add' ? 'Add Assignment' : 'Update Assignment' }}
                     </button>
                 </div>

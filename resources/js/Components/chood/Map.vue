@@ -198,17 +198,15 @@ const handleClick = (cabin) => {
                      :shouldLoad="cabin.id === getCurrentCabinKey()"
                      @imageLoaded="handleImageLoaded"/>
             <div v-if="controls === ControlSchemes.MODAL && props.dogs[cabin.id][0].is_inhouse === 0"
-                 class="absolute inset-y-0 left-0 flex flex-col justify-center py-1">
+                 class="absolute inset-y-0 left-0 flex flex-col justify-center">
                 <button
                     @click="openModal( 'edit', cabin)"
-                    class="bg-blue-100 text-blue-500 hover:bg-blue-200 hover:text-blue-700 p-1 rounded-r-md"
+                    class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md"
                 >
                     <font-awesome-icon :icon="['fas', 'edit']"/>
                 </button>
-                <button
-                    @click="handleDelete(props.dogs[cabin.id])"
-                    class="bg-blue-100 text-red-500 hover:text-red-700 p-1 rounded-r-md"
-                >
+                <button @click="handleDelete(props.dogs[cabin.id])"
+                    class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md">
                     <font-awesome-icon :icon="['fas', 'trash']"/>
                 </button>
             </div>
@@ -216,7 +214,7 @@ const handleClick = (cabin) => {
         <div v-else>
             {{ cabin.short_name }}
             <div v-if="controls === ControlSchemes.MODAL" @click="openModal( 'add', cabin) " class="cabin-icon">
-                <button class="bg-blue-100 text-blue-500 hover:text-blue-700 p-1 rounded-r-md">
+                <button class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md">
                     <font-awesome-icon :icon="['fas', 'add']"/>
                 </button>
             </div>

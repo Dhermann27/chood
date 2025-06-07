@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {ref, computed, onMounted, onBeforeUnmount, nextTick} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
-import {formatTime, getTextWidth} from "@/utils.js";
+import {formatTime, getFittedFontSize} from "@/utils.js";
 
 const props = defineProps({
     size: String,
@@ -76,9 +76,7 @@ async function updateData() {
             currentLoadingIndex.value = 0;
             if (chyron.value) {
                 await nextTick();
-                const computedChyron = window.getComputedStyle(chyron.value);
-                const pct = 1920 / getTextWidth(chyron.value.innerText, computedChyron.font);
-                if (pct < 1.05) chyronStyle.value.fontSize = (parseFloat(computedChyron.fontSize) * (pct - .085)) + 'px';
+                chyronStyle.value.fontSize = getFittedFontSize(chyron.value, chyron.value.offsetWidth);
             }
         }
     } catch (error) {

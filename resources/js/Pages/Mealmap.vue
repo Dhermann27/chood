@@ -171,11 +171,11 @@ onBeforeUnmount(() => {
     <div class="h-full w-full flex flex-col items-center justify-center">
         <div class="w-full grid grid-cols-2 print:grid-cols-1 gap-4 h-full">
             <div class="flex flex-col ps-3 items-center divider pt-10 print:hidden">
-                <div class="text-3xl mb-2">Dog Feeding Instructions</div>
+                <div class="text-3xl font-header mb-2">Dog Feeding Instructions</div>
 
                 <div v-if="dogs && dogs?.length > props.dogsPerPage" class="flex justify-center gap-2 mb-4 w-full">
                     <div class="h-6 bg-gray-200 rounded-full w-3/4">
-                        <div class="relative h-6 bg-blue-600 rounded-full text-center" :style="progressBarStyle">
+                        <div class="relative h-6 bg-caregiver rounded-full text-center" :style="progressBarStyle">
                             {{ currentViewIndex * props.dogsPerPage + 1 }} - {{
                                 Math.min((currentViewIndex + 1) * props.dogsPerPage, dogs?.length)
                             }}
@@ -210,7 +210,7 @@ onBeforeUnmount(() => {
                                 {{ medication.description.trim() }}
                             </div>
                             <div v-for="allergy in dog.allergies" :key="allergy.id"
-                                 class="flex-col justify-center text-red-700">
+                                 class="flex-col justify-center text-crimson">
                                 <font-awesome-icon :icon="['fas', 'hand-dots']" class="me-2"/>
                                 ALLERGY: {{ allergy.description.trim() }}
                             </div>
@@ -221,20 +221,20 @@ onBeforeUnmount(() => {
 
 
             <div class="flex flex-col items-center pt-10 print:flex">
-                <div class="text-3xl mb-2">Daily Rotation</div>
+                <div class="text-3xl font-header mb-2">Daily Rotation</div>
                 <div v-if="fohStaff" class="text-base mb-2">{{ fohStaff }}</div>
 
                 <table class="mx-5 bg-amber-100">
                     <thead>
                     <tr>
                         <th>&nbsp;</th>
-                        <th v-for="yard in yards" :key="yard.id">{{ yard.name }}</th>
+                        <th class="font-subheader uppercase" v-for="yard in yards" :key="yard.id">{{ yard.name }}</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr v-for="rotation in props.rotations" :key="rotation.id">
-                        <td class="border border-black px-4 py-2">{{ rotation.label }}</td>
-                        <td v-for="yard in yards" :key="yard.id" class="border border-black px-4 py-2"
+                        <td class="border border-DEFAULT px-4 py-2">{{ rotation.label }}</td>
+                        <td v-for="yard in yards" :key="yard.id" class="border border-DEFAULT px-4 py-2"
                             :ref="el => setInputRef(`multiselect-${rotation.id}-${yard.id}`, el)">
                             <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                                 {{ (assignments[rotation.id]?.[yard.id] || []).map(e => e.first_name).join(', ') }}
@@ -254,9 +254,9 @@ onBeforeUnmount(() => {
                     </tbody>
                 </table>
 
-                <table class="mx-5 bg-blue-200 m-10">
+                <table class="mx-5 bg-caregiver m-10">
                     <thead>
-                    <tr>
+                    <tr class="font-subheader uppercase">
                         <th>&nbsp;</th>
                         <th>First Break</th>
                         <th>Lunch</th>
@@ -265,12 +265,12 @@ onBeforeUnmount(() => {
                     </thead>
                     <tbody>
                     <tr v-for="employee in breaks">
-                        <td class="border border-black px-4 py-2">{{ employee.first_name }}
+                        <td class="border border-DEFAULT px-4 py-2">{{ employee.first_name }}
                             <template v-if="employee.shift_start && employee.shift_end">
                                 ({{ formatTime(employee.shift_start) }}-{{ formatTime(employee.shift_end) }})
                             </template>
                         </td>
-                        <td class="border border-black px-4 py-2"
+                        <td class="border border-DEFAULT px-4 py-2"
                             :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_first_break`, el)">
                             <div
                                 :class="[controls !== ControlSchemes.NONE  && employee.first_name !== 'Everyone' ? 'hidden' : '', 'print:block']">
@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
                                            placeholder="None" class="print-hide"
                                            @change="handleBreakChange($event, employee.homebase_user_id, 'next_first_break')"/>
                         </td>
-                        <td class="border border-black px-4 py-2"
+                        <td class="border border-DEFAULT px-4 py-2"
                             :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_lunch_break`, el)">
                             <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                                 {{ employee.next_lunch_break }}
@@ -295,7 +295,7 @@ onBeforeUnmount(() => {
                                            placeholder="None"
                                            @change="handleBreakChange($event, employee.homebase_user_id, 'next_lunch_break')"/>
                         </td>
-                        <td class="border border-black px-4 py-2"
+                        <td class="border border-DEFAULT px-4 py-2"
                             :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_second_break`, el)">
                             <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                                 {{ employee.next_second_break }}

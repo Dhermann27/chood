@@ -13,10 +13,21 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Lato', 'Helvetica', ...defaultTheme.fontFamily.sans],
+                header: ['"ChunkFive"', 'serif'],
+                subheader: ['FuturaBold', 'sans-serif'],
+                body: ['FuturaBook', 'sans-serif'],
             },
             textColor: {
                 DEFAULT: '#373a36', // Set the default text color
+            },
+            colors: {
+                DEFAULT: '#373a36',
+                crimson: '#9E1B32',
+                sunshine: '#FFDE17',
+                caregiver: '#87B3D1',
+                greyhound: '#58595B',
+                meadow: '#88C999', // complementary green
+                alerted: '#FF4F4F',      // high-intensity alert red
             },
         },
     },

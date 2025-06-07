@@ -52,7 +52,13 @@ trait ChoodTrait
     {
         $dogs = Dog::with('dogServices.service', 'cabin');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
-        if ($size) $dogs->where('weight', $size == 'small' ? '<=' : '>=', $size == 'small' ? 40 : 30);
+        if ($size) {
+            $dogs->where('weight', $size == 'small' ? '<=' : '>=', $size == 'small' ? 40 : 30);
+            $dogs->whereHas('dogServices.service', function ($query) {
+                $query->whereIn('category', config('services.dd.regular_service_cats'));
+            });
+        }
+
         return $dogs->orderBy('firstname')->get();
     }
 
@@ -67,12 +73,13 @@ trait ChoodTrait
         return Dog::select('dogs.*')->distinct()->join('dog_services', 'dog_services.pet_id', '=', 'dogs.pet_id')
             ->whereIn('dog_services.service_id', $specialServiceIds)
             ->whereDate('dog_services.scheduled_start', config('services.dd.sandbox_service_condition'), $today)
-            ->with(['dogServices' => function ($query) use ($specialServiceIds, $today) {
-                $query->whereIn('service_id', $specialServiceIds)
-                    ->whereDate('scheduled_start', config('services.dd.sandbox_service_condition'), $today)
-                    ->orderBy('scheduled_start');
-            }, 'dogServices.service',
-            ])->get()->sortBy(fn($dog) => optional($dog->dogServices->first())->scheduled_start)->values();
+            ->with(['dogServices.service'])->get()->sortBy(fn($dog) =>
+            optional(
+                $dog->dogServices->firstWhere(fn($ds) =>
+                    in_array($ds->service_id, $specialServiceIds->all(), true)
+                    && Carbon::parse($ds->scheduled_start)->isSameDay($today)
+                )
+            )?->scheduled_start)->values();
     }
 
 }

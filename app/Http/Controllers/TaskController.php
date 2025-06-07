@@ -22,15 +22,8 @@ class TaskController extends Controller
 
     public function index(): \Inertia\Response
     {
-        $employees = Employee::whereHas('shift', function ($query) {
-            $query->where('is_working', true);
-        })->orderBy('first_name')->get();
-
         return Inertia::render('Task/TaskEntry', [
             'cabins' => $this->getCabins(),
-            'dogs' => $this->getDogsByCabin(),
-            'employees' => $employees,
-            'statuses' => CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray(),
             'photoUri' => config('services.dd.uris.photo'),
         ]);
     }
@@ -38,7 +31,7 @@ class TaskController extends Controller
     // TODO: Add cool way to see status messages from others
     function getData(string $checksum = null): JsonResponse
     {
-        $dogs = $this->getDogsByCabin();
+        $dogs = $this->getDogs();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
         $employees = Employee::whereHas('shift', function ($query) {
             $query->where('is_working', true);
@@ -105,10 +98,10 @@ class TaskController extends Controller
 
             $cabin = Cabin::findOrFail($validatedData['cabin_id']);
             $dogs = collect($validatedData['dogsToAssign']);
-            $names = $dogs->pluck('firstname')->toArray();
+            $names = collect($request->input('dogsToAssign'))->pluck('firstname')->filter()->values()->toArray();
             Dog::whereIn('id', $dogs->pluck('id')->toArray())->update(['cabin_id' => $validatedData['cabin_id']]);
             return response()->json([
-                'message' => 'Dog(s) ' . implode(', ', $names) . ' assigned to Cabin ' . $cabin->cabinName], 200);
+                'message' => implode(', ', $names) . ' assigned to Cabin ' . $cabin->cabinName], 200);
         } catch (ValidationException $e) {
             return response()->json([
                 'error' => $e->errors(),
@@ -126,4 +119,32 @@ class TaskController extends Controller
             ], 500);
         }
     }
+
+    public function startBreak(Request $request): JsonResponse
+    {
+        $validatedData = $request->validate([
+            'dogsToAssign.*.id' => 'required|exists:dogs,id',
+            'break_duration' => 'required|in:15,30,45,60',
+        ]);
+
+        Dog::whereIn('id', collect($validatedData['dogsToAssign']))->update([
+            'rest_starts_at' => now(),
+            'rest_duration_minutes' => $validatedData['break_duration'],
+        ]);
+
+        $names = implode(',', collect($request->input('dogsToAssign'))->pluck('firstname')->filter()->values()->toArray());
+        return response()->json(['message' => "{$validatedData['break_duration']}-minute rest started for {$names}"]);
+    }
+
+    public function markReturned(string $dog_id): JsonResponse
+    {
+        $dog = Dog::findOrFail($dog_id);
+        $dog->update([
+            'rest_starts_at' => null,
+            'rest_duration_minutes' => null,
+        ]);
+
+        return response()->json(['message' => "Marked {$dog->firstname} as returned to yard"]);
+    }
+
 }

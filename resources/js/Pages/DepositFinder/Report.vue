@@ -110,30 +110,61 @@ const copyToClipboard = async (text) => {
     }
 };
 
-const copyFullReport = async () => {
+const copyFullReport = async (e) => {
     const node = document.getElementById('report-table-wrapper');
     if (!node) return;
 
     const clone = node.cloneNode(true);
+
+    // Remove the Copy Report button
     const button = clone.querySelector('button');
     if (button) button.remove();
 
-    // Optional: force full width for better paste appearance
-    clone.style.width = '85%';
-    clone.style.maxWidth = 'none';
-    clone.style.boxShadow = 'none';
+    // Remove all clipboard icons
+    const icons = clone.querySelectorAll('.fa-clipboard, [data-icon="clipboard"]');
+    icons.forEach(icon => icon.remove());
 
-    // Serialize to HTML
-    const html = clone.outerHTML;
+    // Add inline zebra/color styling for paste output
+    const style = document.createElement('style');
+    style.textContent = `
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-family: Calibri, sans-serif;
+    }
+    th, td.font-semibold {
+      font-weight: 600
+    }
+    thead tr:first-child {
+      background-color: #f0f0f0;
+    }
+    th, td {
+      padding: 8px;
+      border: 1px solid #ccc;
+    }
+    tbody tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    tbody tr:nth-child(odd) {
+      background-color: #ffffff;
+    }
+    td.text-right {
+      text-align: right;
+    }
+    td.text-center {
+      text-align: center;
+    }
+  `;
+    clone.prepend(style);
 
+    e.currentTarget.textContent = 'Copied!'
     try {
         await navigator.clipboard.write([
             new ClipboardItem({
-                'text/html': new Blob([html], { type: 'text/html' }),
-                'text/plain': new Blob([clone.textContent ?? ''], { type: 'text/plain' }),
+                'text/html': new Blob([clone.outerHTML], {type: 'text/html'}),
+                'text/plain': new Blob([clone.textContent ?? ''], {type: 'text/plain'}),
             }),
         ]);
-        console.log('Report copied to clipboard.');
     } catch (err) {
         console.error('Copy to clipboard failed:', err);
     }
@@ -141,12 +172,12 @@ const copyFullReport = async () => {
 </script>
 
 <template>
-    <div class="flex items-center justify-center min-h-screen bg-gray-100">
+    <div class="flex items-center justify-center min-h-screen bg-greyhound">
         <div class="w-full max-w-full flex flex-col items-center">
             <!-- Form Container -->
             <div class="w-1/2 max-w-full min-w-0 p-8 space-y-8 bg-white shadow-md rounded-lg">
-                <h2 class="text-2xl font-bold text-center text-gray-800">Daily Deposit Finder</h2>
-                <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mt-4 rounded">
+                <h2 class="text-2xl font-header text-center">Daily Deposit Finder</h2>
+                <div class="bg-sunshine border-l-4 p-4 mt-4 rounded">
                     <p class="font-medium">Important:</p>
                     <p>This tool is for novelty purposes only. It was not created or supported by Camp Bow Wow or
                         Propelled Brands; contact a franchisee with questions. Your login information is not saved and
@@ -154,48 +185,48 @@ const copyFullReport = async () => {
                 </div>
                 <form @submit.prevent="handleLogin" class="space-y-6">
                     <div>
-                        <label for="username" class="block font-medium text-gray-700">Data Dawg Username</label>
+                        <label for="username" class="block font-medium text-greyhound">Data Dawg Username</label>
                         <input
                             v-model="username"
                             type="text"
                             id="username"
-                            class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"
                             placeholder="Enter your username"
                             required
                         />
                     </div>
 
                     <div>
-                        <label for="password" class="block font-medium text-gray-700">Data Dawg Password</label>
+                        <label for="password" class="block font-medium text-greyhound">Data Dawg Password</label>
                         <input
                             v-model="password"
                             type="password"
                             id="password"
-                            class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"
                             placeholder="Enter your password"
                             required
                         />
                     </div>
 
                     <div>
-                        <label for="date" class="block font-medium text-gray-700">Date</label>
+                        <label for="date" class="block font-medium text-greyhound">Date</label>
                         <input
                             v-model="date"
                             type="date"
                             id="date"
-                            class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"
                             required
                         />
                     </div>
 
-                    <div v-if="errorMessage" class="p-4 mb-4 bg-red-100 border border-red-500 text-red-700 rounded">
+                    <div v-if="errorMessage" class="p-4 mb-4 bg-alerted border rounded">
                         {{ errorMessage }}
                     </div>
 
                     <div>
                         <button
                             type="submit"
-                            class="w-full px-4 py-2 text-white bg-indigo-600 rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            class="w-full px-4 py-2 text-white bg-caregiver rounded-lg shadow-sm"
                         >
                             Search
                         </button>
@@ -205,49 +236,48 @@ const copyFullReport = async () => {
             <div v-if="results && started" id="report-table-wrapper"
                  class="w-2/3 max-w-full min-w-0 mt-8 p-8 bg-white shadow-md rounded-lg">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-bold">Date: {{ results?.report_date ?? date }}</h3>
-                    <button id="copy-report-button" @click="copyFullReport"
-                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded shadow"
-                    >
+                    <h3 class="text-xl font-subheader uppercase">Date: {{ results?.report_date ?? date }}</h3>
+                    <button id="copy-report-button" @click="copyFullReport($event)"
+                            class="w-1/3 px-4 py-2 bg-caregiver text-white text-sm rounded shadow">
                         Copy Report to Clipboard
                     </button>
                 </div>
                 <table class="min-w-full table-auto bg-white rounded-lg">
                     <thead>
-                    <tr class="bg-gray-100 border-b text-center font-semibold text-gray-600">
+                    <tr class="bg-greyhound border-b text-center text-white font-subheader uppercase">
                         <th class="px-4 py-2 text-left" rowspan="2">Category</th>
-                        <th class="px-4 py-2 font-semibold text-gray-600" colspan="2">Paid</th>
-                        <th class="px-4 py-2 font-semibold text-gray-600" colspan="2">Used</th>
+                        <th class="px-4 py-2" colspan="2">Paid</th>
+                        <th class="px-4 py-2" colspan="2">Used</th>
                     </tr>
-                    <tr class="bg-gray-100 border-b text-center font-semibold text-gray-600">
-                        <th class="px-4 py-2 font-semibold text-gray-600">Quantity</th>
-                        <th class="px-4 py-2 font-semibold text-gray-600">Total Amount</th>
-                        <th class="px-4 py-2 font-semibold text-gray-600">Quantity</th>
-                        <th class="px-4 py-2 font-semibold text-gray-600">Total Amount</th>
+                    <tr class="bg-greyhound border-b text-center text-white font-subheader uppercase">
+                        <th class="px-4 py-2">Quantity</th>
+                        <th class="px-4 py-2">Total Amount</th>
+                        <th class="px-4 py-2">Quantity</th>
+                        <th class="px-4 py-2">Total Amount</th>
                     </tr>
                     </thead>
                     <tbody>
 
-                    <tr class="bg-gray-200 text-gray-700">
-                        <td colspan="5" class="text-lg font-semibold">Overall</td>
+                    <tr class="bg-greyhound">
+                        <td colspan="5" class="text-lg text-white font-subheader uppercase">Overall</td>
                     </tr>
                     <template v-if="!('deposits' in results)">
                         <tr>
                             <td colspan="5" class="text-center py-4">
                                 <font-awesome-icon :icon="['fas', 'spinner-third']" spin
-                                                   class="text-6xl text-gray-600 py-5"/>
+                                                   class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
                     </template>
                     <template v-else>
                         <template v-if="Object.keys(results.deposits).length > 0">
-                            <tr v-for="(result, key) in results.deposits" :key="key" class="border-b hover:bg-gray-50">
+                            <tr v-for="(result, key) in results.deposits" :key="key" class="border-b hover:bg-greyhound">
                                 <td class="font-medium">{{ key }}</td>
                                 <td class="text-center">{{ result.qty }}</td>
                                 <td class="text-right">
                                     {{ formatCurrency(result.total) }}
                                     <font-awesome-icon :icon="['fas', 'clipboard']"
-                                                       class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                                       class="ml-2 text-caregiver cursor-pointer inline-block"
                                                        @click="() => copyToClipboard(result.total)"/>
                                 </td>
 
@@ -261,7 +291,7 @@ const copyFullReport = async () => {
                                     </td>
                                     <td v-else colspan="2" class="text-center">
                                         <font-awesome-icon :icon="['fas', 'spinner-third']" spin
-                                                           class="text-xl text-gray-500 py-2"/>
+                                                           class="text-xl text-greyhound py-2"/>
                                     </td>
                                 </template>
 
@@ -273,7 +303,7 @@ const copyFullReport = async () => {
                         </template>
                         <!-- No deposit data, but accrual_total exists -->
                         <template v-else-if="'accrual_total' in results">
-                            <tr class="border-b hover:bg-gray-50">
+                            <tr class="border-b">
                                 <td colspan="3" class="text-right font-semibold">Accruals Total</td>
                                 <td class="text-center">{{ results.accrual_total.qty }}</td>
                                 <td class="text-right">{{ formatCurrency(results.accrual_total.total) }}</td>
@@ -283,7 +313,7 @@ const copyFullReport = async () => {
                         <!-- No deposits, no accrual_total yet -->
                         <template v-else>
                             <tr>
-                                <td colspan="5" class="text-center py-4 text-gray-500 italic">
+                                <td colspan="5" class="text-center py-4 text-greyhound italic">
                                     No deposit data available.
                                 </td>
                             </tr>
@@ -291,29 +321,29 @@ const copyFullReport = async () => {
                     </template>
 
 
-                    <tr class="bg-gray-200 text-gray-700">
-                        <td colspan="5" class="text-lg font-semibold">Packages</td>
+                    <tr class="bg-greyhound">
+                        <td colspan="5" class="text-lg text-white font-subheader uppercase">Packages</td>
                     </tr>
 
                     <template v-if="!('packages' in results)">
                         <tr>
                             <td colspan="5" class="text-center">
                                 <font-awesome-icon :icon="['fas', 'spinner-third']" spin
-                                                   class="text-6xl text-gray-600 py-5"/>
+                                                   class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
                     </template>
 
                     <template v-else-if="Object.keys(results?.combined_packages || {}).length > 0">
                         <tr v-for="(row, name) in results.combined_packages" :key="name"
-                            class="border-b hover:bg-gray-50">
+                            class="border-b hover:bg-greyhound">
                             <td>{{ name }}</td>
                             <td class="text-center">{{ row.sold_qty }}</td>
                             <td class="text-right">
                                 {{ formatCurrency(row.sold_total) }}
                                 <font-awesome-icon
                                     :icon="['fas', 'clipboard']"
-                                    class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                    class="ml-2 text-caregiver cursor-pointer inline-block"
                                     @click="() => copyToClipboard(row.sold_total)"
                                 />
                             </td>
@@ -325,32 +355,32 @@ const copyFullReport = async () => {
                             <template v-else>
                                 <td colspan="2" class="text-center">
                                     <font-awesome-icon :icon="['fas', 'spinner-third']" spin
-                                                       class="text-xl text-gray-500 py-2"/>
+                                                       class="text-xl text-greyhound py-2"/>
                                 </td>
                             </template>
                         </tr>
                     </template>
 
-                    <tr v-else class="border-b hover:bg-gray-50">
+                    <tr v-else class="border-b hover:bg-greyhound">
                         <td colspan="5">No packages found for the specified date range.</td>
                     </tr>
 
 
-                    <tr class="bg-gray-200">
-                        <td colspan="5" class="text-lg font-semibold">Services</td>
+                    <tr class="bg-greyhound">
+                        <td colspan="5" class="text-lg text-white font-subheader uppercase">Services</td>
                     </tr>
                     <template v-if="!('services' in results)">
                         <tr>
                             <td colspan="5" class="text-center">
                                 <font-awesome-icon :icon="['fas', 'spinner-third']" spin
-                                                   class="text-6xl text-gray-600 py-5"/>
+                                                   class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
                     </template>
                     <template v-else-if="Object.keys(results?.combined_services || {}).length > 0">
                         <tr
                             v-for="(row, name) in results.combined_services" :key="name"
-                            class="border-b hover:bg-gray-50"
+                            class="border-b hover:bg-greyhound"
                         >
                             <td>{{ name }}</td>
                             <td class="text-center">{{ row.sold_qty }}</td>
@@ -358,15 +388,15 @@ const copyFullReport = async () => {
                                 {{ formatCurrency(row.sold_total) }}
                                 <font-awesome-icon
                                     :icon="['fas', 'clipboard']"
-                                    class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                    class="ml-2 text-caregiver cursor-pointer inline-block"
                                     @click="() => copyToClipboard(row.sold_total)"
                                 />
-                                <div v-if="name === 'Day Care'" class="text-sm italic text-gray-600">
+                                <div v-if="name === 'Day Care'" class="text-sm italic text-greyhound">
                                     w/Packages:
                                     {{ formatCurrency((row.sold_total || 0) + daycarePackageTotal) }}
                                     <font-awesome-icon
                                         :icon="['fas', 'clipboard']"
-                                        class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                        class="ml-2 text-caregiver cursor-pointer inline-block"
                                         @click="() => copyToClipboard((row.sold_total || 0) + daycarePackageTotal)"
                                     />
                                 </div>
@@ -379,54 +409,54 @@ const copyFullReport = async () => {
                             <template v-else>
                                 <td colspan="2" class="text-center">
                                     <font-awesome-icon :icon="['fas', 'spinner-third']" spin
-                                                       class="text-xl text-gray-500"/>
+                                                       class="text-xl text-greyhound"/>
                                 </td>
                             </template>
                         </tr>
                     </template>
 
-                    <tr class="bg-gray-200">
-                        <td colspan="5" class="text-lg font-semibold">Other</td>
+                    <tr class="bg-greyhound">
+                        <td colspan="5" class="text-lg text-white font-subheader uppercase">Other</td>
                     </tr>
                     <template v-if="!('tips' in results)">
                         <tr>
                             <td colspan="5" class="text-center">
                                 <font-awesome-icon :icon="['fas', 'spinner-third']" spin
-                                                   class="text-6xl text-gray-600 py-5"/>
+                                                   class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
                     </template>
                     <template v-else>
-                        <tr v-if="results?.tips" class="border-b hover:bg-gray-50">
+                        <tr v-if="results?.tips" class="border-b hover:bg-greyhound">
                             <td>Tips Payable</td>
                             <td class="text-center">{{ results.tips.qty }}</td>
                             <td class="text-right">{{ formatCurrency(results.tips.total) }}
                                 <font-awesome-icon :icon="['fas', 'clipboard']"
-                                                   class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                                   class="ml-2 text-caregiver cursor-pointer inline-block"
                                                    @click="() => copyToClipboard(results.tips.total)"
                                 />
                             </td>
                             <td>&nbsp;</td>
                             <td>&nbsp;</td>
                         </tr>
-                        <tr v-if="results?.product" class="border-b hover:bg-gray-50">
+                        <tr v-if="results?.product" class="border-b hover:bg-greyhound">
                             <td>Retail Products</td>
                             <td class="text-center">{{ results.product.qty }}</td>
                             <td class="text-right">{{ formatCurrency(results.product.total) }}
                                 <font-awesome-icon :icon="['fas', 'clipboard']"
-                                                   class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                                   class="ml-2 text-caregiver cursor-pointer inline-block"
                                                    @click="() => copyToClipboard(results.product.total)"
                                 />
                             </td>
                             <td>&nbsp;</td>
                             <td>&nbsp;</td>
                         </tr>
-                        <tr v-if="results?.tax" class="border-b hover:bg-gray-50">
+                        <tr v-if="results?.tax" class="border-b hover:bg-greyhound">
                             <td>Sales Tax to Pay</td>
                             <td>&nbsp;</td>
                             <td class="text-right">{{ formatCurrency(results.tax.total) }}
                                 <font-awesome-icon :icon="['fas', 'clipboard']"
-                                                   class="ml-2 text-blue-500 cursor-pointer inline-block"
+                                                   class="ml-2 text-caregiver cursor-pointer inline-block"
                                                    @click="() => copyToClipboard(results.tax.total)"
                                 />
                             </td>
@@ -441,21 +471,21 @@ const copyFullReport = async () => {
                 <table v-if="results?.cash && Object.keys(results?.cash).length > 0"
                        class="min-w-full table-auto bg-white rounded-lg mt-5">
                     <thead>
-                    <tr class="bg-gray-200">
-                        <td colspan="6" class="font-semibold">Cash Transactions</td>
+                    <tr class="bg-greyhound">
+                        <td colspan="6" class="text-lg text-white font-header">Cash Transactions</td>
                     </tr>
-                    <tr class="bg-gray-100 border-b text-left font-semibold text-gray-600">
-                        <th class="px-4 py-2">Order Id</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-600">Date</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-600">First Name</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-600">Last Name</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-600">Items</th>
-                        <th class="px-4 py-2 text-left font-semibold text-gray-600">Amount</th>
+                    <tr class="bg-greyhound border-b text-white font-subheader uppercase">
+                        <th class="px-4 py-2 text-center">Order Id</th>
+                        <th class="px-4 py-2">Date</th>
+                        <th class="px-4 py-2">First Name</th>
+                        <th class="px-4 py-2">Last Name</th>
+                        <th class="px-4 py-2">Items</th>
+                        <th class="px-4 py-2">Amount</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr v-for="(data, orderId) in results.cash" :key="orderId"
-                        class="border-b hover:bg-gray-50">
+                        class="border-b hover:bg-greyhound">
                         <td>{{ orderId }}</td>
                         <td>{{ data.date }}</td>
                         <td>{{ data.firstName }}</td>
@@ -472,6 +502,5 @@ const copyFullReport = async () => {
 <style scoped>
 td {
     padding: 2px 4px 2px 4px;
-    color: rgb(55, 65, 81)
 }
 </style>

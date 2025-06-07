@@ -3,25 +3,26 @@
 @tailwind utilities;
 
 @font-face {
-    font-family: 'Lato'; /* Define the font name */
-    src: url('/public/fonts/Lato/Lato-Regular.ttf') format('truetype'); /* TTF format */
-    font-weight: normal; /* Specify the weight */
-    font-style: normal; /* Specify the style */
+    font-family: 'ChunkFive';
+    src: url('/public/fonts/chunkfive.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
 }
 
 @font-face {
-    font-family: 'Oswald'; /* Define the font name */
-    src: url('/public/fonts/Oswald-Regular.ttf') format('truetype'); /* TTF format */
-    font-weight: normal; /* Specify the weight */
-    font-style: normal; /* Specify the style */
+    font-family: 'FuturaBold';
+    src: url('/public/fonts/futurabook.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
 }
 
 @font-face {
-    font-family: 'Magnolia'; /* Define the font name */
-    src: url('/public/fonts/MissMagnolia-Script.otf') format('opentype'); /* TTF format */
-    font-weight: normal; /* Specify the weight */
-    font-style: normal; /* Specify the style */
+    font-family: 'FuturaBook';
+    src: url('/public/fonts/futurabold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
 }
+
 
 #app {
     height: 100vh;
@@ -37,9 +38,9 @@
     align-items: center;
     justify-content: center;
     font-size: 3vw;
-    color: black;
     overflow: hidden;
     position: relative;
+    @apply text-DEFAULT
 }
 
 .cabin-icon {
@@ -56,25 +57,6 @@
 
 .cabin-empty:hover .cabin-icon {
     opacity: 1; /* Show the icon on hover */
-}
-
-.dog-boarder, .dog-daycamper {
-    display: flex;
-    flex-direction: column; /* Stack items vertically */
-    width: 100%;
-    height: 100%;
-    padding: 0;
-    color: white;
-    text-align: center;
-    overflow: hidden;
-}
-
-.dog-boarder {
-    background-color: #44687d;
-}
-
-.dog-daycamper {
-    background-color: #50C878;
 }
 
 .dog-photo {
