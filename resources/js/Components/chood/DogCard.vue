@@ -84,10 +84,10 @@ const bannerStyle = computed(() => {
     const services = currentDog.value?.dog_services || [];
     const categories = services.map(s => s.service?.category || '');
     if (categories.includes('Boarding')) {
-        return {label: 'Boarder', class: 'bg-caregiver'};
+        return {label: 'Sleepover', class: 'bg-caregiver'};
     }
 
-    if (categories.includes('Daycare')) {
+    if (categories.includes('Day')) {
         return {label: 'Daycamper', class: 'bg-meadow'};
     }
 
