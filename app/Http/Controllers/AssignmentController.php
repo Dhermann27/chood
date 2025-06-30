@@ -11,6 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class AssignmentController extends Controller
 {
+
     public function storeAssignment(Request $request): JsonResponse
     {
         try {
@@ -27,7 +28,7 @@ class AssignmentController extends Controller
 
             if (array_key_exists('dogs', $filteredValues)) {
                 foreach ($filteredValues['dogs'] as $dog) {
-                    $dog = Dog::updateOrCreate(['id' => $dog['id']], ['cabin_id' => $filteredValues['cabin_id']]);
+                    Dog::updateOrCreate(['id' => $dog['id']], ['cabin_id' => $filteredValues['cabin_id']]);
                 }
             } else {
                 $filteredValues['is_inhouse'] = 0;

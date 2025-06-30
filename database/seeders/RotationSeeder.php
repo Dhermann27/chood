@@ -21,6 +21,7 @@ class RotationSeeder extends Seeder
                 'end_time' => $end,
                 'label' => date('ga', strtotime($start)) . '-' . date('ga', strtotime($end)),
                 'is_sunday_hour' => ($hour >= 10 && $hour <= 14) ? 0 : 1,
+                'is_super_handoff' => ($hour == 8 || $hour == 12 || $hour == 17) ? 1 : 0,
             ]);
         }
     }

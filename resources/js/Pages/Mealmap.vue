@@ -245,7 +245,7 @@ onBeforeUnmount(() => {
                                          v-model="assignments[rotation.id][yard.id]" :options="employees"
                                          group-label="status" group-values="employees" :group-select="true"
                                          label="first_name" track-by="homebase_user_id" :searchable="true"
-                                         :clearable="true" placeholder="Unassigned" :multiple="yard.id === 999"
+                                         :clearable="true" placeholder="Unassigned"
                                          @select="() => handleYardChange(rotation.id, yard.id)"
                                          @remove="() => handleYardChange(rotation.id, yard.id)">
                             </multiselect>

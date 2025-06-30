@@ -38,7 +38,9 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
         $reportData = $report->data ?? [];
 
         $this->processGroup($fetchDataService, $payload, $reportData, 'deposits', ['paymentType', 'qty', 'total']);
-        $reportData['cash'] = $this->processCashDeposits($fetchDataService, $report);
+        if (!empty($reportData['deposits']['Cash'])) {
+            $reportData['cash'] = $this->processCashDeposits($fetchDataService, $report);
+        }
 
         $this->saveAndSleep($report, $reportData);
 
@@ -101,13 +103,15 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
     }
 
     /**
+     * @param FetchDataService $service
+     * @param Report $report
+     * @return array
      * @throws Exception
      */
     private function processCashDeposits(FetchDataService $service, Report $report): array
     {
         $data = [];
 
-        if (!empty($report->data['deposits']['Cash'])) {
             $payload = $service->createConstrainedPayload($report, 'paymentTypeId', 'eq', '1');
 
             $output = $service->fetchData(config('services.dd.uris.reports.depositDetails'), $payload)->getData(true);
@@ -127,7 +131,6 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
                     'amount' => $row[$columns['amount']] ?? null,
                 ];
             }
-        }
 
         return $data;
     }

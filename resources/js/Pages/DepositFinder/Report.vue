@@ -271,7 +271,7 @@ const copyFullReport = async (e) => {
                     </template>
                     <template v-else>
                         <template v-if="Object.keys(results.deposits).length > 0">
-                            <tr v-for="(result, key) in results.deposits" :key="key" class="border-b hover:bg-greyhound">
+                            <tr v-for="(result, key) in results.deposits" :key="key" class="border-b">
                                 <td class="font-medium">{{ key }}</td>
                                 <td class="text-center">{{ result.qty }}</td>
                                 <td class="text-right">
@@ -336,7 +336,7 @@ const copyFullReport = async (e) => {
 
                     <template v-else-if="Object.keys(results?.combined_packages || {}).length > 0">
                         <tr v-for="(row, name) in results.combined_packages" :key="name"
-                            class="border-b hover:bg-greyhound">
+                            class="border-b">
                             <td>{{ name }}</td>
                             <td class="text-center">{{ row.sold_qty }}</td>
                             <td class="text-right">
@@ -361,7 +361,7 @@ const copyFullReport = async (e) => {
                         </tr>
                     </template>
 
-                    <tr v-else class="border-b hover:bg-greyhound">
+                    <tr v-else class="border-b">
                         <td colspan="5">No packages found for the specified date range.</td>
                     </tr>
 
@@ -380,7 +380,7 @@ const copyFullReport = async (e) => {
                     <template v-else-if="Object.keys(results?.combined_services || {}).length > 0">
                         <tr
                             v-for="(row, name) in results.combined_services" :key="name"
-                            class="border-b hover:bg-greyhound"
+                            class="border-b"
                         >
                             <td>{{ name }}</td>
                             <td class="text-center">{{ row.sold_qty }}</td>
@@ -427,7 +427,7 @@ const copyFullReport = async (e) => {
                         </tr>
                     </template>
                     <template v-else>
-                        <tr v-if="results?.tips" class="border-b hover:bg-greyhound">
+                        <tr v-if="results?.tips" class="border-b">
                             <td>Tips Payable</td>
                             <td class="text-center">{{ results.tips.qty }}</td>
                             <td class="text-right">{{ formatCurrency(results.tips.total) }}
@@ -439,7 +439,7 @@ const copyFullReport = async (e) => {
                             <td>&nbsp;</td>
                             <td>&nbsp;</td>
                         </tr>
-                        <tr v-if="results?.product" class="border-b hover:bg-greyhound">
+                        <tr v-if="results?.product" class="border-b">
                             <td>Retail Products</td>
                             <td class="text-center">{{ results.product.qty }}</td>
                             <td class="text-right">{{ formatCurrency(results.product.total) }}
@@ -451,7 +451,7 @@ const copyFullReport = async (e) => {
                             <td>&nbsp;</td>
                             <td>&nbsp;</td>
                         </tr>
-                        <tr v-if="results?.tax" class="border-b hover:bg-greyhound">
+                        <tr v-if="results?.tax" class="border-b">
                             <td>Sales Tax to Pay</td>
                             <td>&nbsp;</td>
                             <td class="text-right">{{ formatCurrency(results.tax.total) }}
@@ -467,35 +467,35 @@ const copyFullReport = async (e) => {
 
                     </tbody>
                 </table>
-
-                <table v-if="results?.cash && Object.keys(results?.cash).length > 0"
-                       class="min-w-full table-auto bg-white rounded-lg mt-5">
-                    <thead>
-                    <tr class="bg-greyhound">
-                        <td colspan="6" class="text-lg text-white font-header">Cash Transactions</td>
-                    </tr>
-                    <tr class="bg-greyhound border-b text-white font-subheader uppercase">
-                        <th class="px-4 py-2 text-center">Order Id</th>
-                        <th class="px-4 py-2">Date</th>
-                        <th class="px-4 py-2">First Name</th>
-                        <th class="px-4 py-2">Last Name</th>
-                        <th class="px-4 py-2">Items</th>
-                        <th class="px-4 py-2">Amount</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr v-for="(data, orderId) in results.cash" :key="orderId"
-                        class="border-b hover:bg-greyhound">
-                        <td>{{ orderId }}</td>
-                        <td>{{ data.date }}</td>
-                        <td>{{ data.firstName }}</td>
-                        <td>{{ data.lastName }}</td>
-                        <td>{{ data.items }}</td>
-                        <td>{{ formatCurrency(data.amount) }}</td>
-                    </tr>
-                    </tbody>
-                </table>
             </div>
+
+            <table v-if="results?.cash && Object.keys(results?.cash).length > 0"
+                   class="min-w-full table-auto bg-white rounded-lg mt-10">
+                <thead>
+                <tr class="bg-greyhound">
+                    <td colspan="6" class="text-lg text-white font-subheader uppercase">Cash Transactions</td>
+                </tr>
+                <tr class="bg-greyhound border-b text-sm text-white font-subheader uppercase whitespace-nowrap">
+                    <th class="px-4 py-2 text-center">Order Id</th>
+                    <th class="px-4 py-2">Date</th>
+                    <th class="px-4 py-2">First</th>
+                    <th class="px-4 py-2">Last</th>
+                    <th class="px-4 py-2">Items</th>
+                    <th class="px-4 py-2">Amount</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="(data, orderId) in results.cash" :key="orderId"
+                    class="border-b">
+                    <td>{{ orderId }}</td>
+                    <td>{{ data.date?.substring(5) }}</td>
+                    <td>{{ data.firstName }}</td>
+                    <td>{{ data.lastName }}</td>
+                    <td>{{ data.items }}</td>
+                    <td>{{ formatCurrency(data.amount) }}</td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </template>

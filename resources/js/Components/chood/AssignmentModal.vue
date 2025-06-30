@@ -28,7 +28,7 @@ const closeModal = () => {
 </script>
 
 <template>
-    <div class="fixed inset-0 bg-DEFAULT bg-opacity-50 flex justify-center items-center">
+    <div class="fixed inset-0 bg-DEFAULT bg-opacity-50 flex justify-center items-center z-40">
         <div class="bg-white p-6 rounded-lg w-96">
             <h3 class="text-lg font-semibold mb-4">
                 {{ (modalType === 'add' ? 'Add ' : 'Edit ') }} Cabin Assignment

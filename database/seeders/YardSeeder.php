@@ -12,20 +12,16 @@ class YardSeeder extends Seeder
      */
     public function run()
     {
-        Yard::create(['id' => 999, 'name' => 'Floaters', 'display_order' => 99]);
-
-        $yardsCount = config('services.dd.yards_to_open');
-        $yardNames = [
-            'Small' => 2,
-            ($yardsCount == 2 ? 'Large' : 'Active Large') => 4,
-            'Relaxed Large' => 5,
-            'Medium' => 3,
+        $yards = [
+            ['id' => 999, 'name' => 'Floater', 'display_order' => 99, 'is_active' => 1],
+            ['name' => 'Small', 'display_order' => 2, 'is_active' => 1],
+            ['name' => 'Large', 'display_order' => 4, 'is_active' => 1],
+            ['name' => 'Relaxed Large', 'display_order' => 5],
+            ['name' => 'Medium', 'display_order' => 3],
+            ['name' => 'Event', 'display_order' => 6],
         ];
 
-        collect(array_slice($yardNames, 0, $yardsCount))
-            ->each(function ($displayOrder, $name) {
-                Yard::create(['name' => $name, 'display_order' => $displayOrder]);
-            });
+        collect($yards)->each(fn($yard) => Yard::create($yard));
 
     }
 

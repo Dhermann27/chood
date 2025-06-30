@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->time('end_time');
             $table->string('label');
             $table->tinyInteger('is_sunday_hour')->default(1);
+            $table->tinyInteger('is_super_handoff')->default(0);
         });
         DB::update('ALTER TABLE rotations AUTO_INCREMENT = 1000');
 

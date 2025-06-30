@@ -19,12 +19,15 @@ return new class extends Migration {
                 ->onDelete('cascade');
 //            $table->date('shift_date'); // For identifying the specific day
             $table->tinyInteger('is_working')->default('0');
+            $table->string('role')->default('Camp Counselor');
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
             $table->time('next_first_break')->nullable();
             $table->time('next_lunch_break')->nullable();
             $table->time('next_second_break')->nullable();
+            $table->integer('fairness_score')->default(0);
             $table->timestamps();
+            $table->unique(['homebase_user_id', 'start_time', 'end_time']);
         });
         DB::update('ALTER TABLE shifts AUTO_INCREMENT = 1000');
 

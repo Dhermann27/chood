@@ -59,6 +59,13 @@ const handleImageLoaded = () => {
     }
 }
 
+const isCheckingOutToday = (dogs) => {
+    if (!dogs) return false;
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    return dogs.some(dog => dog.checkout && dog.checkout.slice(0, 10) === today);
+};
+
+
 watch(() => props.dogs, () => {
     currentLoadingIndex.value = 0;
 });
@@ -153,16 +160,21 @@ async function handleDelete(dogs) {
 
 const cabinStyle = (cabin) => {
     const isHovered = hoveredCabinId.value === cabin.id && props.statuses[cabin.id];
+    const dogsInCabin = props.dogs?.[cabin.id] || [];
+
     const borderColor = props.statuses?.[cabin.id]
         ? props.statuses[cabin.id] === 'deep'
-            ? '#dd454f' // Red for deep cleaning
-            : '#f4df7a' // Yellow for normal cleaning
-        : '#373a36';   // Default gray if no status
+            ? '#dd454f' // Red
+            : '#f4df7a' // Yellow
+        : '#373a36';   // Default
+
+    const isDashed = isCheckingOutToday(dogsInCabin);
 
     return {
         gridRow: `${cabin.rho} / span ${cabin.rowspan}`,
         gridColumn: cabin.kappa,
-        borderColor: borderColor,
+        borderColor,
+        borderStyle: isDashed ? 'dashed' : 'solid',
         color: isHovered ? '#fff' : '#373a36',
         backgroundColor: isHovered ? borderColor : '#fff',
         width: props.cardWidth + 'px',
@@ -171,6 +183,7 @@ const cabinStyle = (cabin) => {
         cursor: props.controls !== ControlSchemes.NONE && props.statuses?.[cabin.id] ? 'pointer' : 'auto',
     };
 };
+
 
 const handleHover = (cabinId) => {
     if (props.statuses?.[cabinId]) {

@@ -44,7 +44,7 @@ class DataController extends Controller
 
     function mealmap(string $checksum = null): JsonResponse
     {
-        $yards = Yard::orderBy('display_order')->get();
+        $yards = Yard::where('is_active', '1')->orderBy('display_order')->get();
 
         $assignments = RotationYardView::orderBy('rotation_id')->orderBy('display_order')->get()
             ->groupBy('rotation_id')->map(function ($rotationGroup) {

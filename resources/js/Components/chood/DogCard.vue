@@ -90,7 +90,7 @@ const bannerStyle = computed(() => {
         return {label: 'Daycamper', class: 'bg-meadow'};
     }
     if (categories.includes('Interview')) {
-        return {label: 'Orientation', class: 'bg-greyhound'};
+        return {label: 'Orientation', class: 'bg-crimson'};
     }
     return {label: 'Grooming/Training Only', class: 'bg-greyhound'};
 });
@@ -233,7 +233,7 @@ onUnmounted(() => {
             </svg>
             <div class="absolute inset-0 flex items-center justify-center minutes-remaining">
                 <span ref="breakMinutesRemaining"
-                      class="text-white font-subheader drop-shadow-xl leading-none text-center">
+                      class="text-white drop-shadow-xl leading-none text-center">
                   {{ breakTimeLeft?.minutesLeft }}
                 </span>
             </div>

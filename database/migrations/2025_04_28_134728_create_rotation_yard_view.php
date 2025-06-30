@@ -23,7 +23,9 @@ return new class extends Migration
                         DAYOFWEEK(CURDATE()) != 1
                         OR is_sunday_hour = 1
                 ) AS rotations
-                CROSS JOIN yards
+                CROSS JOIN (
+                    SELECT * FROM yards WHERE is_active = 1
+                ) AS yards
                 LEFT JOIN employee_yard_rotations
                     ON employee_yard_rotations.rotation_id = rotations.id
                     AND employee_yard_rotations.yard_id = yards.id

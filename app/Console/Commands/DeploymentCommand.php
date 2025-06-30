@@ -29,9 +29,9 @@ class DeploymentCommand extends Command
      */
     public function handle(): void
     {
+        GoFetchServiceListJob::dispatchSync(new FetchDataService());
         GoFetchEmployeesJob::dispatchSync();
         GoFetchShiftsJob::dispatchSync();
-        GoFetchServiceListJob::dispatchSync(new FetchDataService());
 
     }
 }

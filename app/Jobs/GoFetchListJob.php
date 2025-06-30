@@ -19,6 +19,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  *
@@ -55,10 +57,13 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         ];
         $output = $this->fetchDataService->fetchData(config('services.dd.uris.inHouseList'), $payload)
             ->getData(true);
-        if (!isset($output['data']) || !is_array($output['data'])) { // Empty list depressing, but not an error
-            throw new Exception("No data found: " . $output);
+        if (!isset($output['data']) || !is_array($output['data'])) {
+            Log::warning('GoFetchListJob returned no usable data.', [
+                'output_type' => gettype($output),
+                'output_preview' => is_array($output) ? array_slice($output, 0, 5) : $output,
+            ]);
+            throw new Exception('No usable data found in response.');
         }
-
         if (count($output['data']) > 0) {
             $data = $output['data'][0];
             $columns = collect($data['columns'])->pluck('index', 'filterKey');
@@ -75,9 +80,10 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
 
             foreach ($data['rows'] as $row) {
                 $updateValues = $this->getFilteredValues($row, $columns, $cabins);
-                $dog = Dog::whereRaw('MATCH(firstname) AGAINST (? IN BOOLEAN MODE) AND MATCH(lastname) AGAINST (? IN BOOLEAN MODE)',
-                    [$updateValues['firstname'], $updateValues['lastname']]);
-                $dog = $dog->first();
+                $dog = Dog::whereNull('pet_id')
+                    ->whereRaw('MATCH(firstname) AGAINST (? IN BOOLEAN MODE)', [$updateValues['firstname']])
+                    ->whereRaw('MATCH(lastname) AGAINST (? IN BOOLEAN MODE)', [$updateValues['lastname']])
+                    ->first();
                 if ($dog) {
                     $dog->update(array_merge($updateValues, ['pet_id' => $row[$columns['petId']]]));
                 } else {
@@ -123,6 +129,10 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
 
             }
         }
+
+        $delay = config('services.dd.queue_delay');
+        usleep(mt_rand($delay, $delay + 1000) * 1000);
+
     }
 
     private function getFilteredValues(array $row, Collection $columns, Collection $cabins): array
@@ -135,7 +145,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             'gender' => $this->trimToNull($row[$columns['gender']]),
             'weight' => $this->trimToNull(intval($row[$columns['weight']])),
             'cabin_id' => $cabinId,
-            'is_inhouse' => str_contains($row[$columns['serviceCode']], self::BRD) ? 1 : 0,
+            'is_inhouse' => Str::contains($row[$columns['serviceCode']], self::BRD) ? 1 : 0,
             'checkin' => Carbon::createFromFormat('m/d/y g:i A', $row[$columns['checkInDate']] . " " . $row[$columns['checkInTime']]),
             'checkout' => Carbon::createFromFormat('m/d/Y g:i A', $row[$columns['checkOutDate']] . " " . $row[$columns['checkOutTime']])
         ];

@@ -16,9 +16,9 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GoFetchShiftsJob implements ShouldQueue
 {
@@ -27,10 +27,9 @@ class GoFetchShiftsJob implements ShouldQueue
     const SHIFTS_URL_PREFIX = 'https://app.joinhomebase.com/api/public/locations/';
     const SHIFTS_URL_SUFFIX = '/shifts?start_date=TODAY&end_date=TODAY&open=false&with_note=false&date_filter=start_at';
     const BACK_OF_HOUSE = 'BOH';
-    const SUPERVISOR = 'Supervisor';
     const TRAINING = 'Training';
     const EVENT = 'Event';
-    const FLOATER_YARD_ID = 999;
+    const SUPERVISOR = 'Supervisor';
     const START_HOUR_OF_DAY = 6;
     const HOURS_IN_DAY = 13;
     const START_LUNCHES_AT_INDEX = 2 * 12 + 6; // 10:30am
@@ -51,21 +50,21 @@ class GoFetchShiftsJob implements ShouldQueue
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . config('services.homebase.api_key'),
-//                'Accept'        => 'application/vnd.homebase-v1+json',
             ])->get($url);
 
             if ($response->successful()) {
-                Shift::truncate(); // Reset
-
-                $yards = Yard::whereNot('id', self::FLOATER_YARD_ID)->orderBy('display_order')->get();
-                $rotations = Rotation::when(now()->isSunday(), function ($query) {
-                    $query->where('is_sunday_hour', 1);
-                })->orderBy('start_time')->get();
+                Shift::query()->delete();
+                $yards = Yard::where('is_active', '1')->orderBy('display_order')->get();
 
                 $homebaseShifts = collect(json_decode($response->getBody()->getContents()))
                     ->sortBy(['start_at', 'role'])
+                    ->reject(fn($shift) => Str::contains($shift->department, 'FOH') ||
+                        Str::contains($shift->role, self::TRAINING) ||
+                        Str::contains($shift->role, self::EVENT)
+                    )
                     ->map(function ($shift) use ($yards) {
                         $shift->yardHoursWorked = $yards->pluck('id')->mapWithKeys(fn($id) => [$id => 0])->toArray();
+                        $shift->next_lunch_break = null;
                         return $shift;
                     });
 
@@ -74,175 +73,191 @@ class GoFetchShiftsJob implements ShouldQueue
                 } else {
                     $remainingShifts = $homebaseShifts;
                 }
-                // Boolean matrix for 5-minute segments of workday
-                $breakMatrix = array_fill(0, self::HOURS_IN_DAY * 12, 0);
 
-                $fohStaff = [];
-                foreach ($remainingShifts as $shift) {
-                    if (isset($shift->labor->scheduled_hours) && str_contains($shift->department, self::BACK_OF_HOUSE)) {
-//                        $firstHourOfDay = Carbon::parse($rotations->first()->start_time)->hour;
-                        $breakMatrix = $this->assignBreaks($shift, $breakMatrix, self::START_HOUR_OF_DAY);
-                    }
-                    if (str_contains($shift->role, 'FOH') || str_contains($shift->role, 'Supervisor')) {
-                        $startAt = Carbon::parse($shift->start_at);
-                        $endAt = Carbon::parse($shift->end_at);
+                $breakMatrix = array_fill(0, self::HOURS_IN_DAY * 12, ['breaks' => 0, 'lunches' => 0]);
+                $this->assignLunches($remainingShifts, $breakMatrix);
+                $this->assignBreaks($remainingShifts, $breakMatrix);
+                $shiftInsertData = $remainingShifts->map(function ($shift) use ($day) {
+                    return [
+                        'homebase_user_id' => $shift->user_id,
+                        'role' => $shift->role,
+                        'start_time' => Carbon::parse($shift->start_at)->format('Y-m-d H:i:s'),
+                        'end_time' => Carbon::parse($shift->end_at)->format('Y-m-d H:i:s'),
+                        'next_first_break' => isset($shift->next_first_break) ? $shift->next_first_break->format('Y-m-d H:i:s') : null,
+                        'next_lunch_break' => isset($shift->next_lunch_break) ? $shift->next_lunch_break->format('Y-m-d H:i:s') : null,
+                        'next_second_break' => isset($shift->next_second_break) ? $shift->next_second_break->format('Y-m-d H:i:s') : null,
+                        'fairness_score' => $shift->fairness_score ?? 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                })->all();
+                Shift::insert($shiftInsertData);
 
-                        $startTime = $startAt->minute == 0 ? $startAt->format('ga') : $startAt->format('g:ia');
-                        $endTime = $endAt->minute == 0 ? $endAt->format('ga') : $endAt->format('g:ia');
-
-                        $shortName = str_contains($shift->role, 'FOH') ? 'FOH' : 'Lead';
-                        $fohStaff[] = "{$shift->first_name} ({$shortName}) {$startTime}-{$endTime}";
-                    }
-                }
-                if (count($fohStaff) > 0) {
-                    Cache::put('foh_staff', implode(', ', $fohStaff), Carbon::today()->addDay());
-                }
-
-                $this->updateYardAssignments($rotations, $yards, $homebaseShifts);
+                $this->updateYardAssignments($yards, $homebaseShifts);
             } else {
                 Log::error('Failed to fetch data from Homebase API', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
-                throw new Exception('Failed to fetch Homebase shifts.');
+                throw new Exception('Failed to fetch Homebase choodShifts.');
             }
         } catch (ConnectionException $e) {
             Log::error('Connection to Homebase API failed.', ['error' => $e->getMessage()]);
         }
     }
 
-
     /**
-     * @param mixed $homebaseShift
-     * @param array $breakMatrix
-     * @param int $firstHourOfDay
-     * @return array
-     * @throws Exception
-     */
-    public function assignBreaks(mixed &$homebaseShift, array $breakMatrix, int $firstHourOfDay): array
-    {
-        $choodShift = Shift::firstOrNew(['homebase_user_id' => $homebaseShift->user_id]);
-        $employeeName = Employee::findOrFail($homebaseShift->user_id)->first_name;
-
-        $shiftStartIndex = $this->convertTimeToIndex(Carbon::parse($homebaseShift->start_at), $firstHourOfDay);
-        $shiftEndIndex = $this->convertTimeToIndex(Carbon::parse($homebaseShift->end_at)->subHours(1), $firstHourOfDay);
-        $shiftDuration = (floatval($homebaseShift->labor->scheduled_hours)
-                + floatval($homebaseShift->labor->scheduled_unpaid_breaks_hours)) * 12;
-        $shiftSegmentLength = $shiftDuration / ($shiftDuration >= (8 * 12) ? 4 : ($shiftDuration >= (6.5 * 12) ? 3 : 2));
-
-        $firstBreakIndex = $shiftStartIndex + $shiftSegmentLength - 3;
-        $lunchBreakIndex = max($firstBreakIndex + $shiftSegmentLength, self::START_LUNCHES_AT_INDEX);
-        $secondBreakIndex = min($lunchBreakIndex + $shiftSegmentLength, $shiftEndIndex);
-
-        if ($shiftDuration >= (7.5 * 12) || ($shiftDuration >= (4 * 12) && !is_null($choodShift['next_first_break']))) {
-            // If second shift, don't overwrite first break
-            $logTime = $this->convertIndexToTime($secondBreakIndex, $firstHourOfDay);
-            Log::info("Looking for a second break time for {$employeeName} at {$logTime}");
-            $secondBreakIndex = $this->findBreakIndex($secondBreakIndex, 4, $breakMatrix, $firstHourOfDay);
-            $this->markSlots($secondBreakIndex, 4, $breakMatrix);
-        } else {
-            $secondBreakIndex = null;
-        }
-
-        if ($shiftDuration >= (6.5 * 12)) {
-            $logTime = $this->convertIndexToTime($lunchBreakIndex, $firstHourOfDay);
-            Log::info("Looking for a lunch time for {$employeeName} at {$logTime}");
-            $lunchBreakIndex = $this->findBreakIndex($lunchBreakIndex, 7, $breakMatrix, $firstHourOfDay);
-            $this->markSlots($lunchBreakIndex, 7, $breakMatrix);
-        } else {
-            $lunchBreakIndex = null;
-        }
-        $homebaseShift->lunch_break = $this->convertIndexToTime($lunchBreakIndex, $firstHourOfDay); // To be referenced by Assign Yard logic
-
-        if (is_null($choodShift['next_first_break'])) { // Second shift, don't overwrite first break
-            if ($shiftDuration >= (4 * 12)) {
-                $logTime = $this->convertIndexToTime($firstBreakIndex, $firstHourOfDay);
-                Log::info("Looking for a first break time for {$employeeName} at {$logTime}");
-                $firstBreakIndex = $this->findBreakIndex($firstBreakIndex, 4, $breakMatrix, $firstHourOfDay);
-                $this->markSlots($firstBreakIndex, 4, $breakMatrix);
-                $homebaseShift->first_break = $this->convertIndexToTime($firstBreakIndex, $firstHourOfDay); // To be referenced by Assign Yard logic
-            } else {
-                $firstBreakIndex = null;
-                $homebaseShift->first_break = null;
-            }
-        }
-
-        $choodShift->fill([
-            'start_time' => Carbon::parse($homebaseShift->start_at)->format('Y-m-d H:i:s'),
-            'end_time' => Carbon::parse($homebaseShift->end_at)->format('Y-m-d H:i:s'),
-            'next_first_break' => $choodShift->next_first_break ?? $this->convertIndexToTime($firstBreakIndex, $firstHourOfDay),
-            'next_lunch_break' => $this->convertIndexToTime($lunchBreakIndex, $firstHourOfDay),
-            'next_second_break' => $this->convertIndexToTime($secondBreakIndex, $firstHourOfDay)
-        ])->save();
-        return $breakMatrix;
-    }
-
-    /**
-     * @param int $breakIndex
-     * @param int $duration
-     * @param array $breakMatrix
-     * @param int $firstHourOfDay
-     * @return int
-     * @throws Exception
-     */
-    public function findBreakIndex(int $breakIndex, int $duration, array $breakMatrix, int $firstHourOfDay): int
-    {
-        $maxPeopleOnBreak = 0;
-        $searcherIndex = $breakIndex;
-        while (true) {
-            $searcherIndex = $this->findNextAvailableSlot($searcherIndex, $duration, $maxPeopleOnBreak++, $breakMatrix, $firstHourOfDay);
-            if (!$searcherIndex || $searcherIndex - $breakIndex > 24) {
-                $searcherIndex = $breakIndex;
-            } else {
-                $breakIndex = $searcherIndex;
-                break;
-            }
-        }
-        return $breakIndex;
-    }
-
-
-    /**
-     * @param int $startIndex
-     * @param int $duration
-     * @param int $maximum
-     * @param array $breakMatrix
-     * @param int $firstHourOfDay
-     * @return int|null
-     * @throws Exception
-     */
-    function findNextAvailableSlot(int $startIndex, int $duration, int $maximum, array $breakMatrix, int $firstHourOfDay): int|null
-    {
-        for ($i = 0; $i < $duration; $i++) {
-            if (!isset($breakMatrix[$startIndex + $i])) {
-                // No available slots if we pass 7:00pm
-                Log::warning('Failed to find shift break time before 7pm.');
-                return null;
-            }
-            $logTime = $this->convertIndexToTime($startIndex + $i, $firstHourOfDay);
-            if ($breakMatrix[$startIndex + $i] > $maximum) {
-                Log::info("{$logTime} taken by {$breakMatrix[$startIndex + $i]} people");
-                $startIndex += $i + 1;
-                $i = 0; // Slot is occupied, restart search
-            } else {
-                Log::info("{$logTime} free, only {$breakMatrix[$startIndex + $i]} people");
-            }
-        }
-        return $startIndex;
-    }
-
-
-    /**
-     * @param int $startIndex
-     * @param int $duration
+     * Assign lunch breaks to eligible shifts (BOH only, non-Trainers, ≥ 6.5 hrs).
+     *
+     * @param Collection $homebaseShifts
      * @param array $breakMatrix
      * @return void
+     * @throws Exception
      */
-    function markSlots(int $startIndex, int $duration, array &$breakMatrix): void
+    public function assignLunches(Collection &$homebaseShifts, array &$breakMatrix): void
+    {
+        $shifts = $homebaseShifts->filter(fn($shift) => $this->getDurationInSegments($shift) >= 6.5 * 12);
+
+        foreach ($shifts as $shift) {
+            $result = $this->findLunchIndex($shift, $breakMatrix);
+            if (!is_null($result)) {
+                $this->markSlots($result['index'], 6, $breakMatrix);
+                $lunchTime = $this->convertIndexToTime($result['index']);
+                $shift->next_lunch_break = $lunchTime;
+                $shift->fairness_score = ($shift->fairness_score ?? 0) + $result['deviation'];
+                Log::info("Assigned lunch for {$shift->first_name} at {$lunchTime->format('g:i a')} @ {$result['deviation']}");
+            }
+        }
+    }
+
+
+    /**
+     * Assign first and second breaks to eligible shifts.
+     *
+     * @param Collection $homebaseShifts
+     * @param array $breakMatrix
+     * @return void
+     * @throws Exception
+     */
+    public function assignBreaks(Collection &$homebaseShifts, array &$breakMatrix): void
+    {
+
+        foreach ($homebaseShifts as $shift) {
+            $duration = $this->getDurationInSegments($shift);
+
+            if ($duration >= 4 * 12) {
+                $result = $this->findFirstBreakIndex($shift, $breakMatrix);
+                if (!is_null($result)) {
+                    $this->markSlots($result['index'], 3, $breakMatrix);
+                    $breakTime = $this->convertIndexToTime($result['index']);
+                    $shift->next_first_break = $breakTime;
+                    $shift->fairness_score = ($shift->fairness_score ?? 0) + $result['deviation'];
+                    Log::info("Assigned first break for {$shift->first_name} at {$breakTime->format('g:i a')} @ {$result['deviation']}");
+                }
+            }
+
+            if ($duration >= 8 * 12) {
+                $result = $this->findSecondBreakIndex($shift, $breakMatrix);
+                if (!is_null($result)) {
+                    $this->markSlots($result['index'], 3, $breakMatrix);
+                    $breakTime = $this->convertIndexToTime($result['index']);
+                    $shift->next_second_break = $breakTime;
+                    $shift->fairness_score = ($shift->fairness_score ?? 0) + $result['deviation'];
+                    Log::info("Assigned first break for {$shift->first_name} at {$breakTime->format('g:i a')} @ {$result['deviation']}");
+
+                }
+            }
+        }
+    }
+
+
+    /**
+     * @param int $idealIndex
+     * @param int $duration
+     * @param array $breakMatrix
+     * @param bool $allowFallback
+     * @return array|null
+     */
+    public function findBreakIndex(int $idealIndex, int $duration, array $breakMatrix, bool $allowFallback = false): array|null
+    {
+        $maxPeopleOnBreak = 1;
+        $searcherIndex = $idealIndex;
+        $segmentsSearched = 0;
+
+        while (true) {
+            $candidateIndex = $this->findNextAvailableSlot($searcherIndex, $duration, $breakMatrix, $maxPeopleOnBreak);
+
+            if ($candidateIndex === null || abs($candidateIndex - $idealIndex) > 24) {
+                return null;
+            }
+
+            if ($this->isSlotAvailable($candidateIndex, $duration, $breakMatrix, $maxPeopleOnBreak)) {
+                return [
+                    'index' => $candidateIndex,
+                    'deviation' => abs($candidateIndex - $idealIndex),
+                ];
+            }
+
+            $segmentsSearched += abs($candidateIndex - $searcherIndex);
+            $searcherIndex = $candidateIndex + 1;
+
+            if ($allowFallback && $segmentsSearched > 0 && $segmentsSearched % 6 === 0) {
+                $fallbackStart = $idealIndex - 6;
+                if ($fallbackStart >= 0 && $this->isSlotAvailable($fallbackStart, $duration, $breakMatrix, $maxPeopleOnBreak)) {
+                    return [
+                        'index' => $fallbackStart,
+                        'deviation' => abs($fallbackStart - $idealIndex),
+                    ];
+                }
+            }
+        }
+    }
+
+
+    /**
+     * @param int $startIndex
+     * @param int $duration
+     * @param array $matrix
+     * @param int $maxBreaks
+     * @return int|null
+     */
+    private function findNextAvailableSlot(int $startIndex, int $duration, array $matrix, int $maxBreaks = 1): ?int
+    {
+        $isLunch = $duration >= 6;
+
+        while ($startIndex < count($matrix)) {
+            if ($isLunch && !$this->isLunchAnchor($startIndex)) {
+                $startIndex++;
+                continue;
+            }
+
+            if ($this->isSlotAvailable($startIndex, $duration, $matrix, $maxBreaks)) {
+                return $startIndex;
+            }
+
+            $startIndex++;
+        }
+
+        return null;
+    }
+
+
+    private function isSlotAvailable(int $startIndex, int $duration, array $matrix, int $maxBreaks = 1): bool
     {
         for ($i = 0; $i < $duration; $i++) {
-            $breakMatrix[$startIndex + $i] += 1; // Mark slot as occupied
+            if (!isset($matrix[$startIndex + $i])) return false;
+
+            $slot = $matrix[$startIndex + $i];
+
+            // Lunch: exclusive
+            if ($duration >= 6) {
+                if ($slot['lunches'] > 0 || $slot['breaks'] > 0) return false;
+            } // Breaks: allow up to maxBreaks
+            else {
+                if ($slot['lunches'] > 0 || $slot['breaks'] >= $maxBreaks) return false;
+            }
         }
+        return true;
     }
 
 
@@ -250,24 +265,23 @@ class GoFetchShiftsJob implements ShouldQueue
      * @param Collection $homebaseShifts
      * @return Collection
      */
-    public function assignSundayMorningBreaks(Collection $homebaseShifts): Collection
+    private function assignSundayMorningBreaks(Collection $homebaseShifts): Collection
     {
         Shift::insert(
-            $homebaseShifts->filter(fn($shift) =>
-                Carbon::parse($shift->start_at)->lt(Carbon::createFromTime(12, 0)) &&
-                str_contains($shift->department, self::BACK_OF_HOUSE)
+            $homebaseShifts->filter(fn($shift) => Carbon::parse($shift->start_at)->lt(Carbon::createFromTime(12, 0)) &&
+                Str::contains($shift->department, self::BACK_OF_HOUSE)
             )->map(function ($shift) {
-                    return [
-                        'homebase_user_id' => $shift->user_id,
-                        'start_time' => Carbon::parse($shift->start_at)->format('Y-m-d H:i:s'),
-                        'end_time' => Carbon::parse($shift->end_at)->format('Y-m-d H:i:s'),
-                        'next_first_break' => Carbon::createFromTime(10, 0),
-                        'next_lunch_break' => null,
-                        'next_second_break' => null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                })->toArray());
+                return [
+                    'homebase_user_id' => $shift->user_id,
+                    'start_time' => Carbon::parse($shift->start_at)->format('Y-m-d H:i:s'),
+                    'end_time' => Carbon::parse($shift->end_at)->format('Y-m-d H:i:s'),
+                    'next_first_break' => Carbon::createFromTime(10, 0),
+                    'next_lunch_break' => null,
+                    'next_second_break' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            })->toArray());
 
         return $homebaseShifts
             ->filter(fn($shift) => Carbon::parse($shift->start_at)->gte(Carbon::createFromTime(12, 0)));
@@ -275,101 +289,67 @@ class GoFetchShiftsJob implements ShouldQueue
     }
 
     /**
-     * @param Collection $rotations
      * @param Collection $yards
      * @param Collection $shifts
      */
-    public function updateYardAssignments(Collection $rotations, Collection $yards, Collection $shifts): void
+    private function updateYardAssignments(Collection $yards, Collection $shifts): void
     {
-        $logMessages = [];
         $lastYardHourIds = [];
         $lastYardHourId = null;
 
+        $rotations = Rotation::query()->when(Carbon::now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))->get();
+        $names = Employee::all()->pluck('first_name', 'homebase_user_id'); // id => name
+
+        EmployeeYardRotation::truncate();
         foreach ($rotations as $rotation) {
             $startOfHour = Carbon::today()->setTimeFromTimeString($rotation->start_time);
             $endOfHour = Carbon::today()->setTimeFromTimeString($rotation->end_time);
-            $logMessages[] = 'Assigning Hour: ' . $startOfHour->format('h:ia');
-            Log::info(end($logMessages));
+            Log::info("Assigning Hour: {$startOfHour->format('h:ia')}");
 
-            // Filter employees who are working during this hour and not on break
-            $availableEmployees = $shifts->filter(function ($shift) use ($startOfHour, $endOfHour) {
-                $isWorking = isset($shift->labor->scheduled_hours) &&
-                    str_contains($shift->department, self::BACK_OF_HOUSE) &&
-                    !str_contains($shift->role, self::TRAINING) &&
-                    !str_contains($shift->role, self::EVENT) &&
-                    Carbon::parse($shift->start_at)->lessThanOrEqualTo($startOfHour) &&
+            // Filter employees who are working during this hour and not on lunch or a supervisor handoff
+            $availableShifts = $shifts->filter(function ($shift) use ($startOfHour, $endOfHour, $rotation, $names) {
+                $isWorking = Carbon::parse($shift->start_at)->lessThanOrEqualTo($startOfHour) &&
                     Carbon::parse($shift->end_at)->greaterThanOrEqualTo($endOfHour);
 
-//                $noBreaks = (!isset($shift->first_break) ||
-//                        !(Carbon::parse($shift->first_break)->between($startOfHour, $endOfHour, false) ||
-//                            Carbon::parse($shift->first_break)->addMinutes(15)->between($startOfHour, $endOfHour, false))) &&
-                $noBreaks = (!isset($shift->lunch_break) ||
-                    !(Carbon::parse($shift->lunch_break)->between($startOfHour, $endOfHour, false) ||
-                        Carbon::parse($shift->lunch_break)->addMinutes(30)->between($startOfHour, $endOfHour, false)));
+                $noBreaks = (!$shift->next_lunch_break ||
+                    !$shift->next_lunch_break->between($startOfHour, $endOfHour, false) &&
+                    !$shift->next_lunch_break->copy()->addMinutes(30)->between($startOfHour, $endOfHour, false));
 
-                $notSuperHandoff = !str_contains($shift->role, self::SUPERVISOR) ||
-                    ($startOfHour->format('H:i:s') !== '08:00:00' &&
-                        !$startOfHour->between(Carbon::parse($shift->start_at), Carbon::parse($shift->start_at)->addMinutes(59)) &&
-                        !$endOfHour->between(Carbon::parse($shift->end_at)->subMinutes(59), Carbon::parse($shift->end_at)));
+                $notSuperHandoff = !Str::contains($shift->role, self::SUPERVISOR)
+                    || $rotation->is_super_handoff == 0;
+
                 return $isWorking && $noBreaks && $notSuperHandoff;
             });
 
             foreach ($yards as $yard) {
-                $availableEmployees = $availableEmployees->sortBy(function ($employee) use ($yard) {
-                    return [$employee->yardHoursWorked[$yard->id], $employee->start_at];
+                $availableShifts = $availableShifts->sortBy(function ($shift) use ($yard) {
+                    return [$shift->yardHoursWorked[$yard->id], $shift->start_at];
                 });
 
-                $logMessages[] = 'Available employees: ' . $availableEmployees->pluck('first_name')->implode(', ');
-                Log::info(end($logMessages));
+                Log::info("Available employees: {$names->only($availableShifts->pluck('user_id')->all())->values()->implode(', ')}");
 
-                $assigned = false;
-                // Not an Employee object, it's a Homebase shift
-                while ($availableEmployees->isNotEmpty()) {
-                    $employee = $availableEmployees->shift();
+                while ($availableShifts->isNotEmpty()) {
+                    $shift = $availableShifts->shift();
 
                     // Check if employee worked the same yard last hour
-                    if (isset($lastYardHourIds[$employee->user_id][$yard->id]) && $lastYardHourId
-                        && $lastYardHourIds[$employee->user_id][$yard->id] == $lastYardHourId) {
-                        $logMessages[] = $employee->first_name . ' worked this yard within the last hour, skipping';
-                        Log::info(end($logMessages));
+                    if ($yard->id != 999 && isset($lastYardHourIds[$shift->user_id][$yard->id]) &&
+                        $lastYardHourId && $lastYardHourIds[$shift->user_id][$yard->id] == $lastYardHourId) {
+                        Log::info("{$names[$shift->user_id]} worked this yard within the last hour, skipping");
 
-                        if ($availableEmployees->isNotEmpty()) {
-                            $availableEmployees->push($employee);
+                        if ($availableShifts->isNotEmpty()) {
+                            $availableShifts->push($shift);
                             continue;
                         }
                     }
 
+                    $hoursWorked = $shift->yardHoursWorked[$yard->id] ?? 0;
+                    Log::info("{$names[$shift->user_id]} assigned, having {$hoursWorked} hours in {$yard->name}");
 
-                    $logMessages[] = $employee->first_name . ' assigned, having ' .
-                        $employee->yardHoursWorked[$yard->id] . ' hours in ' . $yard->name;
-                    Log::info(end($logMessages));
-                    $this->assignEmployee($yard, $rotation, $employee, $shifts, $lastYardHourIds);
-                    $assigned = true;
+                    $this->assignEmployee($yard, $rotation, $shift, $shifts, $lastYardHourIds);
                     break;
                 }
 
-                // If no employee was assigned due to all of them working the same yard last hour, allow back-to-back assignment
-                if (!$assigned) {
-                    if ($availableEmployees->isNotEmpty()) {
-                        $employee = $availableEmployees->first();
-                        $logMessages[] = 'No other employees available, assigning ' . $employee->first_name . ' to ' . $yard;
-                        Log::info(end($logMessages));
-                        $this->assignEmployee($yard, $rotation, $employee, $shifts, $lastYardHourIds);
-                    } else {
-                        // Nobody wants to work these days
-                        EmployeeYardRotation::where('yard_id', $yard->id)->where('rotation_id', $rotation->id)->delete();
-                    }
-                }
             }
-
-            EmployeeYardRotation::where('yard_id', self::FLOATER_YARD_ID)->where('rotation_id', $rotation->id)
-                ->whereNotIn('homebase_user_id', $availableEmployees->pluck('user_id'))->delete();
-            EmployeeYardRotation::insertOrIgnore($availableEmployees->map(fn($employee) => [
-                'homebase_user_id' => $employee->user_id,
-                'yard_id' => self::FLOATER_YARD_ID,
-                'rotation_id' => $rotation->id,
-                'created_at' => Carbon::now(),
-            ])->all());
 
             $lastYardHourId = $rotation->id;
         }
@@ -378,44 +358,123 @@ class GoFetchShiftsJob implements ShouldQueue
     /**
      * @param Yard $yard
      * @param Rotation $hour
-     * @param $employee // Homebase Shift stdClass
+     * @param object $shift // Homebase Shift obj
      * @param mixed $shifts
      * @param array $lastYard
      */
-    public function assignEmployee(Yard $yard, Rotation $hour, $employee, mixed &$shifts, array &$lastYard): void
+    private function assignEmployee(Yard $yard, Rotation $hour, object $shift, mixed &$shifts, array &$lastYard): void
     {
-        EmployeeYardRotation::updateOrInsert(['yard_id' => $yard->id, 'rotation_id' => $hour->id],
-            ['homebase_user_id' => $employee?->user_id, 'updated_at' => now(), 'created_at' => now(),]
+        EmployeeYardRotation::updateOrInsert(
+            ['yard_id' => $yard->id, 'rotation_id' => $hour->id],
+            ['homebase_user_id' => $shift->user_id, 'updated_at' => now(), 'created_at' => now()]
         );
+        $shift->yardHoursWorked[$yard->id]++;
 
-        $shifts = $shifts->map(function ($e) use ($employee, $yard) {
-            if ($e->user_id === $employee->user_id) {
-                $e->yardHoursWorked[$yard->id]++;
-            }
-            return $e;
-        });
+        // Track last assignment
+        $lastYard[$shift->user_id][$yard->id] = $hour->id;
+    }
 
-        $lastYard[$employee->user_id][$yard->id] = $hour->id;
+
+    /**
+     * @param object $shift
+     * @return float
+     */
+    private function getDurationInSegments(object $shift): float
+    {
+        return (floatval($shift->labor->scheduled_hours ?? 0) + floatval($shift->labor->scheduled_unpaid_breaks_hours ?? 0)) * 12;
+    }
+
+    /**
+     * @param object $shift
+     * @param array $breakMatrix
+     * @return array|null
+     */
+    private function findLunchIndex(object $shift, array $breakMatrix): ?array
+    {
+        $duration = $this->getDurationInSegments($shift);
+        $startIndex = $this->convertTimeToIndex(Carbon::parse($shift->start_at));
+
+        $lunchTarget = $duration >= 8 * 12
+            ? $startIndex + round($duration / 2)
+            : $startIndex + round($duration * 2 / 3);
+
+        $lunchIndex = max($lunchTarget, self::START_LUNCHES_AT_INDEX);
+
+        return $this->findBreakIndex($lunchIndex, 6, $breakMatrix, true);
+    }
+
+    /**
+     *
+     * @param object $shift
+     * @param array $breakMatrix
+     * @return array|null
+     */
+    private function findFirstBreakIndex(object $shift, array $breakMatrix): ?array
+    {
+        $duration = $this->getDurationInSegments($shift);
+        $startIndex = $this->convertTimeToIndex(Carbon::parse($shift->start_at));
+
+        $firstBreakTarget = $startIndex + ($duration >= 8 * 12
+                ? $duration / 4
+                : ($duration >= 6.5 * 12 ? $duration / 3 : $duration / 2));
+
+        return $this->findBreakIndex(round($firstBreakTarget), 4, $breakMatrix);
+    }
+
+    /**
+     * @param object $shift
+     * @param array $breakMatrix
+     * @return array|null
+     */
+    private function findSecondBreakIndex(object $shift, array $breakMatrix): ?array
+    {
+        $duration = $this->getDurationInSegments($shift);
+        $startIndex = $this->convertTimeToIndex(Carbon::parse($shift->start_at));
+        $endIndex = $this->convertTimeToIndex(Carbon::parse($shift->end_at));
+
+        $secondBreakTarget = $startIndex + round($duration * 3 / 4);
+        $secondBreakTarget = min($secondBreakTarget, $endIndex - 4);
+
+        $idealTime = $this->convertIndexToTime(round($secondBreakTarget))->format('g:i a');
+        Log::info("Searching for second break at {$idealTime}");
+        return $this->findBreakIndex(round($secondBreakTarget), 4, $breakMatrix);
+    }
+
+    /**
+     * @param int $startIndex
+     * @param int $duration
+     * @param array $matrix
+     * @return void
+     */
+    private function markSlots(int $startIndex, int $duration, array &$matrix): void
+    {
+        for ($i = 0; $i < $duration; $i++) {
+            $matrix[$startIndex + $i][$duration >= 6 ? 'lunches' : 'breaks'] += 1;
+        }
     }
 
     /**
      * @param int|null $index
-     * @param int $firstHourOfDay
      * @return Carbon|null
      */
-    public function convertIndexToTime(?int $index, int $firstHourOfDay): Carbon|null
+    private function convertIndexToTime(?int $index): Carbon|null
     {
         if ($index == null) return null;
-        return Carbon::parse((floor($index / 12) + $firstHourOfDay) . ':' . (($index % 12) * 5));
+        return Carbon::parse((floor($index / 12) + self::START_HOUR_OF_DAY) . ':' . (($index % 12) * 5));
     }
 
     /**
      * @param Carbon $shiftTime
-     * @param int $firstHourOfDay
      * @return int
      */
-    public function convertTimeToIndex(Carbon $shiftTime, int $firstHourOfDay): int
+    private function convertTimeToIndex(Carbon $shiftTime): int
     {
-        return ($shiftTime->hour - $firstHourOfDay) * 12 + ($shiftTime->minute / 5);
+        return ($shiftTime->hour - self::START_HOUR_OF_DAY) * 12 + ($shiftTime->minute / 5);
+    }
+
+    private function isLunchAnchor(int $startIndex): bool
+    {
+        $minute = ($startIndex % 12) * 5;
+        return $minute <= 30;
     }
 }
