@@ -47,7 +47,11 @@ class GoFetchDogJob implements ShouldQueue, ShouldBeUnique
 
         if (isset($response['data']) && is_array($response['data']) && count($response['data']) > 0) {
             $data = $response['data'][0];
-            Dog::updateOrCreate(['pet_id' => $this->petId], ['photoUri' => $data['photoUrl']]);
+            $nickname = null;
+            if (preg_match('/"([^"]+)"/', $data['name'], $matches)) {
+                $nickname = $matches[1];
+            }
+            Dog::updateOrCreate(['pet_id' => $this->petId], ['photoUri' => $data['photoUrl'], 'nickname' => $nickname]);
         } else {
             Log::warning('Dog data missing: ' . $this->petId);
         }

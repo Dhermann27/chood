@@ -62,7 +62,13 @@ const handleImageLoaded = () => {
 const isCheckingOutToday = (dogs) => {
     if (!dogs) return false;
     const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-    return dogs.some(dog => dog.checkout && dog.checkout.slice(0, 10) === today);
+
+    return dogs.some(dog => {
+        const isCheckoutToday = dog.checkout && dog.checkout.slice(0, 10) === today;
+        const hasBoardingService = Array.isArray(dog.dog_services) &&
+            dog.dog_services.some(ds => ds?.service?.code?.includes('BRD'));
+        return isCheckoutToday && hasBoardingService;
+    });
 };
 
 
@@ -219,7 +225,7 @@ const handleClick = (cabin) => {
                     <font-awesome-icon :icon="['fas', 'edit']"/>
                 </button>
                 <button @click="handleDelete(props.dogs[cabin.id])"
-                    class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md">
+                        class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md">
                     <font-awesome-icon :icon="['fas', 'trash']"/>
                 </button>
             </div>

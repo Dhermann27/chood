@@ -13,21 +13,12 @@ class Dog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['accountId', 'pet_id', 'firstname', 'lastname', 'gender', 'photoUri', 'weight', 'cabin_id',
-        'is_inhouse', 'checkin', 'checkout', 'rest_starts_at', 'rest_duration_minutes'];
+    protected $fillable = ['accountId', 'pet_id', 'firstname', 'lastname', 'gender', 'photoUri', 'nickname', 'weight',
+        'cabin_id', 'is_inhouse', 'checkin', 'checkout', 'rest_starts_at', 'rest_duration_minutes'];
 
     protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s'];
 
     protected $appends = ['left_icons', 'right_icons'];
-
-    public function getSizeLetter()
-    {
-        if ($this->weight > 40) return 'L';
-        else if ($this->weight >= 30) return 'LS';
-        else if ($this->weight >= 15) return 'S';
-        else if ($this->weight >= 10) return 'ST';
-        else return 'T';
-    }
 
     public function getLeftIconsAttribute()
     {
@@ -49,7 +40,7 @@ class Dog extends Model
         $icons = [];
 
         if ($this->weight) {
-            $icons[] = ['icon' => 'weight-hanging', 'text' => $this->getSizeLetter()];
+            $icons[] = ['icon' => 'weight-hanging', 'text' => $this->size_letter];
         }
 
         if ($this->dogServices) {

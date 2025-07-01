@@ -7,7 +7,7 @@ export function getFittedFontSize(el, maxWidth, minFontSize = 10, decrement = 2)
 
     while (fontSize > minFontSize) {
         context.font = `${fontSize}px ${computed.fontFamily}`;
-        if (context.measureText(el.innerText).width <= maxWidth * 0.8) break;
+        if (context.measureText(el.innerText).width <= maxWidth * 0.85) break;
         fontSize -= decrement;
     }
     return `${fontSize}px`;

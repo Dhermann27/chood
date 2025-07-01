@@ -22,6 +22,7 @@ return new class extends Migration {
             $table->string('gender')->nullable();
             $table->integer('weight')->nullable();
             $table->string('photoUri')->nullable();
+            $table->string('nickname')->nullable();
             $table->foreignId('cabin_id')->nullable()->constrained()->nullOnDelete();
             $table->tinyInteger('is_inhouse')->default(1);
             $table->dateTime('checkin')->nullable();
@@ -31,8 +32,24 @@ return new class extends Migration {
             $table->timestamps();
         });
         DB::update('ALTER TABLE dogs AUTO_INCREMENT = 1000');
-
-
+        DB::statement(<<<SQL
+                ALTER TABLE dogs
+                ADD COLUMN size_letter VARCHAR(2)
+                GENERATED ALWAYS AS (
+                    CASE
+                        WHEN weight >= 40 THEN 'L'
+                        WHEN weight >= 30 AND LOWER(nickname) LIKE '%large%' THEN 'L'
+                        WHEN weight >= 30 AND LOWER(nickname) LIKE '%small%' THEN 'S'
+                        WHEN weight >= 30 THEN 'LS'
+                        WHEN weight >= 15 THEN 'S'
+                        WHEN weight >= 10 AND LOWER(nickname) LIKE '%teacup%' THEN 'T'
+                        WHEN weight >= 10 AND LOWER(nickname) LIKE '%small%' THEN 'S'
+                        WHEN weight >= 10 THEN 'ST'
+                        ELSE 'T'
+                    END
+                ) VIRTUAL;
+            SQL
+        );
     }
 
     /**

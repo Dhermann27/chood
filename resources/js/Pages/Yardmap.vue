@@ -32,7 +32,7 @@ const chyronStyle = ref({
     fontSize: '60px',
     gridColumn: '1 / -1',
     backgroundColor: '#9e1b32',
-    color: 'white'
+    color: 'white',
 });
 
 
@@ -116,16 +116,16 @@ onBeforeUnmount(() => {
                  :style="{ top: randomPosition.top + 'px', left: randomPosition.left + 'px', position: 'absolute' }"
             />
             <div ref="chyron" :style="chyronStyle">
-                <span v-for="assignment in assignments" class="pe-10">
-                    {{ assignment.name }}:
+                <span v-for="assignment in assignments" class="pe-8 whitespace-nowrap">
+                    {{ assignment.name.slice(0, 5) }}:
                     {{ assignment.employee?.first_name ?? 'None' }}
                 </span>
-                <span v-if="nextBreak" class="pe-10">
-                    Next Break: {{ nextBreak.employee.first_name }} @
+                <span v-if="nextBreak" class="pe-8 whitespace-nowrap">
+                    Break: {{ nextBreak.employee.first_name }}
                     {{ formatTime(nextBreak.next_break) }}
                 </span>
-                <span v-if="nextLunch" class="pe-10">
-                    Next Lunch: {{ nextLunch.employee.first_name }} @
+                <span v-if="nextLunch" class="whitespace-nowrap">
+                    Lunch: {{ nextLunch.employee.first_name }}
                     {{ formatTime(nextLunch.next_lunch_break) }}
                 </span>
             </div>

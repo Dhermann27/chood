@@ -53,7 +53,7 @@ trait ChoodTrait
         $dogs = Dog::with('dogServices.service', 'cabin');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
         if ($size) {
-            $dogs->where('weight', $size == 'small' ? '<=' : '>=', $size == 'small' ? 40 : 30);
+            $dogs->where('size_letter', 'LIKE', '%' . ($size == 'small' ? 'S' : 'L') . '%')->get();
             $dogs->whereHas('dogServices.service', function ($query) {
                 $query->whereIn('category', config('services.dd.regular_service_cats'));
             });

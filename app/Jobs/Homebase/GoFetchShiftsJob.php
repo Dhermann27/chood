@@ -16,6 +16,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -68,6 +69,21 @@ class GoFetchShiftsJob implements ShouldQueue
                         return $shift;
                     });
 
+
+                $fohStaff = collect($homebaseShifts)->filter(fn($shift) => str_contains($shift->role, 'Supervisor'))
+                    ->map(function ($shift) {
+                        $startAt = Carbon::parse($shift->start_at);
+                        $endAt = Carbon::parse($shift->end_at);
+
+                        $startTime = $startAt->minute === 0 ? $startAt->format('ga') : $startAt->format('g:ia');
+                        $endTime = $endAt->minute === 0 ? $endAt->format('ga') : $endAt->format('g:ia');
+
+                        return "{$shift->first_name} ({$startTime}-{$endTime})";
+                    });
+                if ($fohStaff->isNotEmpty()) {
+                    Cache::put('foh_staff', $fohStaff->implode(', '), Carbon::tomorrow());
+                }
+                
                 if ($day->isSunday()) {
                     $remainingShifts = $this->assignSundayMorningBreaks($homebaseShifts);
                 } else {
