@@ -61,7 +61,7 @@ const handleImageLoaded = () => {
 
 const isCheckingOutToday = (dogs) => {
     if (!dogs) return false;
-    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const today = new Date().toLocaleDateString('en-CA'); // "YYYY-MM-DD"
 
     return dogs.some(dog => {
         const isCheckoutToday = dog.checkout && dog.checkout.slice(0, 10) === today;

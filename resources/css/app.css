@@ -11,16 +11,20 @@
 
 @font-face {
     font-family: 'FuturaBold';
-    src: url('/public/fonts/futurabook.ttf') format('truetype');
+    src: url('/public/fonts/FuturaBT-Bold.woff2') format('woff2'),
+    url('/public/fonts/FuturaBT-Bold.woff') format('woff');
     font-weight: normal;
     font-style: normal;
+    font-display: swap;
 }
 
 @font-face {
     font-family: 'FuturaBook';
-    src: url('/public/fonts/futurabold.ttf') format('truetype');
-    font-weight: bold;
+    src: url('/public/fonts/Futura-Book.woff2') format('woff2'),
+    url('/public/fonts/Futura-Book.woff') format('woff');
+    font-weight: normal;
     font-style: normal;
+    font-display: swap;
 }
 
 
