@@ -210,7 +210,7 @@ class DataController extends Controller
 
     function yardmap(string $size, string $checksum = null): JsonResponse
     {
-        $now = Carbon::now()->addHours(3);
+        $now = Carbon::now();
         $dogs = $this->getDogs(false, $size);
         $assignments = EmployeeYardRotation::join('rotations', 'employee_yard_rotations.rotation_id', '=', 'rotations.id')
             ->join('yards', 'employee_yard_rotations.yard_id', '=', 'yards.id')
