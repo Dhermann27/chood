@@ -18,8 +18,8 @@ const localChecksum = ref('');
 let refreshIntervals = [];
 const currentLoadingIndex = ref(0);
 const chyron = ref(null);
-const columns = computed(() => Math.ceil(Math.sqrt((16 / 9) * dogs.value.length)));
-const rows = computed(() => Math.ceil(dogs.value.length / columns.value));
+const columns = computed(() => Math.ceil(Math.sqrt((16 / 9) * (dogs.value.length + 1))));
+const rows = computed(() => Math.ceil((dogs.value.length + 1) / columns.value));
 const yardGridStyle = computed(() => getYardGridStyle(rows.value, columns.value));
 const cardWidth = computed(() => (1918 - (columns.value - 1) * 10) / columns.value);
 const cardHeight = computed(() => (978 - (rows.value - 1) * 10) / rows.value);
@@ -112,6 +112,18 @@ onBeforeUnmount(() => {
                 <DogCard :dogs="[dog]" :photoUri="props.photoUri" :card-width="cardWidth" :card-height="cardHeight"
                          :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
             </div>
+            <div :style="{ height: cardHeight + 'px', width: cardWidth + 'px' }"
+                 class="flex relative items-center justify-center bg-crimson text-white text-4xl font-bold">
+                <span :style="{ fontSize: cardHeight * .6 + 'px'}">
+                    {{ dogs.length - dogs.filter(d => d.rest_starts_at !== null).length }}
+                </span>
+                <span
+                    v-if="dogs.some(d => d.size_letter === 'LS' && d.rest_starts_at === null)"
+                    class="absolute flex items-center justify-center p-5"
+                    :style="{ fontSize: cardHeight * 0.25 + 'px', bottom: '5%', right: '6px'}">
+                    {{ dogs.filter(d => d.size_letter === 'LS' && d.rest_starts_at === null).length }}
+                </span>
+            </div>
             <img v-if="dogs.length === 0" :src="currentGif" alt="Dancing Doggo"
                  :style="{ top: randomPosition.top + 'px', left: randomPosition.left + 'px', position: 'absolute' }"
             />
@@ -132,4 +144,11 @@ onBeforeUnmount(() => {
         </div>
     </main>
 </template>
+
+<style>
+.icon-with-outline, .minutes-remaining {
+    filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 8px rgba(0, 0, 0, 0.7));
+    transform: translateY(-10px);
+}
+</style>
 

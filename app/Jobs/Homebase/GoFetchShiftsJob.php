@@ -28,7 +28,7 @@ class GoFetchShiftsJob implements ShouldQueue
     const SHIFTS_URL_PREFIX = 'https://app.joinhomebase.com/api/public/locations/';
     const SHIFTS_URL_SUFFIX = '/shifts?start_date=TODAY&end_date=TODAY&open=false&with_note=false&date_filter=start_at';
     const BACK_OF_HOUSE = 'BOH';
-    const TRAINING = 'Training';
+    const TRAINING = 'Train';
     const EVENT = 'Event';
     const SUPERVISOR = 'Supervisor';
     const START_HOUR_OF_DAY = 6;
@@ -69,7 +69,6 @@ class GoFetchShiftsJob implements ShouldQueue
                         return $shift;
                     });
 
-
                 $fohStaff = collect($homebaseShifts)->filter(fn($shift) => str_contains($shift->role, 'Supervisor'))
                     ->map(function ($shift) {
                         $startAt = Carbon::parse($shift->start_at);
@@ -83,7 +82,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 if ($fohStaff->isNotEmpty()) {
                     Cache::put('foh_staff', $fohStaff->implode(', '), Carbon::tomorrow());
                 }
-                
+
                 if ($day->isSunday()) {
                     $remainingShifts = $this->assignSundayMorningBreaks($homebaseShifts);
                 } else {

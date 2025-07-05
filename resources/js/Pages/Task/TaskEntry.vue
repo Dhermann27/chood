@@ -62,7 +62,7 @@ async function updateData() {
     }
     clearInterval(refreshInterval);
     refreshInterval = setInterval(updateData, frequency);
-};
+}
 
 const prevStep = () => {
     statusMessage.value = null;
@@ -158,7 +158,7 @@ const handleFinishAction = async (action) => {
     }
     targets.value = {'dogsToAssign': [], 'cabin_id': 0, 'cabin_short_name': ''};
     counter = 0;
-    if(todo.value.includes('markReturned')) todo.value = 'startBreak';
+    if (todo.value.includes('markReturned')) todo.value = 'startBreak';
     step.value = action === 'Done' ? 1 : 3;
 }
 
@@ -286,8 +286,9 @@ onUnmounted(() => {
                          :style="{ height: Math.min(770 / dogsOnBreak.length, 250) + 'px',
                      width: Math.min(770 / dogsOnBreak.length, 250) + 'px' }"
                          @click="handleBreakDogDelete(dog)">
-                        <DogCard :dogs="[dog]" :photoUri="props.photoUri" :card-width="250" :card-height="250"
-                                 :shouldLoad="true"/>
+                        <DogCard :dogs="[dog]" :photoUri="props.photoUri" :shouldLoad="true"
+                                 :card-width="Math.min(770 / dogsOnBreak.length, 250)"
+                                 :card-height="Math.min(770 / dogsOnBreak.length, 250)"/>
                     </div>
                 </div>
             </template>

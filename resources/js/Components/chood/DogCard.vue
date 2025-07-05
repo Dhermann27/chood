@@ -41,41 +41,18 @@ const breakTimeLeft = computed(() => {
     const dog = currentDog.value;
     if (!dog?.rest_starts_at || !dog?.rest_duration_minutes) return null;
 
-    const start = new Date(dog.rest_starts_at);
-    const end = new Date(start.getTime() + dog.rest_duration_minutes * 60 * 1000);
-    const msLeft = end.getTime() - now.value;
-    const minutesLeft = Math.max(Math.ceil(msLeft / (60 * 1000)), 0);
-    const totalMinutes = dog.rest_duration_minutes;
-    const percentElapsed = 1 - (minutesLeft / totalMinutes);
+    const end = new Date(new Date(dog.rest_starts_at) + dog.rest_duration_minutes * 60 * 1000);
+    const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
+    const percentElapsed = 1 - (minutesLeft / dog.rest_duration_minutes);
+    const percentRemaining = minutesLeft / dog.rest_duration_minutes;
 
     return {
         minutesLeft,
         percentElapsed,
+        percentRemaining,
         expired: minutesLeft === 0,
     };
 });
-
-// Utility to calculate SVG pie arcs
-function polarToCartesian(cx, cy, r, angleInDegrees) {
-    const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-    return {
-        x: cx + r * Math.cos(angleInRadians),
-        y: cy + r * Math.sin(angleInRadians),
-    };
-}
-
-function describeArc(x, y, radius, startAngle, endAngle) {
-    const start = polarToCartesian(x, y, radius, endAngle);
-    const end = polarToCartesian(x, y, radius, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
-
-    return [
-        'M', x, y,
-        'L', start.x, start.y,
-        'A', radius, radius, 0, largeArcFlag, 0, end.x, end.y,
-        'Z',
-    ].join(' ');
-}
 
 const bannerStyle = computed(() => {
     if (breakTimeLeft.value?.expired) {
@@ -212,77 +189,66 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div v-if="currentDog" :key="currentDog.firstname"
-         :class="['relative', 'flex', 'flex-col', 'h-full', bannerStyle.class]">
+    <div v-if="currentDog" :key="currentDog.id" :class="['relative', 'flex', 'flex-col', 'h-full', bannerStyle.class]">
+
+        <div ref="dogBanner" class="text-white text-center z-10">
+            {{ bannerStyle.label }}
+        </div>
 
 
-        <!-- Rest break curtain effect at card level -->
-        <div v-if="breakTimeLeft" class="absolute inset-0 z-10 pointer-events-none">
-            <svg v-if="breakTimeLeft && !breakTimeLeft.expired" class="absolute inset-0 pointer-events-none z-0"
-                 viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        <div ref="photoContainer" class="relative bg-cover bg-center z-0 overflow-hidden" style="flex: 1 1 auto"
+             :style="{ backgroundImage: currentDog.photoUri && imageCache.has(currentDog.photoUri) ? `url(${props.photoUri}${currentDog.photoUri})` : 'none' }"
+        >
+            <svg v-if="breakTimeLeft && !breakTimeLeft.expired" preserveAspectRatio="none"
+                 class="absolute top-0 left-0 w-full h-full pointer-events-none z-10" viewBox="0 0 1 1">
                 <defs>
                     <mask :id="`revealMask-${currentDog.id}`">
-                        <rect x="0" y="0" width="100" height="100" fill="white"/>
-                        <path
-                            :d="describeArc(50, 50, 70, 0, breakTimeLeft.percentElapsed * 360)"
-                            :class="'fill-[--color-DEFAULT]'"
-                        />
+                        <rect x="0" :y="breakTimeLeft.percentElapsed" width="1"
+                              :height="1 - breakTimeLeft.percentElapsed" fill="white"/>
                     </mask>
                 </defs>
-                <rect x="0" y="0" width="100" height="100" fill="rgba(0,0,0,0.75)" :mask="`url(#revealMask-${currentDog.id})`"/>
+
+                <rect x="0" y="0" width="1" height="1" fill="rgba(0,0,0,0.75)"
+                      :mask="`url(#revealMask-${currentDog.id})`"/>
             </svg>
-            <div class="absolute inset-0 flex items-center justify-center minutes-remaining">
-                <span ref="breakMinutesRemaining"
-                      class="text-white drop-shadow-xl leading-none text-center">
-                  {{ breakTimeLeft?.minutesLeft }}
-                </span>
+
+            <div class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                  <span ref="breakMinutesRemaining" class="text-white drop-shadow-xl leading-none text-center"
+                        :style="{ fontSize: 'min(30vw, 35vh)' }">
+                    {{ breakTimeLeft?.minutesLeft }}
+                  </span>
             </div>
-        </div>
 
-        <div ref="dogBanner" class="text-white text-center">{{ bannerStyle.label }}</div>
-        <div class="dog-photo flex-1 relative bg-cover bg-center z-0"
-            :style="{backgroundImage: currentDog.photoUri && imageCache.has(currentDog.photoUri) ? `url(${props.photoUri}${currentDog.photoUri})` : 'none'}">
-        <div class="relative">
-                <div v-if="currentDog.left_icons" class="absolute inset-y-0 left-1 flex flex-col py-1 ">
-                    <div v-for="(iconData, index) in currentDog.left_icons" :key="index" :ref="setIconRef(index, 'L')"
-                         class="relative flex items-center justify-center mt-2">
-
-                        <font-awesome-icon :icon="['fas', iconData.icon]"
-                                           class="text-white text-2xl icon-with-outline"/>
-
-                        <span v-if="iconData.text"
-                              class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-DEFAULT font-bold pointer-events-none">
-                            {{ iconData.text }}
-                        </span>
-                    </div>
-
+            <div v-if="currentDog.left_icons" class="absolute inset-y-0 left-1 flex flex-col py-1">
+                <div v-for="(iconData, index) in currentDog.left_icons" :key="index" :ref="setIconRef(index, 'L')"
+                    class="relative flex items-center justify-center mt-2">
+                    <font-awesome-icon :icon="['fas', iconData.icon]" :transform="iconData.transform"
+                        class="text-white text-2xl icon-with-outline" />
+                    <span v-if="iconData.text"
+                        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-DEFAULT font-bold pointer-events-none">
+                      {{ iconData.text }}
+                    </span>
                 </div>
-                <div v-if="currentDog.right_icons" class="absolute inset-y-0 right-1 flex flex-col py-1">
-                    <div v-for="(iconData, index) in currentDog.right_icons" :key="index" :ref="setIconRef(index, 'R')"
-                         class="relative flex items-center justify-center mt-2">
+            </div>
 
-                        <font-awesome-icon :icon="['fas', iconData.icon]" :transform="iconData.transform"
-                                           :class="['text-2xl icon-with-outline', getTimeColor(iconData)]"/>
-
-                        <span v-if="iconData.text"
-                              class="absolute inset-0 flex items-center justify-center text-DEFAULT font-bold text-sm pointer-events-none">
-                              {{ iconData.text }}
-                        </span>
-
-                    </div>
-
+            <div v-if="currentDog.right_icons" class="absolute inset-y-0 right-1 flex flex-col py-1">
+                <div v-for="(iconData, index) in currentDog.right_icons" :key="index" :ref="setIconRef(index, 'R')"
+                    class="relative flex items-center justify-center mt-2">
+                    <font-awesome-icon :icon="['fas', iconData.icon]" :transform="iconData.transform"
+                        :class="['text-2xl icon-with-outline', getTimeColor(iconData)]" />
+                    <span v-if="iconData.text"
+                        class="absolute inset-0 flex items-center justify-center text-DEFAULT font-bold text-sm pointer-events-none"
+                    >
+                      {{ iconData.text }}
+                    </span>
                 </div>
             </div>
         </div>
-        <div v-if="currentDog.firstname" ref="dogName" class="flex items-center justify-center z-20 text-white font-semibold">
+
+        <div v-if="currentDog.firstname" ref="dogName"
+            class="flex items-center justify-center z-20 text-white font-semibold">
             {{ currentDog.firstname.slice(0, props.maxlength) }}
         </div>
     </div>
-</template>
 
-<style scoped>
-.icon-with-outline, .minutes-remaining {
-    filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 8px rgba(0, 0, 0, 0.7));
-    transform: translateY(-2px);
-}
-</style>
+</template>
