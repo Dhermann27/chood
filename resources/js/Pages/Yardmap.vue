@@ -113,14 +113,14 @@ onBeforeUnmount(() => {
                          :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
             </div>
             <div :style="{ height: cardHeight + 'px', width: cardWidth + 'px' }"
-                 class="flex relative items-center justify-center bg-crimson text-white text-4xl font-bold">
-                <span :style="{ fontSize: cardHeight * .6 + 'px'}">
+                 class="flex relative items-center justify-center bg-crimson text-white font-bold">
+                <span :style="{ fontSize: cardHeight * .5 + 'px'}">
                     {{ dogs.length - dogs.filter(d => d.rest_starts_at !== null).length }}
                 </span>
                 <span
                     v-if="dogs.some(d => d.size_letter === 'LS' && d.rest_starts_at === null)"
                     class="absolute flex items-center justify-center p-5"
-                    :style="{ fontSize: cardHeight * 0.25 + 'px', bottom: '5%', right: '6px'}">
+                    :style="{ fontSize: cardHeight * 0.2 + 'px', bottom: '5px', right: '5px'}">
                     {{ dogs.filter(d => d.size_letter === 'LS' && d.rest_starts_at === null).length }}
                 </span>
             </div>

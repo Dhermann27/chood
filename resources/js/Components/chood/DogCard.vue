@@ -41,7 +41,8 @@ const breakTimeLeft = computed(() => {
     const dog = currentDog.value;
     if (!dog?.rest_starts_at || !dog?.rest_duration_minutes) return null;
 
-    const end = new Date(new Date(dog.rest_starts_at) + dog.rest_duration_minutes * 60 * 1000);
+    const start = new Date(dog.rest_starts_at);
+    const end = new Date(start.getTime() + dog.rest_duration_minutes * 60 * 1000);
     const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
     const percentElapsed = 1 - (minutesLeft / dog.rest_duration_minutes);
     const percentRemaining = minutesLeft / dog.rest_duration_minutes;
