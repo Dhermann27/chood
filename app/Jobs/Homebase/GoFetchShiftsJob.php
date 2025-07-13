@@ -57,26 +57,24 @@ class GoFetchShiftsJob implements ShouldQueue
                 Shift::query()->delete();
                 $yards = Yard::where('is_active', '1')->orderBy('display_order')->get();
 
-                $homebaseShifts = collect(json_decode($response->getBody()->getContents()))
-                    ->sortBy(['start_at', 'role'])
-                    ->reject(fn($shift) => Str::contains($shift->department, 'FOH') ||
+                $homebaseShifts = collect(json_decode($response->getBody()->getContents()))->sortBy(['start_at', 'role']);
+
+                $qualifiedShifts = $homebaseShifts->reject(fn($shift) =>
+                        Str::contains($shift->department, 'FOH') ||
                         Str::contains($shift->role, self::TRAINING) ||
                         Str::contains($shift->role, self::EVENT)
-                    )
-                    ->map(function ($shift) use ($yards) {
+                    )->map(function ($shift) use ($yards) {
                         $shift->yardHoursWorked = $yards->pluck('id')->mapWithKeys(fn($id) => [$id => 0])->toArray();
                         $shift->next_lunch_break = null;
                         return $shift;
                     });
 
-                $fohStaff = collect($homebaseShifts)->filter(fn($shift) => str_contains($shift->role, 'Supervisor'))
+                $fohStaff = $homebaseShifts->filter(fn($shift) => str_contains($shift->role, 'Supervisor'))
                     ->map(function ($shift) {
                         $startAt = Carbon::parse($shift->start_at);
                         $endAt = Carbon::parse($shift->end_at);
-
                         $startTime = $startAt->minute === 0 ? $startAt->format('ga') : $startAt->format('g:ia');
                         $endTime = $endAt->minute === 0 ? $endAt->format('ga') : $endAt->format('g:ia');
-
                         return "{$shift->first_name} ({$startTime}-{$endTime})";
                     });
                 if ($fohStaff->isNotEmpty()) {
@@ -84,15 +82,15 @@ class GoFetchShiftsJob implements ShouldQueue
                 }
 
                 if ($day->isSunday()) {
-                    $remainingShifts = $this->assignSundayMorningBreaks($homebaseShifts);
+                    $remainingShifts = $this->assignSundayMorningBreaks($qualifiedShifts);
                 } else {
-                    $remainingShifts = $homebaseShifts;
+                    $remainingShifts = $qualifiedShifts;
                 }
-
                 $breakMatrix = array_fill(0, self::HOURS_IN_DAY * 12, ['breaks' => 0, 'lunches' => 0]);
                 $this->assignLunches($remainingShifts, $breakMatrix);
                 $this->assignBreaks($remainingShifts, $breakMatrix);
-                $shiftInsertData = $remainingShifts->map(function ($shift) use ($day) {
+
+                $shiftInsertData = $homebaseShifts->map(function ($shift) {
                     return [
                         'homebase_user_id' => $shift->user_id,
                         'role' => $shift->role,
@@ -106,9 +104,10 @@ class GoFetchShiftsJob implements ShouldQueue
                         'updated_at' => now(),
                     ];
                 })->all();
+
                 Shift::insert($shiftInsertData);
 
-                $this->updateYardAssignments($yards, $homebaseShifts);
+                $this->updateYardAssignments($yards, $qualifiedShifts);
             } else {
                 Log::error('Failed to fetch data from Homebase API', [
                     'status' => $response->status(),
@@ -178,7 +177,7 @@ class GoFetchShiftsJob implements ShouldQueue
                     $breakTime = $this->convertIndexToTime($result['index']);
                     $shift->next_second_break = $breakTime;
                     $shift->fairness_score = ($shift->fairness_score ?? 0) + $result['deviation'];
-                    Log::info("Assigned first break for {$shift->first_name} at {$breakTime->format('g:i a')} @ {$result['deviation']}");
+                    Log::info("Assigned second break for {$shift->first_name} at {$breakTime->format('g:i a')} @ {$result['deviation']}");
 
                 }
             }
@@ -216,8 +215,8 @@ class GoFetchShiftsJob implements ShouldQueue
             $segmentsSearched += abs($candidateIndex - $searcherIndex);
             $searcherIndex = $candidateIndex + 1;
 
-            if ($allowFallback && $segmentsSearched > 0 && $segmentsSearched % 6 === 0) {
-                $fallbackStart = $idealIndex - 6;
+            if ($allowFallback && $segmentsSearched > 0 && $segmentsSearched % $duration === 0) {
+                $fallbackStart = $idealIndex - $duration;
                 if ($fallbackStart >= 0 && $this->isSlotAvailable($fallbackStart, $duration, $breakMatrix, $maxPeopleOnBreak)) {
                     return [
                         'index' => $fallbackStart,
@@ -433,7 +432,10 @@ class GoFetchShiftsJob implements ShouldQueue
                 ? $duration / 4
                 : ($duration >= 6.5 * 12 ? $duration / 3 : $duration / 2));
 
-        return $this->findBreakIndex(round($firstBreakTarget), 4, $breakMatrix);
+        $idealTime = $this->convertIndexToTime(round($firstBreakTarget))->format('g:i a');
+        Log::info("Searching for first break at {$idealTime}");
+
+        return $this->findBreakIndex(round($firstBreakTarget), 3, $breakMatrix);
     }
 
     /**
@@ -452,7 +454,7 @@ class GoFetchShiftsJob implements ShouldQueue
 
         $idealTime = $this->convertIndexToTime(round($secondBreakTarget))->format('g:i a');
         Log::info("Searching for second break at {$idealTime}");
-        return $this->findBreakIndex(round($secondBreakTarget), 4, $breakMatrix);
+        return $this->findBreakIndex(round($secondBreakTarget), 3, $breakMatrix);
     }
 
     /**

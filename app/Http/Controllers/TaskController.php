@@ -33,7 +33,7 @@ class TaskController extends Controller
     {
         $dogs = $this->getDogs();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
-        $employees = Employee::whereHas('shift', function ($query) {
+        $employees = Employee::whereHas('shifts', function ($query) {
             $query->where('is_working', true);
         })->orderBy('first_name')->get();
         $new_checksum = md5($dogs->toJson() . $employees->toJson() . json_encode($statuses));

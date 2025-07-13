@@ -138,7 +138,7 @@ watch([() => props.cardHeight, currentDog], async ([newHeight]) => {
     }
 
     if (breakMinutesRemaining.value) {
-        breakMinutesRemaining.value.style.fontSize = `${newHeight * .6}px`;
+        breakMinutesRemaining.value.style.fontSize = `${newHeight * .5}px`;
     }
 
     const size = Math.min(Math.floor(newHeight / 7), 100);
@@ -214,32 +214,34 @@ onUnmounted(() => {
             </svg>
 
             <div class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                  <span ref="breakMinutesRemaining" class="text-white drop-shadow-xl leading-none text-center"
-                        :style="{ fontSize: 'min(30vw, 35vh)' }">
+                  <span ref="breakMinutesRemaining" class="text-white drop-shadow-xl leading-none text-center">
                     {{ breakTimeLeft?.minutesLeft }}
                   </span>
             </div>
 
             <div v-if="currentDog.left_icons" class="absolute inset-y-0 left-1 flex flex-col py-1">
-                <div v-for="(iconData, index) in currentDog.left_icons" :key="index" :ref="setIconRef(index, 'L')"
-                    class="relative flex items-center justify-center mt-2">
-                    <font-awesome-icon :icon="['fas', iconData.icon]" :transform="iconData.transform"
-                        class="text-white text-2xl icon-with-outline" />
+                <div v-for="(iconData, index) in currentDog.left_icons" :key="index"
+                     class="relative flex items-center justify-center mt-2"
+                     :style="{ height: props.cardHeight * .12 + 'px' }">
+                    <font-awesome-icon :icon="['fas', iconData.icon]" class="text-white icon-with-outline"
+                                       :style="{ fontSize: props.cardHeight * .12 + 'px' }"/>
                     <span v-if="iconData.text"
-                        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-DEFAULT font-bold pointer-events-none">
+                          class="absolute inset-0 flex items-center justify-center font-bold pointer-events-none"
+                          :style="{fontSize: props.cardHeight * 0.06 + 'px', lineHeight: 1}">
                       {{ iconData.text }}
                     </span>
                 </div>
             </div>
 
             <div v-if="currentDog.right_icons" class="absolute inset-y-0 right-1 flex flex-col py-1">
-                <div v-for="(iconData, index) in currentDog.right_icons" :key="index" :ref="setIconRef(index, 'R')"
-                    class="relative flex items-center justify-center mt-2">
-                    <font-awesome-icon :icon="['fas', iconData.icon]" :transform="iconData.transform"
-                        :class="['text-2xl icon-with-outline', getTimeColor(iconData)]" />
+                <div v-for="(iconData, index) in currentDog.right_icons" :key="index"
+                     class="relative flex items-center justify-center mt-2"
+                     :style="{ height: props.cardHeight * .12 + 'px' }">
+                    <font-awesome-icon :icon="['fas', iconData.icon]" class="text-white icon-with-outline"
+                                       :style="{ fontSize: props.cardHeight * .12 + 'px' }"/>
                     <span v-if="iconData.text"
-                        class="absolute inset-0 flex items-center justify-center text-DEFAULT font-bold text-sm pointer-events-none"
-                    >
+                          class="absolute inset-0 flex items-center justify-center font-bold pointer-events-none"
+                          :style="{fontSize: props.cardHeight * 0.06 + 'px', lineHeight: 1}">
                       {{ iconData.text }}
                     </span>
                 </div>
@@ -247,7 +249,7 @@ onUnmounted(() => {
         </div>
 
         <div v-if="currentDog.firstname" ref="dogName"
-            class="flex items-center justify-center z-20 text-white font-semibold">
+             class="flex items-center justify-center z-20 text-white font-semibold">
             {{ currentDog.firstname.slice(0, props.maxlength) }}
         </div>
     </div>

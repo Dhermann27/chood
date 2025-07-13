@@ -54,32 +54,36 @@ class DataController extends Controller
                 });
             });
 
-        $breaks = Employee::whereHas('shift', function ($query) {
-            $query->whereNotNull('start_time');
-        })->with('shift')->get()->map(function ($employee) {
-            $shift = $employee->shift;
+        $breaks = Shift::where('role', 'Camp Counselor')->orWhere('role', 'Shift Supervisor')
+            ->with('employee')->get()->map(function ($shift) {
+                return [
+                    'homebase_user_id' => $shift->employee->homebase_user_id,
+                    'first_name' => $shift->employee->first_name,
+                    'shift_start' => $shift->start_time,
+                    'shift_end' => $shift->end_time,
+                    'next_first_break' => optional($shift->next_first_break ? Carbon::parse($shift->next_first_break) : null)->format('h:ia'),
+                    'next_lunch_break' => optional($shift->next_lunch_break ? Carbon::parse($shift->next_lunch_break) : null)->format('h:ia'),
+                    'next_second_break' => optional($shift->next_second_break ? Carbon::parse($shift->next_second_break) : null)->format('h:ia'),
+                ];
+            })->sortBy('first_name')->values();
 
-            return [
-                'homebase_user_id' => $employee->homebase_user_id,
-                'first_name' => $employee->first_name,
-                'shift_start' => $shift->start_time,
-                'shift_end' => $shift->end_time,
-                'next_first_break' => optional($shift->next_first_break ? Carbon::parse($shift->next_first_break) : null)->format('h:ia'),
-                'next_lunch_break' => optional($shift->next_lunch_break ? Carbon::parse($shift->next_lunch_break) : null)->format('h:ia'),
-                'next_second_break' => optional($shift->next_second_break ? Carbon::parse($shift->next_second_break) : null)->format('h:ia'),
-            ];
-        })->sortBy('first_name')->values();
-
-        $dogs = Dog::whereHas('feedings', function ($query) {
-            $query->whereRaw('DATE(feedings.modified_at) >= DATE(dogs.checkin)');
-        })->orWhereHas('medications', function ($query) {
-            $query->whereRaw('DATE(medications.modified_at) >= DATE(dogs.checkin)');
-        })->orWhereHas('allergies')->with(['feedings', 'medications', 'allergies', 'cabin', 'dogServices.service'])
+        $dogs = Dog::where(function ($query) {
+            $query->whereHas('feedings', function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereRaw('DATE(feedings.modified_at) <= DATE(dogs.checkin)')
+                        ->orWhereHas('dog.dogServices.service', function ($s) {
+                            $s->where('code', 'like', '%BRD%');
+                        });
+                });
+            })->orWhereHas('medications', function ($q) {
+                $q->whereRaw('DATE(medications.modified_at) >= DATE(dogs.checkin)');
+            })->orWhereHas('allergies');
+        })->with(['feedings', 'medications', 'allergies', 'cabin', 'dogServices.service'])
             ->orderBy('cabin_id')->orderBy('firstname')->get();
 
-        $groupedEmployees = Employee::with('shift')->orderBy('first_name')->get()
+        $groupedEmployees = Employee::with('shifts')->orderBy('first_name')->get()
             ->groupBy(function ($employee) {
-                return $employee->shift && $employee->shift->is_working ? 'Scheduled' : 'Unscheduled';
+                return $employee->shifts->contains('is_working', 1) ? 'Scheduled' : 'Unscheduled';
             })->map(function ($group, $status) {
                 return ['status' => $status, 'employees' => $group];
             })->sortBy(fn($group) => $group['status'] === 'Scheduled' ? 0 : 1)->values()->all();

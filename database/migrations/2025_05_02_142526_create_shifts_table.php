@@ -20,8 +20,8 @@ return new class extends Migration {
 //            $table->date('shift_date'); // For identifying the specific day
             $table->tinyInteger('is_working')->default('0');
             $table->string('role')->default('Camp Counselor');
-            $table->time('start_time')->nullable();
-            $table->time('end_time')->nullable();
+            $table->time('start_time');
+            $table->time('end_time');
             $table->time('next_first_break')->nullable();
             $table->time('next_lunch_break')->nullable();
             $table->time('next_second_break')->nullable();
