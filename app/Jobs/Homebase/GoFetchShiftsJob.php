@@ -90,7 +90,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 $this->assignLunches($remainingShifts, $breakMatrix);
                 $this->assignBreaks($remainingShifts, $breakMatrix);
 
-                $shiftInsertData = $homebaseShifts->map(function ($shift) {
+                $shiftInsertData = $remainingShifts->map(function ($shift) {
                     return [
                         'homebase_user_id' => $shift->user_id,
                         'role' => $shift->role,
@@ -104,7 +104,7 @@ class GoFetchShiftsJob implements ShouldQueue
                         'updated_at' => now(),
                     ];
                 })->all();
-
+                
                 Shift::insert($shiftInsertData);
 
                 $this->updateYardAssignments($yards, $qualifiedShifts);
