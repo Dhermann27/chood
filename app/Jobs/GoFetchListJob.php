@@ -72,7 +72,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             $serviceIds = collect($data['rows'])->pluck(1)->toArray();
             Dog::whereNotIn('pet_id', $serviceIds)->whereNotNull('pet_id')->delete();
 
-            $cabins = Cabin::all()->pluck('id', 'cabinName');
+            $cabins = Cabin::all()->keyBy(fn($cabin) => $this->normCabinName($cabin->cabinName))->map(fn($c) => $c->id);
             $services = Service::all();
             $serviceMap = $services->pluck('id', 'code');
             $specialServiceIds = $services->whereIn('category', config('services.dd.special_service_cats'))
@@ -137,7 +137,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
 
     private function getFilteredValues(array $row, Collection $columns, Collection $cabins): array
     {
-        $cabinId = $cabins->has($row[$columns['dateCabin']]) ? $cabins[$row[$columns['dateCabin']]] : null;
+        $cabinId = $cabins->get($this->normCabinName($row[$columns['dateCabin']]), null);
         $updateValues = [
             'accountId' => $this->trimToNull($row[$columns['accountId']]),
             'firstname' => $this->trimToNull($row[$columns['name']]),
@@ -160,5 +160,10 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         return $trimmed === '' ? null : $trimmed;
     }
 
+    function normCabinName(string $key): string
+    {
+        // Remove all spaces, dashes, hyphens, em-dashes, etc., and lowercase
+        return strtolower(preg_replace('/[\s\-—–]+/', '', $key));
+    }
 
 }

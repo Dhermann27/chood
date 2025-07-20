@@ -19,8 +19,8 @@ const columns = computed(() => {
 });
 const rows = computed(() => displayDogs.value.length > 3 ? 2 : 1);
 const yardGridStyle = computed(() => getYardGridStyle(rows.value, columns.value));
-const cardWidth = computed(() => (1918 - (columns.value - 1) * 10) / columns.value);
-const cardHeight = computed(() => (978 - (rows.value - 1) * 10) / rows.value);
+const cardWidth = computed(() => (1278 - (columns.value - 1) * 10) / columns.value);
+const cardHeight = computed(() => (718 - (rows.value - 1) * 10) / rows.value);
 
 const handleImageLoaded = () => {
     while (++currentLoadingIndex.value < dogs.value?.length) {

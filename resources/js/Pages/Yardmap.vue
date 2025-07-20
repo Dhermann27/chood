@@ -148,7 +148,6 @@ onBeforeUnmount(() => {
 <style>
 .icon-with-outline, .minutes-remaining {
     filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 8px rgba(0, 0, 0, 0.7));
-    transform: translateY(-10px);
 }
 </style>
 
