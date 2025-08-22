@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('telescope:prune --hours=24')->daily();
 Schedule::job(new GoFetchListJob(app(FetchDataService::class)))->everyFifteenSeconds()->between('6:00', '19:30');
 Schedule::job(new GoFetchTimecardsJob())->everyFifteenSeconds()->between('6:00', '19:30');
+//Schedule::job(new SyncDogServicesJob())->everyMinute()->between('6:00', '19:30');
 Schedule::job(new GoFetchServiceListJob(app(FetchDataService::class)))->daily();
 Schedule::job(new MarkCabinsForCleaningJob())->daily();
 Schedule::job(new GoFetchEmployeesJob())->daily();

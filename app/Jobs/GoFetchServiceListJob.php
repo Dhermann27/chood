@@ -11,6 +11,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  *
@@ -43,22 +45,38 @@ class GoFetchServiceListJob implements ShouldQueue, ShouldBeUnique
         if (!isset($output['data']) || !is_array($output['data']) || count($output['data']) == 0) {
             throw new Exception("No data found: " . $output);
         }
-        $data = $output['data'][0];
-        $columns = collect($data['columns'])->pluck('index', 'filterKey');
 
-        $services = collect($data['rows'])->pluck($columns['id'])->toArray();
-        Service::whereNotIn('dd_id', $services)->update(['is_active' => '0']);
+        DB::transaction(function () use ($output) {
+            $data = $output['data'][0];
+            $columns = collect($data['columns'])->pluck('index', 'filterKey');
 
-        foreach ($data['rows'] as $row) {
-            if ($row[$columns['active']]) {
-                Service::updateOrCreate(['dd_id' => trim($row[$columns['id']])], [
-                    'name' => trim($row[$columns['label']]),
-                    'category' => trim($row[$columns['category']]),
-                    'code' => trim($row[$columns['code']]),
-                    'duration' => trim($row[$columns['duration']])
-                ]);
+            // Build rows for upsert (active only)
+            $rows = [];
+            foreach ($data['rows'] as $row) {
+                if (!empty($row[$columns['active']])) {
+                    $rows[] = [
+                        'dd_id' => trim($row[$columns['id']]),
+                        'name' => trim($row[$columns['label']]),
+                        'category' => trim($row[$columns['category']]),
+                        'code' => trim($row[$columns['code']]),
+                        'duration' => (int)trim($row[$columns['duration']]),
+                    ];
+                }
             }
-        }
+
+            if (!empty($rows)) {
+                Service::upsert($rows, ['dd_id'], ['name', 'category', 'code', 'duration']);
+            }
+
+            $activeDdIds = array_column($rows, 'dd_id');
+            if (!empty($activeDdIds)) {
+                Service::whereNotIn('dd_id', $activeDdIds)->update(['is_active' => 0]);
+            }
+
+            // Refresh cache used by your sync job
+            Cache::put('serviceMapByDDID', Service::pluck('id', 'dd_id'), now()->addDay());
+        });
+
     }
 
 }

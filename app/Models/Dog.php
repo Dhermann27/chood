@@ -7,16 +7,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Dog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['accountId', 'pet_id', 'firstname', 'lastname', 'gender', 'photoUri', 'nickname', 'weight',
-        'cabin_id', 'is_inhouse', 'checkin', 'checkout', 'rest_starts_at', 'rest_duration_minutes'];
-
-    protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s'];
+    protected $fillable = ['booking_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'gender', 'photoUri',
+        'nickname', 'weight', 'cabin_id', 'is_inhouse', 'rest_starts_at', 'rest_duration_minutes'];
 
     protected $appends = ['left_icons', 'right_icons'];
 
@@ -43,22 +40,22 @@ class Dog extends Model
             $icons[] = ['icon' => 'weight-hanging', 'text' => $this->size_letter];
         }
 
-        if ($this->dogServices) {
-            foreach ($this->dogServices as $dogService) {
-                $start = Carbon::parse($dogService->scheduled_start);
+        if ($this->appointments) {
+            foreach ($this->appointments as $appointment) {
+                $start = Carbon::parse($appointment->scheduled_start);
                 $today = Carbon::today();
                 if (config('services.dd.sandbox_service_condition') === '<=' ? $start->lessThanOrEqualTo($today)
                     : $start->isSameDay($today)) {
-                    if (in_array($dogService->service->category, config('services.dd.bath_service_cats')) &&
+                    if (in_array($appointment->service->category, config('services.dd.bath_service_cats')) &&
                         !array_search('droplet', array_column($icons, 'icon'))) {
                         $icons[] = ['icon' => 'droplet', 'text' => substr($start->format('ga'), 0, 2),
-                            'transform' => 'grow-1', 'start' => $dogService->scheduled_start, 'checkout' => $this->checkout,
-                            'completed' => $dogService->completed_at != null];
-                    } elseif (in_array($dogService->service->category, config('services.dd.fsg_service_cats')) &&
+                            'transform' => 'grow-1', 'start' => $appointment->scheduled_start, 'checkout' => $this->checkout,
+                            'completed' => $appointment->completed_at != null];
+                    } elseif (in_array($appointment->service->category, config('services.dd.fsg_service_cats')) &&
                         !array_search('sheep', array_column($icons, 'icon'))) {
                         $icons[] = ['icon' => 'sheep', 'text' => substr($start->format('ga'), 0, 2),
-                            'transform' => 'grow-1 right-2', 'start' => $dogService->scheduled_start, 'checkout' => $this->checkout,
-                            'completed' => $dogService->completed_at != null];
+                            'transform' => 'grow-1 right-2', 'start' => $appointment->scheduled_start, 'checkout' => $this->checkout,
+                            'completed' => $appointment->completed_at != null];
                     }
                 }
             }
@@ -87,14 +84,10 @@ class Dog extends Model
         return $this->hasMany(Medication::class, 'pet_id', 'pet_id');
     }
 
-    public function dogServices(): HasMany
+    /** A dog has many appointments */
+    public function appointments()
     {
-        return $this->hasMany(DogService::class, 'pet_id', 'pet_id');
-    }
-
-    public function services(): HasManyThrough // Only use if no schedule information is needed
-    {
-        return $this->hasManyThrough(Service::class, DogService::class, 'pet_id', 'id', 'pet_id', 'service_id');
+        return $this->hasMany(Appointment::class, 'pet_id', 'pet_id');
     }
 
 }

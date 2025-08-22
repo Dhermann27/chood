@@ -40,6 +40,7 @@ return [
             'base' => env('BASE_URI'),
             'auth' => env('BASE_URI') . env('AUTH_URI'),
             'inHouseList' => env('BASE_URI') . env('IN_HOUSE_LIST_URI'),
+            'futureReservations' => env('BASE_URI') . env('FUTURE_RESERVATIONS_URI'),
             'allergy' => env('BASE_URI') . env('ALLERGY_URI'),
             'booking' => env('BASE_URI') . env('BOOKING_URI'),
             'card' => env('BASE_URI') . env('CARD_URI'),
@@ -73,9 +74,8 @@ return [
         'sandbox_password' => env('SB_PASSWORD'),
     ],
 
-    'openai' => [
-        'api_key' => env('OPENAI_API_KEY'),
-        'engine' => env('OPENAI_ENGINE'),
+    'google_calendar' => [
+        'calendar_id' => env('GOOGLE_CALENDAR_ID'),
     ],
 
     'homebase' => [

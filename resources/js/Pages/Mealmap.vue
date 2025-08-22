@@ -79,6 +79,13 @@ const progressBarStyle = computed(() => ({
     color: 'white',
 }));
 
+const getFairnessColor = (score) => {
+    if (!score || score <= 0) return '';
+    const intensity = Math.min(Math.ceil(score) * 100, 800);
+    return `bg-red-${intensity}`;
+};
+
+
 // Next three methods are all so Vue3 detects changes inside the nested objects
 function matchEmployeeInGroups(employee) {
     for (const group of employees.value) {
@@ -134,7 +141,10 @@ const handleYardChange = async (rotationId, yardId) => {
 
 const handleBreakChange = async (eventData, homebase_user_id, break_name) => {
     const select = inputRefs.value[`timepick-${homebase_user_id}-${break_name}`];
+    const redClasses = Array.from({length: 9}, (_, i) => `bg-red-${(i + 1) * 100}`);
+
     try {
+        select.classList.remove(...redClasses); // Remove any Tailwind red class
         select.style.backgroundColor = 'gray';
         await axios.post('/api/mealmap/break', {
             [break_name]: `${eventData.displayTime}`,
@@ -278,10 +288,13 @@ onBeforeUnmount(() => {
                             </div>
                             <VueTimepicker v-if="controls !== ControlSchemes.NONE && employee.first_name !== 'Everyone'"
                                            :id="`timepick-${String(employee.homebase_user_id)}-next_first_break`"
+                                           class="print-hide" placeholder="None"
                                            v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
                                            :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                           placeholder="None" class="print-hide"
-                                           @change="handleBreakChange($event, employee.homebase_user_id, 'next_first_break')"/>
+                                           :class="getFairnessColor(employee.fairness_score)"
+                                           @change="handleBreakChange($event, employee.homebase_user_id, 'next_first_break')"
+                            />
+
                         </td>
                         <td class="border border-DEFAULT px-4 py-2"
                             :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_lunch_break`, el)">

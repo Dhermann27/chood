@@ -10,6 +10,7 @@ use App\Jobs\GoFetchServiceListJob;
 use App\Jobs\Homebase\GoFetchEmployeesJob;
 use App\Jobs\Homebase\GoFetchShiftsJob;
 use App\Jobs\MarkCabinsForCleaningJob;
+use App\Jobs\SyncDogServicesJob;
 use App\Models\Cabin;
 use App\Models\CleaningStatus;
 use App\Services\FetchDataService;
@@ -113,6 +114,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+Route::get('/sync', function () {
+//    GoFetchListJob::dispatchSync(new FetchDataService());
+//    GoFetchBookingJob::dispatchSync('49329374');
+    SyncDogServicesJob::dispatchSync();
+    return 'Synced';
 });
 
 require __DIR__ . '/auth.php';

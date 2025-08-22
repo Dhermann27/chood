@@ -59,17 +59,20 @@ const handleImageLoaded = () => {
     }
 }
 
-const isCheckingOutToday = (dogs) => {
+// TODO: Update to appointment check
+const isCheckingOutTodayOrEarlier = (dogs) => {
     if (!dogs) return false;
     const today = new Date().toLocaleDateString('en-CA'); // "YYYY-MM-DD"
 
     return dogs.some(dog => {
-        const isCheckoutToday = dog.checkout && dog.checkout.slice(0, 10) === today;
+        const checkoutDate = dog.checkout?.slice(0, 10);
+        const isCheckoutTodayOrEarlier = checkoutDate && checkoutDate <= today;
         const hasBoardingService = Array.isArray(dog.dog_services) &&
             dog.dog_services.some(ds => ds?.service?.code?.includes('BRD'));
-        return isCheckoutToday && hasBoardingService;
+        return isCheckoutTodayOrEarlier && hasBoardingService;
     });
 };
+
 
 
 watch(() => props.dogs, () => {
