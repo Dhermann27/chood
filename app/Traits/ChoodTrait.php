@@ -50,7 +50,7 @@ trait ChoodTrait
      */
     public function getDogs(bool $filterByCabinId = false, string $size = null): Collection
     {
-        $dogs = Dog::with('dogServices.service', 'cabin');
+        $dogs = Dog::with('appointments.service', 'cabin');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
         if ($size) {
             if ($size === 'small') {
@@ -61,7 +61,7 @@ trait ChoodTrait
             } else {
                 $dogs->where('size_letter', 'LIKE', '%L%');
             }
-            $dogs->whereHas('dogServices.service', function ($query) {
+            $dogs->whereHas('appointments.service', function ($query) {
                 $query->whereIn('category', config('services.dd.regular_service_cats'));
             });
         }
@@ -77,12 +77,12 @@ trait ChoodTrait
         $specialServiceIds = Service::whereIn('category', config('services.dd.special_service_cats'))->pluck('id');
         $today = Carbon::today();
 
-        return Dog::select('dogs.*')->distinct()->join('dog_services', 'dog_services.pet_id', '=', 'dogs.pet_id')
-            ->whereIn('dog_services.service_id', $specialServiceIds)
-            ->whereDate('dog_services.scheduled_start', config('services.dd.sandbox_service_condition'), $today)
-            ->with(['dogServices.service'])->get()->sortBy(fn($dog) =>
+        return Dog::select('dogs.*')->distinct()->join('appointments', 'appointments.pet_id', '=', 'dogs.pet_id')
+            ->whereIn('appointments.service_id', $specialServiceIds)
+            ->whereDate('appointments.scheduled_start', config('services.dd.sandbox_service_condition'), $today)
+            ->with(['appointments.service'])->get()->sortBy(fn($dog) =>
             optional(
-                $dog->dogServices->firstWhere(fn($ds) =>
+                $dog->appointments->firstWhere(fn($ds) =>
                     in_array($ds->service_id, $specialServiceIds->all(), true)
                     && Carbon::parse($ds->scheduled_start)->isSameDay($today)
                 )

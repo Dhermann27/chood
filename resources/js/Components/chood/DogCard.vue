@@ -59,15 +59,14 @@ const bannerStyle = computed(() => {
     if (breakTimeLeft.value?.expired) {
         return {label: 'Return to Yard', class: 'bg-alerted'};
     }
-    const services = currentDog.value?.dog_services || [];
-    const categories = services.map(s => s.service?.category || '');
-    if (categories.includes('Boarding')) {
+    console.log('isBoarding', [currentDog.value.housing_code, currentDog.value.is_boarding]);
+    if (currentDog.value?.is_boarding) {
         return {label: 'Sleepover', class: 'bg-caregiver'};
     }
-    if (categories.includes('Day Care') || categories.includes('Daycare')) {
+    if (currentDog.value?.is_daycare) {
         return {label: 'Daycamper', class: 'bg-meadow'};
     }
-    if (categories.includes('Interview')) {
+    if (currentDog.value?.is_interview) {
         return {label: 'Orientation', class: 'bg-crimson'};
     }
     return {label: 'Grooming/Training Only', class: 'bg-greyhound'};

@@ -1,6 +1,6 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {ref, computed, onMounted, onBeforeUnmount} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
 import {formatTime} from "@/utils.js";
 
@@ -51,11 +51,11 @@ function getYardGridStyle(rows, columns) {
     };
 }
 
-const getBathServiceSteps = (service) => {
+const getBathServiceSteps = (appointment) => {
     const steps = [
         {text: 'Shampoo', icon: 'soap'}
     ];
-    if (service.service.name.includes('UltiMutt') || service.service.name.includes('Deluxe')) {
+    if (appointment.service.name.includes('Deluxe')) {
         steps.push({text: 'Conditioner', icon: 'pump-soap'});
     }
 
@@ -64,16 +64,13 @@ const getBathServiceSteps = (service) => {
         {text: 'Brush Out', icon: 'brush'}
     );
 
-    if (service.service.name.includes('UltiMutt') || service.service.name.includes('Deluxe')) {
+    if (appointment.service.name.includes('Deluxe')) {
         steps.push(
             {text: 'Teeth Brushing', icon: 'tooth'},
             {text: 'Ear Clean', icon: 'ear-listen'},
-            {text: 'Eye Cleanse', icon: 'eye'}
+            {text: 'Eye Cleanse', icon: 'eye'},
+            {text: 'Finishing Scent', icon: 'spray-can-sparkles'}
         );
-    }
-
-    if (service.service.name.includes('UltiMutt')) {
-        steps.push({text: 'Finishing Scent', icon: 'spray-can-sparkles'});
     }
 
     return steps;
@@ -125,12 +122,12 @@ onBeforeUnmount(() => {
                 <div
                     class="bg-yellow-100 text-3xl rounded-tr-2xl rounded-br-2xl shadow-inner p-4 h-full">
                     <div>Checkout: {{ formatTime(dog.checkout) }}</div>
-                    <div v-for="service in dog.dog_services" :key="service.id" class="my-5 overflow-y-hidden">
-                        <div class="font-bold text-caregiver">{{ service.service.name }}</div>
-                        <div class="text-gray-600">Start: {{ formatTime(service.scheduled_start) }}</div>
+                    <div v-for="appointment in dog.appointments" :key="appointment.id" class="my-5 overflow-y-hidden">
+                        <div class="font-bold text-caregiver">{{ appointment.service.name }}</div>
+                        <div class="text-gray-600">Start: {{ formatTime(appointment.scheduled_start) }}</div>
 
-                        <ol v-if="service.service.category === 'Bath'" class="mt-3 list-none text-gray-800">
-                            <li v-for="step in getBathServiceSteps(service)" :key="step.text"
+                        <ol v-if="appointment.service.category === 'Bath'" class="mt-3 list-none text-gray-800">
+                            <li v-for="step in getBathServiceSteps(appointment)" :key="step.text"
                                 class="flex items-center gap-2">
                                 <font-awesome-icon :icon="['fas', step.icon]" class="text-2xl" fixed-width/>
                                 <span>{{ step.text }}</span>

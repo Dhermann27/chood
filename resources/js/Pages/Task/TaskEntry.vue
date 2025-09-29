@@ -241,14 +241,14 @@ onUnmounted(() => {
                 </multiselect>
                 <div class="choodmap items-center justify-center p-1">
                     <Map :cabins="cabins" :statuses="statuses" :dogs="dogsByCabin"
-                         :controls="ControlSchemes.SELECT_CABIN"
+                         :controls="ControlSchemes.SELECT_CABIN" maxlength="6"
                          :card-width="46" :card-height="55" :photoUri="photoUri" @cabinClicked="handleTargetClick"/>
                 </div>
             </template>
             <template v-else-if="todo === 'cleanCabin'">
                 <div class="choodmap items-center justify-center p-1">
                     <Map :cabins="cabins" :statuses="statuses" :dogs="[]" :controls="ControlSchemes.SELECT_CABIN"
-                         :card-width="46" :card-height="57" @cabinClicked="handleTargetClick"/>
+                         :card-width="46" :card-height="57" maxlength="6" @cabinClicked="handleTargetClick"/>
                 </div>
             </template>
             <template v-else-if="todo === 'startBreak'">

@@ -1,30 +1,52 @@
 <?php
 
+use App\Enums\ServiceSyncStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
+
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        Schema::create('dog_services', function (Blueprint $table) {
+        Schema::create('appointments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('pet_id')->constrained('dogs', 'pet_id')->onDelete('cascade');
-            $table->foreignId('service_id')->constrained()->onDelete('cascade');
-            $table->dateTime('scheduled_start')->nullable();
+            $table->unsignedBigInteger('appointment_id')->nullable()->unique();
+            $table->unsignedBigInteger('order_id')->nullable();
+            $table->unsignedBigInteger('booking_id')->nullable();
+
+            $table->unsignedBigInteger('pet_id')->nullable();
+            $table->foreign('pet_id')->references('pet_id')->on('dogs')
+                ->onDelete('set null');
+            $table->foreignId('service_id')->constrained('services');
+
+            $table->timestamp('scheduled_start')->nullable();
+            $table->timestamp('scheduled_end')->nullable();
+
+            $table->string('google_event_id')->nullable();
+            $table->string('google_color')->nullable();
+            $table->string('sync_status')->default(ServiceSyncStatus::Pending->value);
+            $table->boolean('is_archived')->default(false);
+
             $table->dateTime('completed_at')->nullable();
-            $table->string('completed_by')->nullable()->constrained('employees', 'homebase_user_id')->onDelete('cascade');
+            $table->unsignedBigInteger('completed_by')->nullable();
+            $table->foreign('completed_by')->references('homebase_user_id')->on('employees')->cascadeOnDelete();
+
+            $table->unsignedSmallInteger('retry_count')->default(0);
+            $table->string('last_error_code', 8)->nullable()->index();
+            $table->timestamp('last_error_at')->nullable();
+            $table->text('last_error_message')->nullable();
+
             $table->timestamps();
 
-            $table->index(['service_id', 'pet_id']);
-            $table->index(['service_id', 'scheduled_start']);
+            $table->index(['order_id', 'pet_id']);
+            $table->index(['order_id', 'is_archived', 'scheduled_start']);
         });
-        DB::update('ALTER TABLE dog_services AUTO_INCREMENT = 1000');
+        DB::update('ALTER TABLE appointments AUTO_INCREMENT = 1000');
     }
 
     /**
@@ -32,6 +54,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('dog_services');
+        Schema::dropIfExists('appointments');
     }
 };

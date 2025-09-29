@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Service extends Model
 {
@@ -13,13 +12,8 @@ class Service extends Model
     public $timestamps = false;
 
 
-    public function dogServices(): HasMany
+    public function appointments(): HasMany
     {
-        return $this->hasMany(DogService::class);
-    }
-
-    public function dogs(): HasManyThrough
-    {
-        return $this->hasManyThrough(Dog::class, DogService::class, 'service_id', 'id', 'id', 'dog_id');
+        return $this->hasMany(Appointment::class);
     }
 }

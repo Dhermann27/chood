@@ -59,17 +59,17 @@ const handleImageLoaded = () => {
     }
 }
 
-const isCheckingOutToday = (dogs) => {
+const isCheckingOutTodayOrEarlier = (dogs) => {
     if (!dogs) return false;
     const today = new Date().toLocaleDateString('en-CA'); // "YYYY-MM-DD"
 
     return dogs.some(dog => {
-        const isCheckoutToday = dog.checkout && dog.checkout.slice(0, 10) === today;
-        const hasBoardingService = Array.isArray(dog.dog_services) &&
-            dog.dog_services.some(ds => ds?.service?.code?.includes('BRD'));
-        return isCheckoutToday && hasBoardingService;
+        const checkoutDate = dog.checkout?.slice(0, 10);
+        const isCheckoutTodayOrEarlier = checkoutDate && checkoutDate <= today;
+        return isCheckoutTodayOrEarlier && dog.is_boarding;
     });
 };
+
 
 
 watch(() => props.dogs, () => {
@@ -174,7 +174,7 @@ const cabinStyle = (cabin) => {
             : '#f4df7a' // Yellow
         : '#373a36';   // Default
 
-    const isDashed = isCheckingOutToday(dogsInCabin);
+    const isDashed = isCheckingOutTodayOrEarlier(dogsInCabin);
 
     return {
         gridRow: `${cabin.rho} / span ${cabin.rowspan}`,
@@ -216,7 +216,7 @@ const handleClick = (cabin) => {
             <DogCard :dogs="props.dogs[cabin.id]" :photoUri="photoUri" :maxlength="maxlength" :card-height="cardHeight"
                      :shouldLoad="cabin.id === getCurrentCabinKey()"
                      @imageLoaded="handleImageLoaded"/>
-            <div v-if="controls === ControlSchemes.MODAL && props.dogs[cabin.id][0].is_inhouse === 0"
+            <div v-if="controls === ControlSchemes.MODAL && props.dogs[cabin.id][0].is_overnight === 0"
                  class="absolute inset-y-0 left-0 flex flex-col justify-center">
                 <button
                     @click="openModal( 'edit', cabin)"

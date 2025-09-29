@@ -22,7 +22,7 @@ use Illuminate\Validation\ValidationException;
 
 class DataController extends Controller
 {
-    const BREAK_COLUMNS = ['next_first_break', 'next_lunch_break', 'next_second_break'];
+    const array BREAK_COLUMNS = ['next_first_break', 'next_lunch_break', 'next_second_break'];
     use ChoodTrait;
 
     function fullmap(string $checksum = null): JsonResponse
@@ -71,14 +71,14 @@ class DataController extends Controller
             $query->whereHas('feedings', function ($q) {
                 $q->where(function ($sub) {
                     $sub->whereRaw('DATE(feedings.modified_at) <= DATE(dogs.checkin)')
-                        ->orWhereHas('dog.dogServices.service', function ($s) {
+                        ->orWhereHas('dog.appointments.service', function ($s) {
                             $s->where('code', 'like', '%BRD%');
                         });
                 });
             })->orWhereHas('medications', function ($q) {
                 $q->whereRaw('DATE(medications.modified_at) >= DATE(dogs.checkin)');
             })->orWhereHas('allergies');
-        })->with(['feedings', 'medications', 'allergies', 'cabin', 'dogServices.service'])
+        })->with(['feedings', 'medications', 'allergies', 'cabin', 'appointments.service'])
             ->orderBy('cabin_id')->orderBy('firstname')->get();
 
         $groupedEmployees = Employee::with('shifts')->orderBy('first_name')->get()

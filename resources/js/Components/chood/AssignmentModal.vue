@@ -47,13 +47,13 @@ const closeModal = () => {
                 </div>
 
                 <div class="flex items-center space-x-4">
-                    <div @click="toggleNewDog" class="cursor-pointer text-3xl">
-                        <font-awesome-icon
-                            :icon="props.isNewDog ? ['fas', 'square-check'] : ['far', 'square']"
-                            class="text-caregiver hover:text-caregiver"
-                        />
-                    </div>
-                    <label class="text-lg font-medium">Check for future boarding</label>
+<!--                    <div @click="toggleNewDog" class="cursor-pointer text-3xl">-->
+<!--                        <font-awesome-icon-->
+<!--                            :icon="props.isNewDog ? ['fas', 'square-check'] : ['far', 'square']"-->
+<!--                            class="text-caregiver hover:text-caregiver"-->
+<!--                        />-->
+<!--                    </div>-->
+<!--                    <label class="text-lg font-medium">Check for future boarding</label>-->
                 </div>
 
 

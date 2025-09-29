@@ -104,7 +104,7 @@ class GoFetchShiftsJob implements ShouldQueue
                         'updated_at' => now(),
                     ];
                 })->all();
-                
+
                 Shift::insert($shiftInsertData);
 
                 $this->updateYardAssignments($yards, $qualifiedShifts);

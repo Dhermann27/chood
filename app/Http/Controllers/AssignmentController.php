@@ -31,7 +31,7 @@ class AssignmentController extends Controller
                     Dog::updateOrCreate(['id' => $dog['id']], ['cabin_id' => $filteredValues['cabin_id']]);
                 }
             } else {
-                $filteredValues['is_inhouse'] = 0;
+                //$filteredValues['is_overnight'] = 0; Unnecessary, I think
                 Dog::create($filteredValues);
             }
 
