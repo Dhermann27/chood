@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Enums\HousingServiceCodes;
 use App\Http\Controllers\MapController;
 use App\Models\Cabin;
 use App\Models\Dog;
@@ -61,9 +62,7 @@ trait ChoodTrait
             } else {
                 $dogs->where('size_letter', 'LIKE', '%L%');
             }
-            $dogs->whereHas('appointments.service', function ($query) {
-                $query->whereIn('category', config('services.dd.regular_service_cats'));
-            });
+            $dogs->whereIn('housing_code', HousingServiceCodes::HOUSING_CODES_ARRAY);
         }
 
         return $dogs->orderBy('firstname')->get();

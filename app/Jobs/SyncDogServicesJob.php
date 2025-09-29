@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\HousingServiceCodes;
 use App\Enums\ServiceColor;
 use App\Enums\ServiceSyncStatus;
 use App\Models\Appointment;
@@ -39,7 +40,7 @@ class SyncDogServicesJob implements ShouldQueue, ShouldBeUnique
     public function handle(GoogleCalendarService $calendar): void
     {
         $reservations = Appointment::query()->whereHas('service', function ($q) {
-            $q->whereIn('category', array_merge(config('services.dd.special_service_cats'), ['Interview']));
+            $q->whereNotIn('category', HousingServiceCodes::HOUSING_CODES_ARRAY);
         })->where(function ($q) {
             $q->where('sync_status', ServiceSyncStatus::Ready)
                 ->orWhere(function ($q2) {
