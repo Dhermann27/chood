@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Allergy;
-use App\Models\Appointment;
 use App\Models\Cabin;
 use App\Models\Dog;
 use App\Models\Feeding;
@@ -97,7 +96,6 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         }
 
         $inactiveDogs = Dog::whereNotIn('pet_id', $activePetIds)->get();
-        Appointment::whereIn('pet_id', $inactiveDogs->pluck('pet_id'))->update(['is_archived' => true]);
         Dog::whereIn('id', $inactiveDogs->pluck('id'))->delete();
 
         $delay = config('services.dd.queue_delay');

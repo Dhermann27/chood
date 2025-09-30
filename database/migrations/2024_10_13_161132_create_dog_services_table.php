@@ -30,7 +30,6 @@ return new class extends Migration {
             $table->string('google_event_id')->nullable();
             $table->string('google_color')->nullable();
             $table->string('sync_status')->default(ServiceSyncStatus::Pending->value);
-            $table->boolean('is_archived')->default(false);
 
             $table->dateTime('completed_at')->nullable();
             $table->unsignedBigInteger('completed_by')->nullable();
@@ -44,7 +43,6 @@ return new class extends Migration {
             $table->timestamps();
 
             $table->index(['order_id', 'pet_id']);
-            $table->index(['order_id', 'is_archived', 'scheduled_start']);
         });
         DB::update('ALTER TABLE appointments AUTO_INCREMENT = 1000');
     }

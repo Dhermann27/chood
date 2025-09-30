@@ -203,9 +203,8 @@ class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
         }
 
         $serviceCode = trim($service['serviceItem']['code'] ?? '');
-        Log::info('serviceCode: ' . $serviceCode, [HousingServiceCodes::isHousingCode($serviceCode)]);
         // Skip housing services up front
-        if ($serviceCode === '' || HousingServiceCodes::isHousingCode($serviceCode)) {
+        if (!HousingServiceCodes::isCalendarCode($serviceCode)) {
 //            Log::info('Skip: housing service', [
 //                'order_id' => $this->orderId,
 //                'booking_id' => $this->bookingId,

@@ -69,14 +69,11 @@ class GoogleCalendarService
         ]);
 
         // ===== Prefetch indexes (unchanged, but add a summary log) =====
-        $existingById = [];
         $existingByApptId = [];
-
         foreach ($existing as $e) {
-            $existingById[$e->getId()] = $e;
             $exclusive = $e->getExtendedProperties()->getPrivate() ?? [];
-            if (!empty($exclusive['appt_id'])) {
-                $existingByApptId[(string)$exclusive['appt_id']] = $e;
+            if (!empty($exclusive['appointment_id'])) {
+                $existingByApptId[(string)$exclusive['appointment_id']] = $e;
             }
         }
 
@@ -106,10 +103,8 @@ class GoogleCalendarService
 
             if ($gid) {
                 Log::info('CalSync: patch-by-gid', ['gid' => $gid, 'svc' => $svc, 'start' => $st, 'end' => $en, 'appt' => $apptId]);
-
                 $this->withRetry(fn() => $this->events()->patch($calendarId, $gid, new Event($row['payload']),
                     ['sendUpdates' => 'none']));
-
                 unset($unmatched[$gid]);
                 $resultMap[$localKey] = $gid;
                 continue;
@@ -128,7 +123,7 @@ class GoogleCalendarService
             Log::info('CalSync: delete-unmatched', [
                 'gid' => $event->getId(),
                 'start' => $event->getStart()->getDateTime(),
-                'appt' => $exclusive['appt_id'] ?? null,
+                'appt' => $exclusive['appointment_id'] ?? null,
                 'svc' => $exclusive['service_cat'] ?? null,
                 'order' => $exclusive['order_id'] ?? null,
                 'pet' => $exclusive['pet_id'] ?? null,

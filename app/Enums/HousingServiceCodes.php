@@ -12,12 +12,18 @@ enum HousingServiceCodes: string
     case INTV = 'INTV';
     case UNKNOWN = 'GTO';
 
-    const HOUSING_CODES_ARRAY = [self::BRDC->value, self::BRDL->value, self::DCFD->value, self::INTV->value];
+    const array HOUSING_CODES_ARRAY = [self::BRDC->value, self::BRDL->value, self::DCFD->value, self::DCHD->value,
+        self::INTV->value];
 
     public static function isHousingCode(string $code): bool
     {
         return $code === self::BRDC->value || $code === self::BRDL->value
             || $code === self::DCFD->value || $code === self::DCHD->value
             || $code === self::INTV->value;
+    }
+    public static function isCalendarCode(string $code): bool
+    {
+        return $code !== '' && $code !== self::BRDC->value && $code !== self::BRDL->value
+            && $code !== self::DCFD->value && $code !== self::DCHD->value;
     }
 }

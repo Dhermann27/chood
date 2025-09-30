@@ -47,9 +47,9 @@ class SyncDogServicesJob implements ShouldQueue, ShouldBeUnique
                     $q2->where('sync_status', ServiceSyncStatus::Error)
                         ->where('retry_count', '<', 5);
                 });
-        })->where('is_archived', false)
-            ->whereNotNull('scheduled_start')->whereNotNull('scheduled_end')->with(['dog', 'service'])
-            ->get()->groupBy(fn($a) => $a->order_id . '|' . $a->pet_id);
+        })->whereNotNull('pet_id')->whereNotNull('scheduled_start')
+            ->whereNotNull('scheduled_end')->with(['dog', 'service'])->get()
+            ->groupBy(fn($a) => $a->order_id . '|' . $a->pet_id);
 
         foreach ($reservations as $reservation) {
             // Build a compact collection of rows the service understands
@@ -58,15 +58,15 @@ class SyncDogServicesJob implements ShouldQueue, ShouldBeUnique
 
                 return [
                     'google_event_id' => $appointment->google_event_id,
-                    'appointment_id' => (string)$appointment->id,
+                    'appointment_id' => (string)$appointment->appointment_id,
                     'order_id' => (string)$appointment->order_id,
                     'pet_id' => (string)$appointment->pet_id,
                     'service_cat' => $appointment->service->category,
                     'start_rfc3339' => $appointment->scheduled_start->toRfc3339String(),
                     'end_rfc3339' => $appointment->scheduled_end->toRfc3339String(),
                     'payload' => [
-                        'summary' => "{$appointment->dog->firstname} – {$appointment->service->name}",
-                        'description' => "Service ID: {$appointment->id}\nOrder ID: {$appointment->order_id}\nPet ID: {$appointment->pet_id}\nUpdated at: " . now(config('app.timezone'))->format('Y-m-d H:i:s'),
+                        'summary' => "{$appointment->dog->firstname} {$appointment->dog->lastname} – {$appointment->service->name}",
+                        'description' => "Row ID: {$appointment->id}\nOrder ID: {$appointment->order_id}\nUpdated at: " . now(config('app.timezone'))->format('Y-m-d H:i:s'),
                         'start' => ['dateTime' => $appointment->scheduled_start->toRfc3339String(), 'timeZone' => config('app.timezone')],
                         'end' => ['dateTime' => $appointment->scheduled_end->toRfc3339String(), 'timeZone' => config('app.timezone')],
                         'colorId' => $colorEnum->googleColorId(),
@@ -90,7 +90,7 @@ class SyncDogServicesJob implements ShouldQueue, ShouldBeUnique
 
                 foreach ($reservation as $appointment) {
                     // IMPORTANT: make sure the key matches what you used when building $rows
-                    $key = (string)$appointment->id; // or (string) $appointment->appointment_id if that's your map key
+                    $key = (string)$appointment->appointment_id;
                     if (isset($resultMap[$key])) {
                         $colorEnum = ServiceColor::forCategory($appointment->service->category);
                         $this->markSynced($appointment, $resultMap[$key], $colorEnum);

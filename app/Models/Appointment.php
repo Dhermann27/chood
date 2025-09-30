@@ -9,14 +9,13 @@ use Illuminate\Database\Eloquent\Model;
 class Appointment extends Model
 {
     protected $fillable = ['appointment_id', 'order_id', 'booking_id', 'pet_id', 'service_id', 'scheduled_start',
-        'scheduled_end', 'is_archived', 'google_event_id', 'google_color', 'sync_status', 'completed_at',
-        'completed_by', 'retry_count', 'last_error_code', 'last_error_at', 'last_error_message',
+        'scheduled_end', 'google_event_id', 'google_color', 'sync_status', 'completed_at', 'completed_by',
+        'retry_count', 'last_error_code', 'last_error_at', 'last_error_message',
     ];
 
     protected $casts = [
         'scheduled_start' => 'datetime',
         'scheduled_end' => 'datetime',
-        'is_archived' => 'boolean',
         'retry_count' => 'integer',
         'last_error_at' => 'datetime',
 
