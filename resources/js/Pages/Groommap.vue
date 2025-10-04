@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
-import {formatTime} from "@/utils.js";
+import {formatTime, getYardGridStyle} from "@/utils.js";
 
 const props = defineProps({
     photoUri: String
@@ -42,14 +42,6 @@ function getNewGifAndPosition() {
     };
 }
 
-function getYardGridStyle(rows, columns) {
-    return {
-        display: 'grid',
-        gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr) 100px`,
-        gap: '10px',
-    };
-}
 
 const getBathServiceSteps = (appointment) => {
     const steps = [

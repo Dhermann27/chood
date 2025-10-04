@@ -216,7 +216,7 @@ const handleClick = (cabin) => {
             <DogCard :dogs="props.dogs[cabin.id]" :photoUri="photoUri" :maxlength="maxlength" :card-height="cardHeight"
                      :shouldLoad="cabin.id === getCurrentCabinKey()"
                      @imageLoaded="handleImageLoaded"/>
-            <div v-if="controls === ControlSchemes.MODAL && props.dogs[cabin.id][0].is_overnight === 0"
+            <div v-if="controls === ControlSchemes.MODAL && !props.dogs[cabin.id][0].is_boarding"
                  class="absolute inset-y-0 left-0 flex flex-col justify-center">
                 <button
                     @click="openModal( 'edit', cabin)"

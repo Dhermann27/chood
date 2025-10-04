@@ -41,25 +41,33 @@ const breakTimeLeft = computed(() => {
     const dog = currentDog.value;
     if (!dog?.rest_starts_at || !dog?.rest_duration_minutes) return null;
 
-    const start = new Date(dog.rest_starts_at);
-    const end = new Date(start.getTime() + dog.rest_duration_minutes * 60 * 1000);
-    const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
-    const percentElapsed = 1 - (minutesLeft / dog.rest_duration_minutes);
-    const percentRemaining = minutesLeft / dog.rest_duration_minutes;
+    if(dog.rest_duration_minutes <= 120) {
+        const start = new Date(dog.rest_starts_at);
+        const end = new Date(start.getTime() + dog.rest_duration_minutes * 60 * 1000);
+        const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
+        const percentElapsed = 1 - (minutesLeft / dog.rest_duration_minutes);
+        const percentRemaining = minutesLeft / dog.rest_duration_minutes;
 
-    return {
-        minutesLeft,
-        percentElapsed,
-        percentRemaining,
-        expired: minutesLeft === 0,
-    };
+        return {
+            minutesLeft,
+            percentElapsed,
+            percentRemaining,
+            expired: minutesLeft === 0,
+        };
+    } else {
+        return {
+            minutesLeft: '',
+            percentElapsed: 0,
+            percentRemaining: 1,
+            expired: false,
+        };
+    }
 });
 
 const bannerStyle = computed(() => {
     if (breakTimeLeft.value?.expired) {
         return {label: 'Return to Yard', class: 'bg-alerted'};
     }
-    console.log('isBoarding', [currentDog.value.housing_code, currentDog.value.is_boarding]);
     if (currentDog.value?.is_boarding) {
         return {label: 'Sleepover', class: 'bg-caregiver'};
     }
@@ -137,7 +145,7 @@ watch([() => props.cardHeight, currentDog], async ([newHeight]) => {
     }
 
     if (breakMinutesRemaining.value) {
-        breakMinutesRemaining.value.style.fontSize = `${newHeight * .5}px`;
+        breakMinutesRemaining.value.style.fontSize = `${newHeight * .4}px`;
     }
 
     const size = Math.min(Math.floor(newHeight / 7), 100);

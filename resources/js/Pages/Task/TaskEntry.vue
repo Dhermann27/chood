@@ -6,11 +6,22 @@ import Map from "@/Components/chood/Map.vue";
 import Multiselect from "vue-multiselect";
 import {ControlSchemes} from "@/controlSchemes.js";
 import DogCard from "@/Components/chood/DogCard.vue";
+import {getYardGridStyle} from "@/utils.js";
 
 const props = defineProps({
     cabins: Array,
     photoUri: String,
 });
+
+const breakButtons = [
+    {label: '15', value: '15'},
+    {label: '30', value: '30'},
+    {label: '45', value: '45'},
+    {label: '60', value: '60'},
+    {label: '120', value: '120'},
+    {label: 'Lunch', value: '1000'},
+    {label: 'EOD/Groom', value: '999'},
+]
 
 const dogs = ref(null);
 const employees = ref(null);
@@ -23,6 +34,12 @@ const targets = ref({'dogsToAssign': [], 'cabin_id': 0, 'cabin_short_name': '', 
 const step = ref(1);
 const localChecksum = ref('');
 const frequency = 10000;
+const is1pmOrLater = ref(false);
+const restColumns = computed(() => Math.ceil(Math.sqrt((16 / 9) * (dogsOnBreak.value.length + 1))));
+const restRows = computed(() => Math.ceil((dogsOnBreak.value.length + 1) / restColumns.value));
+const restGridStyle = computed(() => getYardGridStyle(restRows.value, restColumns.value));
+const restCardWidth = computed(() => (770 - (restColumns.value - 1) * 10) / restColumns.value);
+const restCardHeight = computed(() => (290 - (restRows.value - 1) * 10) / restRows.value);
 let counter = 0;
 let refreshInterval;
 
@@ -82,6 +99,7 @@ const handleEmployeeClick = (employee) => {
 }
 
 const handleTaskClick = (thisTodo) => {
+    is1pmOrLater.value = new Date().getHours() >= 13;
     todo.value = thisTodo;
     nextStep();
 }
@@ -101,11 +119,6 @@ const handleTargetClick = (cabin) => {
             cabin_short_name: cabin.short_name,
         };
         nextStep();
-    } else if (todo.value === 'startBreak') {
-        targets.value = {
-            break_duration: breakDuration.value,
-        };
-        if (targets.value['dogsToAssign'].length > 0) nextStep();
     }
 };
 
@@ -114,7 +127,7 @@ const handleAssignDogUpdate = () => {
 };
 
 const handleBreakDogUpdate = (breakDuration) => {
-    targets.value['break_duration'] = breakDuration;
+    targets.value.break_duration = breakDuration;
     if (targets.value['dogsToAssign'].length > 0) nextStep();
 };
 
@@ -161,6 +174,13 @@ const handleFinishAction = async (action) => {
     if (todo.value.includes('markReturned')) todo.value = 'startBreak';
     step.value = action === 'Done' ? 1 : 3;
 }
+
+const breakStatus = computed(() => {
+    const d = targets.value.break_duration;
+    if (d === '1000') return 'on lunch break';
+    if (d > '500') return 'out until Marked';
+    return `rest for ${d} minutes`;
+});
 
 onMounted(() => {
     updateData();
@@ -267,28 +287,19 @@ onUnmounted(() => {
                     </template>
                 </multiselect>
                 <div class="flex gap-2 text-white text-xl">
-                    <button class="bg-caregiver py-4 px-6 rounded-2xl hover:bg-blue-500"
-                            @click="handleBreakDogUpdate('15')">15
-                    </button>
-                    <button class="bg-caregiver py-4 px-6 rounded-2xl hover:bg-blue-500"
-                            @click="handleBreakDogUpdate('30')">30
-                    </button>
-                    <button class="bg-caregiver py-4 px-6 rounded-2xl hover:bg-blue-500"
-                            @click="handleBreakDogUpdate('45')">45
-                    </button>
-                    <button class="bg-caregiver py-4 px-6 rounded-2xl hover:bg-blue-500"
-                            @click="handleBreakDogUpdate('60')">60
+                    <button v-for="btn in breakButtons" :key="btn.value"
+                            :disabled="btn.value === '1000' && is1pmOrLater"
+                            class="bg-caregiver py-4 px-6 rounded-2xl hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            @click="handleBreakDogUpdate(btn.value)">
+                        {{ btn.label }}
                     </button>
                 </div>
                 <h3 class="text-xl font-subheader uppercase my-4">Mark dog as returned to yard</h3>
-                <div class="flex flex-row flex-wrap gap-2 justify-center items-start">
-                    <div v-for="(dog, index) in dogsOnBreak" :id="index" class="cursor-pointer"
-                         :style="{ height: Math.min(770 / dogsOnBreak.length, 250) + 'px',
-                     width: Math.min(770 / dogsOnBreak.length, 250) + 'px' }"
-                         @click="handleBreakDogDelete(dog)">
-                        <DogCard :dogs="[dog]" :photoUri="props.photoUri" :shouldLoad="true"
-                                 :card-width="Math.min(770 / dogsOnBreak.length, 250)"
-                                 :card-height="Math.min(770 / dogsOnBreak.length, 250)"/>
+                <div class="items-center justify-center p-1" :style="restGridStyle">
+                    <div v-for="(dog, index) in dogsOnBreak" :id="index"
+                         :style="{height: restCardHeight + 'px', width: restCardWidth + 'px'}">
+                        <DogCard :dogs="[dog]" :photoUri="props.photoUri" @click="handleBreakDogDelete(dog)"
+                                 :card-width="restCardWidth" :card-height="restCardHeight"/>
                     </div>
                 </div>
             </template>
@@ -307,8 +318,7 @@ onUnmounted(() => {
                             Cabin {{ targets.cabin_short_name }}, right?
                         </template>
                         <template v-else-if="todo === 'startBreak'">
-                            {{ targets.dogsToAssign.map(dog => dog.firstname).join(', ') }} break for
-                            {{ targets.break_duration }} minutes, right?
+                            {{ targets.dogsToAssign.map(dog => dog.firstname).join(', ') }} {{ breakStatus }}, right?
                         </template>
                         <template v-else-if="todo.includes('markReturned')">
                             {{ targets.dogsToAssign.firstname }} is back in yard, right?

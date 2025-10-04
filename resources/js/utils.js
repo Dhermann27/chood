@@ -44,3 +44,12 @@ export async function fetchMapData(uri, checksum) {
     return false;
 }
 
+
+export function getYardGridStyle(rows, columns) {
+    return {
+        display: 'grid',
+        gridTemplateColumns: `repeat(${columns}, 1fr)`,
+        gridTemplateRows: `repeat(${rows}, 1fr) 100px`,
+        gap: '10px',
+    };
+}

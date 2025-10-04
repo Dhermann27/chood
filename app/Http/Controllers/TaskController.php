@@ -124,12 +124,17 @@ class TaskController extends Controller
     {
         $validatedData = $request->validate([
             'dogsToAssign.*.id' => 'required|exists:dogs,id',
-            'break_duration' => 'required|in:15,30,45,60',
+            'break_duration' => 'required|in:15,30,45,60,120,999,1000',
         ]);
+
+        $tz = config('app.timezone');
+        $now = Carbon::now($tz);
+        $onePmToday = Carbon::today($tz)->setTime(13, 0);
+        $minutesUntil1pm = max(0, $now->diffInMinutes($onePmToday, false));
 
         Dog::whereIn('id', collect($validatedData['dogsToAssign']))->update([
             'rest_starts_at' => now(),
-            'rest_duration_minutes' => $validatedData['break_duration'],
+            'rest_duration_minutes' => $validatedData['break_duration'] === '1000' ? $minutesUntil1pm : $validatedData['break_duration'],
         ]);
 
         $names = implode(',', collect($request->input('dogsToAssign'))->pluck('firstname')->filter()->values()->toArray());

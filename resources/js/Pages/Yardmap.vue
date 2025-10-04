@@ -1,8 +1,8 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {ref, computed, onMounted, onBeforeUnmount, nextTick} from 'vue';
+import {computed, nextTick, onBeforeUnmount, onMounted, ref} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
-import {formatTime, getFittedFontSize} from "@/utils.js";
+import {formatTime, getFittedFontSize, getYardGridStyle} from "@/utils.js";
 
 const props = defineProps({
     size: String,
@@ -43,15 +43,6 @@ const handleImageLoaded = () => {
         }
     }
 };
-
-function getYardGridStyle(rows, columns) {
-    return {
-        display: 'grid',
-        gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr) 100px`,
-        gap: '10px',
-    };
-}
 
 function getNewGifAndPosition() {
     return {
