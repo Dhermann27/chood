@@ -15,9 +15,10 @@ return new class extends Migration
         Schema::create('feedings', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('feeding_id')->nullable()->index();
-            $table->unsignedBigInteger('pet_id')->nullable()->index();
-            $table->string('type');
+            $table->foreignId('pet_id')->constrained('dogs', 'pet_id')->cascadeOnDelete();
+            $table->string('type')->default('Food: ');
             $table->text('description')->nullable();
+            $table->tinyInteger('is_task')->default(0);
             $table->dateTime('modified_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->timestamps();
         });

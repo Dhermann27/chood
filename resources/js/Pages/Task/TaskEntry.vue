@@ -30,7 +30,13 @@ const statusMessage = ref(null);
 const statusClass = ref('text-greyhound');
 const homebaseId = ref(null);
 const todo = ref(null);
-const targets = ref({'dogsToAssign': [], 'cabin_id': 0, 'cabin_short_name': '', 'break_duration': 0});
+const targets = ref({
+    'dogsToAssign': [],
+    'cabin_id': 0,
+    'cabin_short_name': '',
+    'break_duration': 0,
+    'lunch_notes': '1 Bag'
+});
 const step = ref(1);
 const localChecksum = ref('');
 const frequency = 10000;
@@ -169,7 +175,7 @@ const handleFinishAction = async (action) => {
         statusClass.value = 'text-greyhound';
 
     }
-    targets.value = {'dogsToAssign': [], 'cabin_id': 0, 'cabin_short_name': ''};
+    targets.value = {'dogsToAssign': [], 'cabin_id': 0, 'cabin_short_name': '', 'break_duration': 0, 'lunch_notes': '1 Bag'};
     counter = 0;
     if (todo.value.includes('markReturned')) todo.value = 'startBreak';
     step.value = action === 'Done' ? 1 : 3;
@@ -178,7 +184,7 @@ const handleFinishAction = async (action) => {
 const breakStatus = computed(() => {
     const d = targets.value.break_duration;
     if (d === '1000') return 'on lunch break';
-    if (d > '500') return 'out until Marked';
+    if (d === '999') return 'out until Marked';
     return `rest for ${d} minutes`;
 });
 
@@ -231,6 +237,12 @@ onUnmounted(() => {
                 </button>
                 <button
                     class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
+                    @click="handleTaskClick('setLunch')">
+                    <font-awesome-icon :icon="['fas', 'turkey']" class="me-5"/>
+                    Set Lunch
+                </button>
+                <button
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
                     @click="handleTaskClick('startBreak')">
                     <font-awesome-icon :icon="['fas', 'alarm-clock']" class="me-5"/>
                     Rest Break
@@ -270,6 +282,33 @@ onUnmounted(() => {
                     <Map :cabins="cabins" :statuses="statuses" :dogs="[]" :controls="ControlSchemes.SELECT_CABIN"
                          :card-width="46" :card-height="57" maxlength="6" @cabinClicked="handleTargetClick"/>
                 </div>
+            </template>
+            <template v-else-if="todo === 'setLunch'">
+                <h3 class="text-xl font-subheader uppercase mb-4">Set a dog's lunch</h3>
+                <multiselect
+                    class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
+                    v-model="targets.dogsToAssign" multiple :options="dogs"
+                    label="firstname" placeholder="Select Dog(s) (Required)">
+                    <template #option="{ option }">
+                        <div class="dog-option-item">
+                            <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
+                                 :alt="'Picture of ' + option.firstname" class="dog-photo"
+                                 @error="e => e.target.style.display = 'none'"/>
+                            <span class="text-3xl ml-10">{{ option.firstname }}</span>
+                        </div>
+                    </template>
+                </multiselect>
+                <label for="lunch-notes" class="block text-lg mb-2">Lunch notes</label>
+                <form @submit.prevent="nextStep" class="flex items-stretch w-full max-w-3xl">
+                    <input id="lunch-notes" v-model="targets.lunch_notes" type="text"
+                        placeholder="Example: 1 cup kibble + 1/2 pouch wet" inputmode="text"
+                        autocapitalize="sentences" autocomplete="off"
+                        class="flex-1 h-16 px-5 text-2xl border-2 border-gray-300 rounded-l-2xl rounded-r-none border-r-0 focus:outline-none" />
+                    <button type="submit"
+                        class="h-16 px-10 text-2xl bg-crimson text-white border-2 border-gray-300 border-l-0 rounded-r-2xl">
+                        Set
+                    </button>
+                </form>
             </template>
             <template v-else-if="todo === 'startBreak'">
                 <h3 class="text-xl font-subheader uppercase mb-4">Start a Break</h3>
@@ -317,6 +356,9 @@ onUnmounted(() => {
                         <template v-else-if="todo === 'cleanCabin'">
                             Cabin {{ targets.cabin_short_name }}, right?
                         </template>
+                        <template v-else-if="todo === 'setLunch'">
+                            {{ targets.dogsToAssign.map(dog => dog.firstname).join(', ') }} should get a lunch, right?
+                        </template>
                         <template v-else-if="todo === 'startBreak'">
                             {{ targets.dogsToAssign.map(dog => dog.firstname).join(', ') }} {{ breakStatus }}, right?
                         </template>
@@ -325,24 +367,18 @@ onUnmounted(() => {
                         </template>
                     </h3>
                     <div class="flex justify-between mb-4 text-3xl">
-                        <button
-                            @click="handleFinishAction('Done')"
-                            class="px-16 py-10 bg-meadow text-white rounded-md flex items-center space-x-2"
-                        >
+                        <button @click="handleFinishAction('Done')"
+                            class="px-16 py-10 bg-meadow text-white rounded-md flex items-center space-x-2">
                             <font-awesome-icon :icon="['fas', 'badge-check']"/>
                             <span>Done</span>
                         </button>
-                        <button
-                            @click="handleFinishAction('Undo')"
-                            class="px-16 py-10 bg-gray-500 text-white rounded-md flex items-center space-x-2"
-                        >
+                        <button @click="handleFinishAction('Undo')"
+                            class="px-16 py-10 bg-gray-500 text-white rounded-md flex items-center space-x-2">
                             <font-awesome-icon :icon="['fas', 'rotate-left']"/>
                             <span>Undo</span>
                         </button>
-                        <button
-                            @click="handleFinishAction('More')"
-                            class="px-16 py-10 bg-caregiver text-white rounded-md flex items-center space-x-2"
-                        >
+                        <button @click="handleFinishAction('More')"
+                            class="px-16 py-10 bg-caregiver text-white rounded-md flex items-center space-x-2">
                             <font-awesome-icon :icon="['fas', 'cowbell-circle-plus']"/>
                             <span>More</span>
                         </button>

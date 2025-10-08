@@ -1,18 +1,19 @@
 import './bootstrap';
 import '../css/app.css';
 
-import { createApp, h } from 'vue';
-import { createInertiaApp } from '@inertiajs/vue3';
-import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { ZiggyVue } from '/vendor/tightenco/ziggy';
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { FontAwesomeIcon,FontAwesomeLayers, FontAwesomeLayersText } from '@fortawesome/vue-fontawesome';
-import { fas, far } from '@awesome.me/kit-ed8e499057/icons';
+import {createApp, h} from 'vue';
+import {createInertiaApp} from '@inertiajs/vue3';
+import {resolvePageComponent} from 'laravel-vite-plugin/inertia-helpers';
+import {ZiggyVue} from '/vendor/tightenco/ziggy';
+import {library} from '@fortawesome/fontawesome-svg-core';
+import {FontAwesomeIcon, FontAwesomeLayers, FontAwesomeLayersText} from '@fortawesome/vue-fontawesome';
+import {far, fas} from '@awesome.me/kit-ed8e499057/icons';
+
 library.add(fas.faEdit, fas.faTrash, fas.faPlus, fas.faWeightHanging, fas.faSpinnerThird, fas.faBroom,
     fas.faCheckSquare, far.faSquare, fas.faBadgeCheck, fas.faRotateLeft, fas.faCowbellCirclePlus, fas.faClipboard,
     fas.faHouseCircleCheck, fas.faHouseChimneyBlank, fas.faBowlFood, fas.faPrescriptionBottlePill, fas.faHandDots,
     fas.faNoteMedical, fas.faMars, fas.faVenus, fas.faDroplet, fas.faSheep, fas.faSoap, fas.faPumpSoap, fas.faWind,
-    fas.faBrush, fas.faTooth, fas.faEarListen, fas.faEye, fas.faAlarmClock);
+    fas.faBrush, fas.faTooth, fas.faEarListen, fas.faEye, fas.faAlarmClock, fas.faTurkey);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

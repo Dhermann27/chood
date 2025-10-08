@@ -6,6 +6,7 @@ use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\Employee;
 use App\Models\EmployeeYardRotation;
+use App\Models\Feeding;
 use App\Models\RotationYardView;
 use App\Models\Shift;
 use App\Models\Yard;
@@ -67,19 +68,33 @@ class DataController extends Controller
                 ];
             })->sortBy('first_name')->values();
 
-        $dogs = Dog::where(function ($query) {
-            $query->whereHas('feedings', function ($q) {
-                $q->where(function ($sub) {
-                    $sub->whereRaw('DATE(feedings.modified_at) <= DATE(dogs.checkin)')
-                        ->orWhereHas('dog.appointments.service', function ($s) {
-                            $s->where('code', 'like', '%BRD%');
-                        });
-                });
-            })->orWhereHas('medications', function ($q) {
-                $q->whereRaw('DATE(medications.modified_at) >= DATE(dogs.checkin)');
-            })->orWhereHas('allergies');
-        })->with(['feedings', 'medications', 'allergies', 'cabin', 'appointments.service'])
-            ->orderBy('cabin_id')->orderBy('firstname')->get();
+//        $dogs = Dog::where(function ($query) {
+//            $query->whereHas('feedings', function ($q) {
+//                $q->where(function ($sub) {
+//                    $sub->whereRaw('DATE(feedings.modified_at) <= DATE(dogs.checkin)')
+//                        ->orWhereHas('dog.appointments.service', function ($s) {
+//                            $s->where('code', 'like', '%BRD%');
+//                        });
+//                });
+//            })->orWhereHas('medications', function ($q) {
+//                $q->whereRaw('DATE(medications.modified_at) >= DATE(dogs.checkin)');
+//            })->orWhereHas('allergies');
+//        })->with(['feedings', 'medications', 'allergies', 'cabin', 'appointments.service'])
+//            ->orderBy('cabin_id')->orderBy('firstname')->get();
+
+
+        $lunchDogs = Feeding::select('id', 'pet_id', 'type', 'description')->whereHas('dog')->where(function ($query) {
+            $query->where('is_task', 1)->orWhereRaw('LOWER(description) LIKE ?', ['%lunch%']);
+        })->with('dog')->get()->unique('pet_id')->map(function ($feeding) {
+            $dog = $feeding->dog;
+            if (!$dog) return null; // safety
+            $dog->lunch_notes = $feeding->description;
+            return $dog;
+        })->filter()->sortBy('cabin_id')->values();
+
+        $medicatedDogs = Dog::where(function ($query) {
+            $query->whereHas('medications')->orWhereHas('allergies');
+        })->with('medications', 'allergies')->orderBy('cabin_id')->get();
 
         $groupedEmployees = Employee::with('shifts')->orderBy('first_name')->get()
             ->groupBy(function ($employee) {
@@ -89,11 +104,8 @@ class DataController extends Controller
             })->sortBy(fn($group) => $group['status'] === 'Scheduled' ? 0 : 1)->values()->all();
 
         // In DD's infinite wisdom, child tables updated_at are being continually updated
-        $md5Dogs = $dogs->map(function ($dog) {
+        $md5Dogs = $medicatedDogs->map(function ($dog) {
             $dogData = collect($dog->toArray());
-            $dogData['feedings'] = collect($dogData['feedings'])->map(function ($feeding) {
-                return collect($feeding)->except(['created_at', 'updated_at'])->toArray();
-            });
             $dogData['medications'] = collect($dogData['medications'])->map(function ($medication) {
                 return collect($medication)->except(['created_at', 'updated_at'])->toArray();
             });
@@ -102,12 +114,13 @@ class DataController extends Controller
             });
             return $dogData->toArray();
         });
-        $new_checksum = md5(json_encode($assignments) . $breaks . json_encode($groupedEmployees) . $md5Dogs);
+        $new_checksum = md5(json_encode($assignments) . $breaks . json_encode($groupedEmployees) . json_encode($lunchDogs). $md5Dogs);
         if ($checksum !== $new_checksum) {
             $response = [
                 'assignments' => $assignments,
                 'breaks' => $breaks,
-                'dogs' => $dogs,
+                'lunchDogs' => $lunchDogs,
+                'medicatedDogs' => $medicatedDogs,
                 'employees' => $groupedEmployees,
                 'fohStaff' => Cache::get('foh_staff'),
                 'yards' => $yards,

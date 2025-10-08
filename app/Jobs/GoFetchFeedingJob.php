@@ -52,7 +52,7 @@ class GoFetchFeedingJob implements ShouldQueue, ShouldBeUnique
 
         if (isset($response['data']) && is_array($response['data']) && count($response['data']) > 0) {
             $newIds = collect($response['data'])->pluck('id')->toArray();
-            Feeding::where('pet_id', $this->petId)->whereNotIn('feeding_id', $newIds)->delete();
+            Feeding::where('pet_id', $this->petId)->whereNotIn('feeding_id', $newIds)->where('is_task', 0)->delete();
             foreach ($response['data'] as $feeding) {
                 Feeding::updateOrCreate(['feeding_id' => $feeding['id']], [
                     'pet_id' => $this->petId,

@@ -79,7 +79,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             if ($row[$columns['feedingAttributeCount']] > 0) {
                 GoFetchFeedingJob::dispatch($dog->pet_id, $dog->account_id);
             } else {
-                Feeding::where('pet_id', $dog->pet_id)->delete();
+                Feeding::where('pet_id', $dog->pet_id)->where('is_task', 0)->delete();
             }
             if ($row[$columns['medicationAttributeCount']] > 0 ||
                 $row[$columns['medicalConditionsAttributeCount']] > 0) {

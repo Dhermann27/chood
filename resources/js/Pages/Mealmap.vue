@@ -18,7 +18,9 @@ const props = defineProps({
 const controls = ref(ControlSchemes.NONE);
 const inputRefs = ref({});
 const breaks = ref([]);
-const dogs = ref([]);
+// const dogs = ref([]);
+const lunchDogs = ref([]);
+const medicatedDogs = ref([]);
 const employees = ref([]);
 const fohStaff = ref('');
 const assignments = ref({});
@@ -27,7 +29,7 @@ const localChecksum = ref('');
 let refreshInterval;
 const currentViewIndex = ref(0);
 const currentLoadingIndex = ref(0);
-const cardHeight = computed(() => 800 / Math.min(Math.max(dogs.value.length, 3), props.dogsPerPage));
+const cardHeight = computed(() => 800 / (lunchDogs.value.length + medicatedDogs.value.length));
 
 function setInputRef(key, el) {
     if (!inputRefs.value) inputRefs.value = {};
@@ -35,14 +37,14 @@ function setInputRef(key, el) {
 }
 
 
-const handleImageLoaded = () => {
-    currentLoadingIndex.value++;
-    for (; currentLoadingIndex.value < dogs.value.length; currentLoadingIndex.value++) {
-        if (dogs.value[currentLoadingIndex.value].photoUri) {
-            break;
-        }
-    }
-};
+// const handleImageLoaded = () => {
+//     currentLoadingIndex.value++;
+//     for (; currentLoadingIndex.value < dogs.value.length; currentLoadingIndex.value++) {
+//         if (dogs.value[currentLoadingIndex.value].photoUri) {
+//             break;
+//         }
+//     }
+// };
 
 async function updateData() {
     try {
@@ -51,14 +53,15 @@ async function updateData() {
         if (response.data && localChecksum.value !== response.data.checksum) {
             assignments.value = {...response.data.assignments};
             breaks.value = {...response.data.breaks};
-            dogs.value = response.data.dogs;
+            lunchDogs.value = response.data.lunchDogs;
+            medicatedDogs.value = response.data.medicatedDogs;
             employees.value = response.data.employees;
             fohStaff.value = response.data.fohStaff;
             yards.value = response.data.yards;
             localChecksum.value = response.data.checksum;
-        } else if (dogs.value.length > props.dogsPerPage) {
-            const maxChunks = Math.ceil(dogs.value.length / props.dogsPerPage);
-            currentViewIndex.value = (currentViewIndex.value + 1) % maxChunks;
+            // } else if (dogs.value.length > props.dogsPerPage) {
+            //     const maxChunks = Math.ceil(dogs.value.length / props.dogsPerPage);
+            //     currentViewIndex.value = (currentViewIndex.value + 1) % maxChunks;
         }
 
     } catch (error) {
@@ -78,6 +81,13 @@ const progressBarStyle = computed(() => ({
         / dogs.value.length) * 100 + '%',
     color: 'white',
 }));
+
+// const getFairnessColor = (score) => {
+//     if (!score || score <= 0) return '';
+//     const intensity = Math.min(Math.ceil(score) * 100, 800);
+//     return `bg-red-${intensity}`;
+// };
+
 
 // Next three methods are all so Vue3 detects changes inside the nested objects
 function matchEmployeeInGroups(employee) {
@@ -134,7 +144,10 @@ const handleYardChange = async (rotationId, yardId) => {
 
 const handleBreakChange = async (eventData, homebase_user_id, break_name) => {
     const select = inputRefs.value[`timepick-${homebase_user_id}-${break_name}`];
+    const redClasses = Array.from({length: 9}, (_, i) => `bg-red-${(i + 1) * 100}`);
+
     try {
+        select.classList.remove(...redClasses); // Remove any Tailwind red class
         select.style.backgroundColor = 'gray';
         await axios.post('/api/mealmap/break', {
             [break_name]: `${eventData.displayTime}`,
@@ -171,40 +184,35 @@ onBeforeUnmount(() => {
     <div class="h-full w-full flex flex-col items-center justify-center">
         <div class="w-full grid grid-cols-2 print:grid-cols-1 gap-4 h-full">
             <div class="flex flex-col ps-3 items-center divider pt-10 print:hidden">
-                <div class="text-3xl font-header mb-2">Dog Feeding Instructions</div>
+                <!--                <div class="text-3xl font-header mb-2">Dog Feeding Instructions</div>-->
+                <div class="text-3xl font-header mb-2">Medications</div>
 
-                <div v-if="dogs && dogs?.length > props.dogsPerPage" class="flex justify-center gap-2 mb-4 w-full">
-                    <div class="h-6 bg-gray-200 rounded-full w-3/4">
-                        <div class="relative h-6 bg-caregiver rounded-full text-center" :style="progressBarStyle">
-                            {{ currentViewIndex * props.dogsPerPage + 1 }} - {{
-                                Math.min((currentViewIndex + 1) * props.dogsPerPage, dogs?.length)
-                            }}
-                        </div>
-                    </div>
-                </div>
+                <!--                <div v-if="dogs && dogs?.length > props.dogsPerPage" class="flex justify-center gap-2 mb-4 w-full">-->
+                <!--                    <div class="h-6 bg-gray-200 rounded-full w-3/4">-->
+                <!--                        <div class="relative h-6 bg-caregiver rounded-full text-center" :style="progressBarStyle">-->
+                <!--                            {{ currentViewIndex * props.dogsPerPage + 1 }} - {{-->
+                <!--                                Math.min((currentViewIndex + 1) * props.dogsPerPage, dogs?.length)-->
+                <!--                            }}-->
+                <!--                        </div>-->
+                <!--                    </div>-->
+                <!--                </div>-->
 
                 <div class="grid grid-cols-1 gap-4 w-full">
-                    <div v-for="(dog, index) in dogs" :key="index" class="flex pb-2 border-b-2"
-                         v-show="isVisible(index)">
+                    <!--                    <div v-for="(dog, index) in dogs" :key="index" class="flex pb-2 border-b-2"-->
+                    <!--                         v-show="isVisible(index)">-->
+
+                    <div v-for="(dog, index) in medicatedDogs" :key="index" class="flex pb-2 border-b-2">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: '150px'}">
                             <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"
-                                     :shouldLoad="index === currentLoadingIndex"
-                                     @imageLoaded="handleImageLoaded"/>
+                                     :shouldLoad="true"/>
                         </div>
 
                         <div class="flex-grow flex flex-col items-start justify-center p-4 text-2xl">
-                            <div v-for="feeding in dog.feedings" :key="feeding.id" class="flex-col justify-center">
-                                <font-awesome-icon :icon="['fas', 'bowl-food']" class="me-2"/>
-                                {{ feeding.type.trim() }}
-                                <span v-if="feeding.type && feeding.description">: </span>
-                                {{ feeding.description.trim() }}
-                            </div>
                             <div v-for="medication in dog.medications" :key="medication.id"
                                  class="flex-col justify-center">
-                                <font-awesome-icon v-if="medication.type_id === 18"
+                                <font-awesome-icon v-if="medication.type_id !== 15"
                                                    :icon="['fas', 'prescription-bottle-pill']" class="me-2"/>
-                                <font-awesome-icon v-if="medication.type_id === 15" :icon="['fas', 'note-medical']"
-                                                   class="me-2"/>
+                                <font-awesome-icon v-else :icon="['fas', 'note-medical']" class="me-2"/>
                                 {{ medication.type.trim() }}
                                 <span v-if="medication.type && medication.description">:&nbsp;</span>
                                 {{ medication.description.trim() }}
@@ -217,8 +225,21 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                 </div>
-            </div>
+                <div class="text-3xl font-header my-2">Lunches</div>
+                <div class="grid grid-cols-1 gap-4 w-full">
+                    <div v-for="(dog, index) in lunchDogs" :key="index" class="flex pb-2 border-b-2">
+                        <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: '150px'}">
+                            <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"
+                                     :shouldLoad="true"/>
+                        </div>
 
+                        <div class="flex-grow flex items-center gap-3 p-4 text-2xl min-w-0">
+                            <font-awesome-icon :icon="['fas','turkey']" class="flex-shrink-0"/>
+                            <span class="truncate">{{ dog.lunch_notes }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div class="flex flex-col items-center pt-10 print:flex">
                 <div class="text-3xl font-header mb-2">Daily Rotation</div>
@@ -228,7 +249,10 @@ onBeforeUnmount(() => {
                     <thead>
                     <tr>
                         <th>&nbsp;</th>
-                        <th class="font-subheader uppercase" v-for="yard in yards" :key="yard.id">{{ yard.name }}</th>
+                        <th class="font-subheader uppercase" v-for="yard in yards" :key="yard.id">{{
+                                yard.name
+                            }}
+                        </th>
                     </tr>
                     </thead>
                     <tbody>
@@ -276,12 +300,15 @@ onBeforeUnmount(() => {
                                 :class="[controls !== ControlSchemes.NONE  && employee.first_name !== 'Everyone' ? 'hidden' : '', 'print:block']">
                                 {{ employee.next_first_break }}
                             </div>
-                            <VueTimepicker v-if="controls !== ControlSchemes.NONE && employee.first_name !== 'Everyone'"
-                                           :id="`timepick-${String(employee.homebase_user_id)}-next_first_break`"
-                                           v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
-                                           :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                           placeholder="None" class="print-hide"
-                                           @change="handleBreakChange($event, employee.homebase_user_id, 'next_first_break')"/>
+                            <VueTimepicker
+                                v-if="controls !== ControlSchemes.NONE && employee.first_name !== 'Everyone'"
+                                :id="`timepick-${String(employee.homebase_user_id)}-next_first_break`"
+                                class="print-hide" placeholder="None"
+                                v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
+                                :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
+                                @change="handleBreakChange($event, employee.homebase_user_id, 'next_first_break')"
+                            />
+                            <!--                                :class="getFairnessColor(employee.fairness_score)"-->
                         </td>
                         <td class="border border-DEFAULT px-4 py-2"
                             :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_lunch_break`, el)">

@@ -6,6 +6,7 @@ use App\Models\Cabin;
 use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\Employee;
+use App\Models\Feeding;
 use App\Traits\ChoodTrait;
 use Carbon\Carbon;
 use Exception;
@@ -120,11 +121,34 @@ class TaskController extends Controller
         }
     }
 
+    public function setLunch(Request $request): JsonResponse
+    {
+        $validatedData = $request->validate([
+            'dogsToAssign.*.pet_id' => 'required|exists:dogs,pet_id',
+            'lunch_notes' => 'nullable|string|max:255',
+        ]);
+        $lunchNotes = trim($request->input('lunch_notes'));
+        $petIds = collect($validatedData['dogsToAssign'])->pluck('pet_id')->filter()->unique()->values();
+        if ($lunchNotes != '') {
+            foreach ($petIds as $petId) {
+                Feeding::updateOrCreate(
+                    ['pet_id' => $petId, 'is_task' => 1],
+                    ['description' => $lunchNotes]
+                );
+            }
+        } else {
+            Feeding::whereIn('pet_id', $petIds)->where('is_task', '1')->delete();
+        }
+
+        $names = implode(',', collect($request->input('dogsToAssign'))->pluck('firstname')->filter()->values()->toArray());
+        return response()->json(['message' => "Lunch set for {$names}"]);
+    }
+
     public function startBreak(Request $request): JsonResponse
     {
         $validatedData = $request->validate([
             'dogsToAssign.*.id' => 'required|exists:dogs,id',
-            'break_duration' => 'required|in:15,30,45,60,120,999,1000',
+            'break_duration' => 'required|numeric',
         ]);
 
         $tz = config('app.timezone');
@@ -138,7 +162,7 @@ class TaskController extends Controller
         ]);
 
         $names = implode(',', collect($request->input('dogsToAssign'))->pluck('firstname')->filter()->values()->toArray());
-        return response()->json(['message' => "{$validatedData['break_duration']}-minute rest started for {$names}"]);
+        return response()->json(['message' => "Rest started for {$names}"]);
     }
 
     public function markReturned(string $dog_id): JsonResponse

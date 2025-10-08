@@ -47,6 +47,7 @@ Route::prefix('task')->group(function () {
         ->where('checksum', '[a-f0-9]{32}');
     Route::post('/cleanCabin', [TaskController::class, 'markCleaned']);
     Route::post('/assignCabin', [TaskController::class, 'assignDogsToCabin']);
+    Route::post('/setLunch', [TaskController::class, 'setLunch']);
     Route::post('/startBreak', [TaskController::class, 'startBreak']);
     Route::post('/markReturned/{dogId}', [TaskController::class, 'markReturned']);
 

@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('medications', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('medication_id')->nullable()->index();
-            $table->unsignedBigInteger('pet_id')->nullable()->index();
+            $table->foreignId('pet_id')->constrained('dogs', 'pet_id')->cascadeOnDelete();
             $table->integer('type_id')->nullable();
             $table->string('type');
             $table->text('description')->nullable();
