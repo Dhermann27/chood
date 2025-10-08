@@ -197,11 +197,11 @@ onBeforeUnmount(() => {
                 <!--                    </div>-->
                 <!--                </div>-->
 
-                <div class="grid grid-cols-1 gap-4 w-full">
+                <div class="grid grid-cols-1 w-full">
                     <!--                    <div v-for="(dog, index) in dogs" :key="index" class="flex pb-2 border-b-2"-->
                     <!--                         v-show="isVisible(index)">-->
 
-                    <div v-for="(dog, index) in medicatedDogs" :key="index" class="flex pb-2 border-b-2">
+                    <div v-for="(dog, index) in medicatedDogs" :key="index" class="flex border-b-2">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: '150px'}">
                             <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"
                                      :shouldLoad="true"/>
@@ -233,9 +233,9 @@ onBeforeUnmount(() => {
                                      :shouldLoad="true"/>
                         </div>
 
-                        <div class="flex-grow flex items-center gap-3 p-4 text-2xl min-w-0">
+                        <div class="flex-grow flex items-center gap-3 p-4 text-xl min-w-0">
                             <font-awesome-icon :icon="['fas','turkey']" class="flex-shrink-0"/>
-                            <span class="truncate">{{ dog.lunch_notes }}</span>
+                            {{ dog.lunch_notes }}
                         </div>
                     </div>
                 </div>
