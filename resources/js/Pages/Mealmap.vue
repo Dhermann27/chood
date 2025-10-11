@@ -18,7 +18,6 @@ const props = defineProps({
 const controls = ref(ControlSchemes.NONE);
 const inputRefs = ref({});
 const breaks = ref([]);
-// const dogs = ref([]);
 const lunchDogs = ref([]);
 const medicatedDogs = ref([]);
 const employees = ref([]);
@@ -27,24 +26,24 @@ const assignments = ref({});
 const yards = ref([]);
 const localChecksum = ref('');
 let refreshInterval;
-const currentViewIndex = ref(0);
+// const currentViewIndex = ref(0);
 const currentLoadingIndex = ref(0);
-const cardHeight = computed(() => 800 / (lunchDogs.value.length + medicatedDogs.value.length));
+const cardHeight = computed(() => Math.min(300, 800 / (lunchDogs.value.length + medicatedDogs.value.length)));
+const allDogs = computed(() => [...lunchDogs.value, ...medicatedDogs.value]);
 
 function setInputRef(key, el) {
     if (!inputRefs.value) inputRefs.value = {};
     inputRefs.value[key] = el;
 }
 
-
-// const handleImageLoaded = () => {
-//     currentLoadingIndex.value++;
-//     for (; currentLoadingIndex.value < dogs.value.length; currentLoadingIndex.value++) {
-//         if (dogs.value[currentLoadingIndex.value].photoUri) {
-//             break;
-//         }
-//     }
-// };
+const handleImageLoaded = () => {
+    const list = allDogs.value;
+    while (++currentLoadingIndex.value < list.value?.length) {
+        if (list.value[currentLoadingIndex.value].photoUri) {
+            break;
+        }
+    }
+};
 
 async function updateData() {
     try {
@@ -59,6 +58,7 @@ async function updateData() {
             fohStaff.value = response.data.fohStaff;
             yards.value = response.data.yards;
             localChecksum.value = response.data.checksum;
+            currentLoadingIndex.value = 0;
             // } else if (dogs.value.length > props.dogsPerPage) {
             //     const maxChunks = Math.ceil(dogs.value.length / props.dogsPerPage);
             //     currentViewIndex.value = (currentViewIndex.value + 1) % maxChunks;
@@ -69,18 +69,18 @@ async function updateData() {
     }
 }
 
-const isVisible = (index) => {
-    const start = currentViewIndex.value * props.dogsPerPage;
-    const end = start + props.dogsPerPage;
-    return index >= start && index < end;
-};
+// const isVisible = (index) => {
+//     const start = currentViewIndex.value * props.dogsPerPage;
+//     const end = start + props.dogsPerPage;
+//     return index >= start && index < end;
+// };
 
-const progressBarStyle = computed(() => ({
-    left: ((currentViewIndex.value * props.dogsPerPage) / dogs.value.length) * 100 + '%',
-    width: (Math.min(props.dogsPerPage, dogs.value.length - currentViewIndex.value * props.dogsPerPage)
-        / dogs.value.length) * 100 + '%',
-    color: 'white',
-}));
+// const progressBarStyle = computed(() => ({
+//     left: ((currentViewIndex.value * props.dogsPerPage) / dogs.value.length) * 100 + '%',
+//     width: (Math.min(props.dogsPerPage, dogs.value.length - currentViewIndex.value * props.dogsPerPage)
+//         / dogs.value.length) * 100 + '%',
+//     color: 'white',
+// }));
 
 // const getFairnessColor = (score) => {
 //     if (!score || score <= 0) return '';
@@ -184,27 +184,12 @@ onBeforeUnmount(() => {
     <div class="h-full w-full flex flex-col items-center justify-center">
         <div class="w-full grid grid-cols-2 print:grid-cols-1 gap-4 h-full">
             <div class="flex flex-col ps-3 items-center divider pt-10 print:hidden">
-                <!--                <div class="text-3xl font-header mb-2">Dog Feeding Instructions</div>-->
                 <div class="text-3xl font-header mb-2">Medications</div>
-
-                <!--                <div v-if="dogs && dogs?.length > props.dogsPerPage" class="flex justify-center gap-2 mb-4 w-full">-->
-                <!--                    <div class="h-6 bg-gray-200 rounded-full w-3/4">-->
-                <!--                        <div class="relative h-6 bg-caregiver rounded-full text-center" :style="progressBarStyle">-->
-                <!--                            {{ currentViewIndex * props.dogsPerPage + 1 }} - {{-->
-                <!--                                Math.min((currentViewIndex + 1) * props.dogsPerPage, dogs?.length)-->
-                <!--                            }}-->
-                <!--                        </div>-->
-                <!--                    </div>-->
-                <!--                </div>-->
-
                 <div class="grid grid-cols-1 w-full">
-                    <!--                    <div v-for="(dog, index) in dogs" :key="index" class="flex pb-2 border-b-2"-->
-                    <!--                         v-show="isVisible(index)">-->
-
                     <div v-for="(dog, index) in medicatedDogs" :key="index" class="flex border-b-2">
-                        <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: '150px'}">
+                        <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: cardHeight + 'px'}">
                             <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"
-                                     :shouldLoad="true"/>
+                                     :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
                         </div>
 
                         <div class="flex-grow flex flex-col items-start justify-center p-4 text-2xl">
@@ -226,11 +211,12 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
                 <div class="text-3xl font-header my-2">Lunches</div>
-                <div class="grid grid-cols-1 gap-4 w-full">
-                    <div v-for="(dog, index) in lunchDogs" :key="index" class="flex pb-2 border-b-2">
-                        <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: '150px'}">
+                <div class="grid grid-cols-1 w-full">
+                    <div v-for="(dog, index) in lunchDogs" :key="index" class="flex border-b-2">
+                        <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: cardHeight + 'px'}">
                             <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"
-                                     :shouldLoad="true"/>
+                                     :shouldLoad="index + medicatedDogs.length === currentLoadingIndex"
+                                     @imageLoaded="handleImageLoaded"/>
                         </div>
 
                         <div class="flex-grow flex items-center gap-3 p-4 text-xl min-w-0">

@@ -97,7 +97,7 @@ class Dog extends Model
     {
         return $this->hasMany(Feeding::class, 'pet_id', 'pet_id');
     }
-
+    
     public function medications(): HasMany
     {
         return $this->hasMany(Medication::class, 'pet_id', 'pet_id');
