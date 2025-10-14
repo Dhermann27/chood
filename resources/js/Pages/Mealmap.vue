@@ -192,7 +192,7 @@ onBeforeUnmount(() => {
                                      :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
                         </div>
 
-                        <div class="flex-grow flex flex-col items-start justify-center p-4 text-2xl">
+                        <div class="flex-grow flex flex-col items-start justify-center p-1 text-2xl">
                             <div v-for="medication in dog.medications" :key="medication.id"
                                  class="flex-col justify-center">
                                 <font-awesome-icon v-if="medication.type_id !== 15"
@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
                                      @imageLoaded="handleImageLoaded"/>
                         </div>
 
-                        <div class="flex-grow flex items-center gap-3 p-4 text-xl min-w-0">
+                        <div class="flex-grow flex items-center gap-3 p-1 text-xl min-w-0">
                             <font-awesome-icon :icon="['fas','turkey']" class="flex-shrink-0"/>
                             {{ dog.lunch_notes }}
                         </div>

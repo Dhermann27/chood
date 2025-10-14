@@ -54,8 +54,11 @@ class MarkCabinsForCleaningJob implements ShouldQueue
         $cabins = Cabin::whereHas('dogs')->with(['dogs', 'cleaningStatus'])->get();
 
         $cabinsWithCheckoutDue = $cabins->filter(function ($cabin) {
-            return Carbon::parse($cabin->dogs->first()->checkout)->startOfDay()->lessThanOrEqualTo(Carbon::today());
+            $dog = $cabin->dogs->first();
+            return in_array($dog->housing_code, ['BRDC', 'BRDL'])
+                && Carbon::parse($dog->checkout)->startOfDay()->lessThanOrEqualTo(Carbon::today());
         });
+
 
         $withCleaningStatus = $cabins->filter(fn($cabin) => $cabin->cleaningStatus);
         $withoutCleaningStatus = $cabins->filter(fn($cabin) => !$cabin->cleaningStatus);
