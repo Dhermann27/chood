@@ -20,7 +20,7 @@ const breakButtons = [
     {label: '60', value: '60'},
     {label: '120', value: '120'},
     {label: 'Lunch', value: '1000'},
-    {label: 'EOD/Groom', value: '999'},
+    {label: 'Until Marked', value: '999'},
 ]
 
 const dogs = ref(null);

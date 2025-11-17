@@ -41,7 +41,7 @@ const breakTimeLeft = computed(() => {
     const dog = currentDog.value;
     if (!dog?.rest_starts_at || !dog?.rest_duration_minutes) return null;
 
-    if(dog.rest_duration_minutes <= 120) {
+    if(dog.rest_duration_minutes <= 180) {
         const start = new Date(dog.rest_starts_at);
         const end = new Date(start.getTime() + dog.rest_duration_minutes * 60 * 1000);
         const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
@@ -56,7 +56,7 @@ const breakTimeLeft = computed(() => {
         };
     } else {
         return {
-            minutesLeft: '',
+            minutesLeft: 'EOD',
             percentElapsed: 0,
             percentRemaining: 1,
             expired: false,
