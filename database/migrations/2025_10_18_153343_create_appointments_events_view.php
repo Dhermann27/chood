@@ -18,12 +18,12 @@ return new class extends Migration {
 CREATE OR REPLACE VIEW `appointments__events` AS
 SELECT
     CASE
-    WHEN s.code IN ('1ETR','1EPK')
-        THEN CONCAT('treat|', DATE_FORMAT(a.scheduled_start, '%Y-%m-%d %H:%i:%s'))
-    WHEN s.category IN ({$quotedCats})
-        THEN CONCAT('groom|', a.pet_id, '|', DATE_FORMAT(a.scheduled_start, '%Y-%m-%d %H:%i:%s'))
-    ELSE CONCAT('single|', a.id)
-END AS group_key
+        WHEN s.code IN ('1ETR','1EPK')
+            THEN CONCAT('treat|', DATE_FORMAT(a.scheduled_start, '%Y-%m-%d %H:%i:%s'))
+        WHEN s.category IN ({$quotedCats})
+            THEN CONCAT('groom|', a.pet_id, '|', DATE_FORMAT(a.scheduled_start, '%Y-%m-%d %H:%i:%s'))
+        ELSE CONCAT('single|', a.id)
+    END AS group_key,
 
 
     JSON_ARRAYAGG(a.id)             AS ids_json,
