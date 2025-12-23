@@ -25,6 +25,11 @@ class SyncDogServicesJob implements ShouldQueue, ShouldBeUnique
     {
         $this->onQueue('high');
     }
+    
+    public function shouldDispatch(): bool
+    {
+        return !app()->isDownForMaintenance();
+    }
 
     /**
      * @throws Exception

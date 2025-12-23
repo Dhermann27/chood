@@ -19,7 +19,7 @@ enum ServiceColor: string
             'bath', 'basic grooming' => self::BasicGrooming,
             'enrichment' => self::Enrichment,
             'full service grooming' => self::FullServiceGrooming,
-            'training' => 'training',
+            'training' => self::Training,
             default => null,
         };
     }
