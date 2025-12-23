@@ -7,17 +7,11 @@ namespace App\Enums;
  */
 enum ServiceSyncStatus: string
 {
-    /** Awaiting full booking data (e.g., just created) */
     case Pending = 'pending';
-
-    /** Fully populated with time and metadata, ready to be synced */
     case Ready = 'ready';
-
-    /** Calendar event is in sync */
     case Synced = 'synced';
-
-    /** Sync failed due to error, retry later */
     case Error = 'error';
+    case Archived = 'archived';
 
     public function label(): string
     {
@@ -26,6 +20,7 @@ enum ServiceSyncStatus: string
             self::Ready => 'Ready to Sync',
             self::Synced => 'Synced',
             self::Error => 'Error',
+            self::Archived => 'Archived',
         };
     }
 }

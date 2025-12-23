@@ -8,12 +8,17 @@ enum HousingServiceCodes: string
     case BRDC = 'BRDC';
     case BRDL = 'BRDL';
     case DCFD = 'DCFD';
-    case DCHD = 'DCHD';
+    case DCHD = 'DCHD'; // Testing: DCH in Test
     case INTV = 'INTV';
     case UNKNOWN = 'GTO';
 
-    const array HOUSING_CODES_ARRAY = [self::BRDC->value, self::BRDL->value, self::DCFD->value, self::DCHD->value,
-        self::INTV->value];
+    public static function housingValues(): array
+    {
+        return array_map(
+            fn(self $c) => $c->value,
+            array_filter(self::cases(), fn(self $c) => $c !== self::UNKNOWN)
+        );
+    }
 
     public static function isHousingCode(string $code): bool
     {
@@ -21,6 +26,7 @@ enum HousingServiceCodes: string
             || $code === self::DCFD->value || $code === self::DCHD->value
             || $code === self::INTV->value;
     }
+
     public static function isCalendarCode(string $code): bool
     {
         return $code !== '' && $code !== self::BRDC->value && $code !== self::BRDL->value

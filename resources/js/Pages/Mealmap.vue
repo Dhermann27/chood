@@ -186,25 +186,25 @@ onBeforeUnmount(() => {
             <div class="flex flex-col ps-3 items-center divider pt-10 print:hidden">
                 <div class="text-3xl font-header mb-2">Medications</div>
                 <div class="grid grid-cols-1 w-full">
-                    <div v-for="(dog, index) in medicatedDogs" :key="index" class="flex border-b-2">
+                    <div v-for="(dog, index) in medicatedDogs" :key="index" class="flex border-b-2 even:bg-gray-200">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: cardHeight + 'px'}">
                             <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"
                                      :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
                         </div>
 
-                        <div class="flex-grow flex flex-col items-start justify-center p-1 text-2xl">
+                        <div class="flex-grow flex flex-col items-start justify-center p-1 text-xl">
                             <div v-for="medication in dog.medications" :key="medication.id"
                                  class="flex-col justify-center">
                                 <font-awesome-icon v-if="medication.type_id !== 15"
-                                                   :icon="['fas', 'prescription-bottle-pill']" class="me-2"/>
-                                <font-awesome-icon v-else :icon="['fas', 'note-medical']" class="me-2"/>
+                                                   :icon="['fas', 'prescription-bottle-pill']" class="me-1"/>
+                                <font-awesome-icon v-else :icon="['fas', 'note-medical']" class="me-1"/>
                                 {{ medication.type.trim() }}
                                 <span v-if="medication.type && medication.description">:&nbsp;</span>
                                 {{ medication.description.trim() }}
                             </div>
                             <div v-for="allergy in dog.allergies" :key="allergy.id"
                                  class="flex-col justify-center text-crimson">
-                                <font-awesome-icon :icon="['fas', 'hand-dots']" class="me-2"/>
+                                <font-awesome-icon :icon="['fas', 'hand-dots']" class="me-1"/>
                                 ALLERGY: {{ allergy.description.trim() }}
                             </div>
                         </div>
@@ -212,7 +212,7 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="text-3xl font-header my-2">Lunches</div>
                 <div class="grid grid-cols-1 w-full">
-                    <div v-for="(dog, index) in lunchDogs" :key="index" class="flex border-b-2">
+                    <div v-for="(dog, index) in lunchDogs" :key="index" class="flex border-b-2 even:bg-gray-200">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: cardHeight + 'px'}">
                             <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"
                                      :shouldLoad="index + medicatedDogs.length === currentLoadingIndex"
@@ -220,7 +220,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="flex-grow flex items-center gap-3 p-1 text-xl min-w-0">
-                            <font-awesome-icon :icon="['fas','turkey']" class="flex-shrink-0"/>
+                            <font-awesome-icon :icon="['fas','turkey']" class="flex-shrink-0 me-1"/>
                             {{ dog.lunch_notes }}
                         </div>
                     </div>

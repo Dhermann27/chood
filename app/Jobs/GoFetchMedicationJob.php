@@ -53,7 +53,7 @@ class GoFetchMedicationJob implements ShouldQueue, ShouldBeUnique
             $newIds = collect($response['data'])->pluck('id')->toArray();
             Medication::where('pet_id', $this->petId)->whereNotIn('medication_id', $newIds)->delete();
             foreach ($response['data'] as $medication) {
-                $medicationName = trim($medication['attribute']['name'] ?? '') ?: trim($medication['attributeValue'] ?? '');
+                $medicationName = ucwords(strtolower(trim($medication['attribute']['name'] ?? '') ?: trim($medication['attributeValue'] ?? '')));
                 if ($medicationName !== '' || trim($medication['description']) !== '') {
                     Medication::updateOrCreate(['medication_id' => $medication['id']], [
                         'pet_id' => $this->petId,

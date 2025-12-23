@@ -8,7 +8,8 @@ use App\Models\Cabin;
 use App\Models\Dog;
 use App\Models\Service;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
+
 
 trait ChoodTrait
 {
@@ -62,7 +63,7 @@ trait ChoodTrait
             } else {
                 $dogs->where('size_letter', 'LIKE', '%L%');
             }
-            $dogs->whereIn('housing_code', HousingServiceCodes::HOUSING_CODES_ARRAY);
+            $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());
         }
 
         return $dogs->orderBy('firstname')->get();
@@ -79,10 +80,8 @@ trait ChoodTrait
         return Dog::select('dogs.*')->distinct()->join('appointments', 'appointments.pet_id', '=', 'dogs.pet_id')
             ->whereIn('appointments.service_id', $specialServiceIds)
             ->whereDate('appointments.scheduled_start', config('services.dd.sandbox_service_condition'), $today)
-            ->with(['appointments.service'])->get()->sortBy(fn($dog) =>
-            optional(
-                $dog->appointments->firstWhere(fn($ds) =>
-                    in_array($ds->service_id, $specialServiceIds->all(), true)
+            ->with(['appointments.service'])->get()->sortBy(fn($dog) => optional(
+                $dog->appointments->firstWhere(fn($ds) => in_array($ds->service_id, $specialServiceIds->all(), true)
                     && Carbon::parse($ds->scheduled_start)->isSameDay($today)
                 )
             )?->scheduled_start)->values();

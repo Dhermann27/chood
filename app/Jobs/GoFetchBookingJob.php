@@ -8,7 +8,6 @@ use App\Models\Appointment;
 use App\Models\Dog;
 use App\Models\Service;
 use App\Services\FetchDataService;
-use App\Traits\AppointmentTrait;
 use Carbon\CarbonImmutable;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -23,7 +22,7 @@ use Throwable;
 
 class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, AppointmentTrait;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected string $bookingId;
     protected string $orderId;
@@ -93,7 +92,7 @@ class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
             if (!$norm) continue;
 
             ['petId' => $petId, 'localServiceId' => $localServiceId, 'start' => $start, 'end' => $end,
-                'incomingApptId' => $incomingApptId] = $norm;
+                'incomingApptId' => $incomingApptId, 'petName' => $petName] = $norm;
             $startStr = $start?->format('Y-m-d H:i:s');
             $group = $groupsByPet->get($petId, collect());
 
@@ -147,6 +146,7 @@ class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
                 Log::info('Update: reused existing row', [
                     'order_id' => $this->orderId,
                     'pet_id' => $petId,
+                    'pet_name' => $petName,
                     'matched_by' => $matchedBy,
                     'row_id' => $row->id
                 ]);
@@ -156,6 +156,7 @@ class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
                     'order_id' => $this->orderId,
                     'booking_id' => $this->bookingId,
                     'pet_id' => $petId,
+                    'pet_name' => $petName,
                     'service_id' => $localServiceId,
                     'scheduled_start' => $start,
                     'scheduled_end' => $end,
@@ -166,6 +167,7 @@ class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
                 Log::info('Create: new row', [
                     'order_id' => $this->orderId,
                     'pet_id' => $petId,
+                    'pet_name' => $petName,
                     'row_id' => $created->id,
                     'service_id' => $localServiceId
                 ]);
@@ -185,11 +187,12 @@ class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
      *
      * @param array $service
      * @param array $serviceMapByDDID // ddServiceId => local service_id
-     * @return array|null { petId, localServiceId, start, end, incomingApptId }
+     * @return array|null { petId, localServiceId, start, end, incomingApptId, petName }
      */
     private function normalizeServiceRow(array $service, array $serviceMapByDDID): ?array
     {
         $petId = $service['contactId'] ?? null;
+        $petName = $service['contact']['firstName'] . ' ' . $service['contact']['lastName'];
         $ddServiceId = $service['serviceItem']['id'] ?? ($service['serviceId'] ?? null);
 
         if (!$petId || !$ddServiceId) {
@@ -197,6 +200,7 @@ class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
                 'order_id' => $this->orderId,
                 'booking_id' => $this->bookingId,
                 'pet_id' => $petId,
+                'pet_name' => $petName,
                 'ddServiceId' => $ddServiceId,
             ]);
             return null;
@@ -234,6 +238,7 @@ class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
                 'order_id' => $this->orderId,
                 'booking_id' => $this->bookingId,
                 'pet_id' => $petId,
+                'pet_name' => $petName,
                 'checkInDateTime' => $service['checkInDateTime'] ?? null,
                 'checkOutDateTime' => $service['checkOutDateTime'] ?? null,
                 'error' => $e->getMessage(),
@@ -243,7 +248,7 @@ class GoFetchBookingJob implements ShouldQueue, ShouldBeUnique
 
         $incomingApptId = trim((string)$this->firstAppointmentId($service)) ?: null;
 
-        return compact('petId', 'localServiceId', 'start', 'end', 'incomingApptId');
+        return compact('petId', 'localServiceId', 'start', 'end', 'incomingApptId', 'petName');
     }
 
     /**

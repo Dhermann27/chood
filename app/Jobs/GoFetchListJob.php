@@ -2,12 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Enums\ServiceSyncStatus;
 use App\Models\Allergy;
+use App\Models\Appointment;
 use App\Models\Cabin;
 use App\Models\Dog;
 use App\Models\Feeding;
 use App\Models\Medication;
-use App\Models\Service;
 use App\Services\FetchDataService;
 use Carbon\Carbon;
 use Exception;
@@ -65,7 +66,6 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         $data = $output['data'][0];
         $columns = collect($data['columns'])->pluck('index', 'filterKey');
         $cabins = Cabin::all()->keyBy(fn($c) => $this->normCabinName($c->cabinName))->map(fn($c) => $c->id);
-        $serviceMap = Service::pluck('id', 'code');
 
         $activePetIds = [];
         foreach ($data['rows'] as $row) {
@@ -95,8 +95,9 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
 
         }
 
-        $inactiveDogs = Dog::whereNotIn('pet_id', $activePetIds)->get();
-        Dog::whereIn('id', $inactiveDogs->pluck('id'))->delete();
+        $inactivePetIds = Dog::whereNotIn('pet_id', $activePetIds)->pluck('pet_id');
+        Appointment::whereIn('pet_id', $inactivePetIds)->update(['sync_status' => ServiceSyncStatus::Archived]);
+        Dog::whereIn('pet_id', $inactivePetIds)->delete();
 
         $delay = config('services.dd.queue_delay');
         usleep(mt_rand($delay, $delay + 1000) * 1000);

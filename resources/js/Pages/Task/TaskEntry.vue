@@ -129,10 +129,12 @@ const handleTargetClick = (cabin) => {
 };
 
 const handleAssignDogUpdate = () => {
+    counter = 0;
     if (targets.value['dogsToAssign'].length > 0 && targets.value['cabin_id'] > 0) nextStep();
 };
 
 const handleBreakDogUpdate = (breakDuration) => {
+    counter = 0;
     targets.value.break_duration = breakDuration;
     if (targets.value['dogsToAssign'].length > 0) nextStep();
 };
@@ -313,9 +315,9 @@ onUnmounted(() => {
             <template v-else-if="todo === 'startBreak'">
                 <h3 class="text-xl font-subheader uppercase mb-4">Start a Break</h3>
                 <multiselect
-                    class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
+                    class="!w-2/3 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
                     v-model="targets.dogsToAssign" multiple :options="dogsNotOnBreak"
-                    label="firstname" placeholder="Select Dog(s) (Required)">
+                    label="firstname" placeholder="Select Dog(s) (Required)" @click="counter = 0;">
                     <template #option="{ option }">
                         <div class="dog-option-item">
                             <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
@@ -368,17 +370,17 @@ onUnmounted(() => {
                     </h3>
                     <div class="flex justify-between mb-4 text-3xl">
                         <button @click="handleFinishAction('Done')"
-                            class="px-16 py-10 bg-meadow text-white rounded-md flex items-center space-x-2">
+                            class="px-6 py-10 bg-meadow text-white rounded-md flex items-center space-x-2">
                             <font-awesome-icon :icon="['fas', 'badge-check']"/>
                             <span>Done</span>
                         </button>
                         <button @click="handleFinishAction('Undo')"
-                            class="px-16 py-10 bg-gray-500 text-white rounded-md flex items-center space-x-2">
+                            class="px-6 py-10 bg-gray-500 text-white rounded-md flex items-center space-x-2">
                             <font-awesome-icon :icon="['fas', 'rotate-left']"/>
                             <span>Undo</span>
                         </button>
                         <button @click="handleFinishAction('More')"
-                            class="px-16 py-10 bg-caregiver text-white rounded-md flex items-center space-x-2">
+                            class="px-6 py-10 bg-caregiver text-white rounded-md flex items-center space-x-2">
                             <font-awesome-icon :icon="['fas', 'cowbell-circle-plus']"/>
                             <span>More</span>
                         </button>

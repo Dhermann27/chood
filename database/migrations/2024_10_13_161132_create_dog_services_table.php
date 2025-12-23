@@ -22,14 +22,15 @@ return new class extends Migration {
             $table->unsignedBigInteger('pet_id')->nullable();
             $table->foreign('pet_id')->references('pet_id')->on('dogs')
                 ->onDelete('set null');
+            $table->string('pet_name')->nullable();
             $table->foreignId('service_id')->constrained('services');
 
             $table->timestamp('scheduled_start')->nullable();
             $table->timestamp('scheduled_end')->nullable();
 
             $table->string('google_event_id')->nullable();
-            $table->string('google_color')->nullable();
             $table->string('sync_status')->default(ServiceSyncStatus::Pending->value);
+            $table->string('sync_token')->nullable()->index();
 
             $table->dateTime('completed_at')->nullable();
             $table->unsignedBigInteger('completed_by')->nullable();
@@ -41,8 +42,6 @@ return new class extends Migration {
             $table->text('last_error_message')->nullable();
 
             $table->timestamps();
-
-            $table->index(['order_id', 'pet_id']);
         });
         DB::update('ALTER TABLE appointments AUTO_INCREMENT = 1000');
     }

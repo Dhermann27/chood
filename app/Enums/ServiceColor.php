@@ -8,6 +8,7 @@ enum ServiceColor: string
     case BasicGrooming = 'basic grooming';
     case Enrichment = 'enrichment';
     case FullServiceGrooming = 'full service grooming';
+    case Training = 'training';
     case Future = 'future';
     case NeedsUpdating = 'needs updating';
 
@@ -18,6 +19,7 @@ enum ServiceColor: string
             'bath', 'basic grooming' => self::BasicGrooming,
             'enrichment' => self::Enrichment,
             'full service grooming' => self::FullServiceGrooming,
+            'training' => 'training',
             default => null,
         };
     }
@@ -26,6 +28,7 @@ enum ServiceColor: string
     {
         return match ($this) {
             self::Orientation => '11',     // red
+            self::Training => '6',         // tangerine
             self::BasicGrooming => '5',    // yellow
             self::Enrichment => '9',       // blue
             self::FullServiceGrooming => '10', // green
@@ -41,6 +44,7 @@ enum ServiceColor: string
             self::BasicGrooming => '#FFDE17',
             self::Enrichment => '#87B3D1',
             self::FullServiceGrooming => '#88C999',
+            self::Training => '#F28500',
             self::Future => '#58595B',
             self::NeedsUpdating => '#FF4F4F',
         };
