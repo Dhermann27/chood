@@ -6,7 +6,6 @@ use App\Enums\ServiceColor;
 use App\Models\AppointmentsEvents;
 use Carbon\Carbon;
 use Exception;
-use Google\Http\Batch;
 use Google\Service\Calendar;
 use Google\Service\Calendar\Event;
 use Google\Service\Calendar\Resource\Events;
@@ -170,39 +169,50 @@ class GoogleCalendarService
             ),
         ]);
 
-
         // 6. Single batch: insert + patch + delete
         $client = $this->calendar->getClient();
-        $client->setUseBatch(true);
-        $batch = new Batch($client, false, 'https://www.googleapis.com', 'batch/calendar/v3');
+        $resp = [];
+        try {
+            $client->setDefer(true);
+            $batch = $this->calendar->createBatch();
 
-        $errors = [];
+            $errors = [];
 
-        // No deletes, ask FOH to manually remove from calendar when removing from DD
-        //        foreach ($toDelete as $eid) {
-        //            $batch->add($this->calendar->events->delete($this->calendarId(), $eid), 'del_' . $eid);
-        //        }
+            foreach ($toPatch as $i => $item) {
+                $eid = $item['eventId'];
+                $row = $item['row'];
 
-        // Patches
-        foreach ($toPatch as $i => $item) {
-            $eid = $item['eventId'];
-            $row = $item['row'];
+                $eventBody = new Event($row['payload']);
+                $batchKey = 'patch_' . $i;
 
-            $eventBody = new Event($row['payload']);
-            $batchKey = 'patch_' . $i;
-            $batch->add($this->calendar->events->patch($this->calendarId(), $eid, $eventBody), $batchKey);
-            $indexToRowKey[$batchKey] = $row;
+                $req = $this->calendar->events->patch($this->calendarId(), $eid, $eventBody);
+                $batch->add($req, $batchKey);
+
+                $indexToRowKey[$batchKey] = $row;
+            }
+
+            foreach ($toInsert as $i => $row) {
+                $eventBody = new Event($row['payload']);
+                $batchKey = 'ins_' . $i;
+
+                $req = $this->calendar->events->insert($this->calendarId(), $eventBody);
+                $batch->add($req, $batchKey);
+
+                $indexToRowKey[$batchKey] = $row;
+            }
+
+            $resp = $batch->execute();
+        } catch (Exception $e) {
+            Log::error('GC batch execute failed', [
+                'code' => $e->getCode(),
+                'message' => $e->getMessage(),
+                'errors' => method_exists($e, 'getErrors') ? $e->getErrors() : null,
+            ]);
+            throw $e;
+        } finally {
+            // critical so listEvents returns a response object again
+            $client->setDefer(false);
         }
-
-        // Inserts
-        foreach ($toInsert as $i => $row) {
-            $eventBody = new Event($row['payload']);
-            $batchKey = 'ins_' . $i;
-            $batch->add($this->calendar->events->insert($this->calendarId(), $eventBody), $batchKey);
-            $indexToRowKey[$batchKey] = $row;
-        }
-
-        $resp = $batch->execute();
 
         // 7. Collect appointment_id => google_event_id for a single DB update
         $pairs = []; // appointment_id => eventId
