@@ -6,11 +6,12 @@ import {createInertiaApp} from '@inertiajs/vue3';
 import {resolvePageComponent} from 'laravel-vite-plugin/inertia-helpers';
 import {FontAwesomeIcon, FontAwesomeLayers, FontAwesomeLayersText} from '@fortawesome/vue-fontawesome';
 import {byPrefixAndName} from '@awesome.me/kit-ed8e499057/icons';
-import {ZiggyVue} from '../../vendor/tightenco/ziggy';
+import {ZiggyVue} from '../../vendor/tightenco/ziggy/dist/index.esm.js';
+
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel'
 
-await createInertiaApp({
+createInertiaApp({
     title: (title) => `${title} - ${appName}`,
     resolve: (name) =>
         resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
@@ -32,4 +33,6 @@ await createInertiaApp({
     progress: {
         color: '#4B5563',
     },
+}).catch((error) => {
+    console.error(error);
 });
