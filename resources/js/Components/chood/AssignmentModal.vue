@@ -48,7 +48,7 @@ const closeModal = () => {
 
                 <div class="flex items-center space-x-4">
 <!--                    <div @click="toggleNewDog" class="cursor-pointer text-3xl">-->
-<!--                        <font-awesome-icon-->
+<!--                        <FontAwesomeIcon-->
 <!--                            :icon="props.isNewDog ? ['fas', 'square-check'] : ['far', 'square']"-->
 <!--                            class="text-caregiver hover:text-caregiver"-->
 <!--                        />-->

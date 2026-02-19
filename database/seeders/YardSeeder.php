@@ -13,10 +13,10 @@ class YardSeeder extends Seeder
     public function run()
     {
         $yards = [
-            ['id' => 999, 'name' => 'Floater', 'display_order' => 99, 'is_active' => 1],
-            ['name' => 'Small', 'display_order' => 2, 'is_active' => 1],
-            ['name' => 'Large', 'display_order' => 4, 'is_active' => 1],
-            ['name' => 'Relaxed Large', 'display_order' => 5],
+            ['id' => 999, 'name' => 'Floater', 'display_order' => 99],
+            ['name' => 'Small', 'display_order' => 2],
+            ['name' => 'Large', 'display_order' => 4],
+            ['name' => 'Active', 'display_order' => 5],
             ['name' => 'Medium', 'display_order' => 3],
             ['name' => 'Event', 'display_order' => 6],
         ];

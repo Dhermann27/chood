@@ -7,6 +7,7 @@ use App\Models\EmployeeYardRotation;
 use App\Models\Rotation;
 use App\Models\Shift;
 use App\Models\Yard;
+use App\Services\RotationSettings;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,16 +26,15 @@ class GoFetchShiftsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    const SHIFTS_URL_PREFIX = 'https://app.joinhomebase.com/api/public/locations/';
-    const SHIFTS_URL_SUFFIX = '/shifts?start_date=TODAY&end_date=TODAY&open=false&with_note=false&date_filter=start_at';
-    const BACK_OF_HOUSE = 'BOH';
-    const TRAINING = 'Train';
-    const EVENT = 'Event';
-    const SUPERVISOR = 'Supervisor';
-    const START_HOUR_OF_DAY = 6;
-    const HOURS_IN_DAY = 13;
-    const START_LUNCHES_AT_INDEX = 2 * 12 + 6; // 10:30am
-
+    const string SHIFTS_URL_PREFIX = 'https://app.joinhomebase.com/api/public/locations/';
+    const string SHIFTS_URL_SUFFIX = '/shifts?start_date=TODAY&end_date=TODAY&open=false&with_note=false&date_filter=start_at';
+    const string BACK_OF_HOUSE = 'BOH';
+    const string TRAINING = 'Train';
+    const string EVENT = 'Event';
+    const string SUPERVISOR = 'Supervisor';
+    const int START_HOUR_OF_DAY = 6;
+    const int HOURS_IN_DAY = 13;
+    const int START_LUNCHES_AT_INDEX = 2 * 12 + 6; // 10:30am
 
     /**
      * Execute the job.
@@ -55,7 +55,7 @@ class GoFetchShiftsJob implements ShouldQueue
 
             if ($response->successful()) {
                 Shift::query()->delete();
-                $yards = Yard::where('is_active', '1')->orderBy('display_order')->get();
+                $yards = Yard::orderBy('display_order')->get();
 
                 $homebaseShifts = collect(json_decode($response->getBody()->getContents()))->sortBy(['start_at', 'role']);
 
@@ -311,6 +311,7 @@ class GoFetchShiftsJob implements ShouldQueue
         $lastYardHourIds = [];
         $lastYardHourId = null;
 
+        $openYardCodes = RotationSettings::get();
         $rotations = Rotation::query()->when(Carbon::now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))->get();
         $names = Employee::all()->pluck('first_name', 'homebase_user_id'); // id => name
 
@@ -335,7 +336,10 @@ class GoFetchShiftsJob implements ShouldQueue
                 return $isWorking && $noBreaks && $notSuperHandoff;
             });
 
-            foreach ($yards as $yard) {
+            $openYardIds = $openYardCodes->allowedYards((bool) $rotation->is_midday);
+            $openYardIds[] = 999;
+            $openYards = $yards->whereIn('id', $openYardIds)->values();
+            foreach ($openYards as $yard) {
                 $availableShifts = $availableShifts->sortBy(function ($shift) use ($yard) {
                     return [$shift->yardHoursWorked[$yard->id], $shift->start_at];
                 });
@@ -344,7 +348,9 @@ class GoFetchShiftsJob implements ShouldQueue
 
                 while ($availableShifts->isNotEmpty()) {
                     $shift = $availableShifts->shift();
-
+                    if ($shift === null) {
+                        break;
+                    }
                     // Check if employee worked the same yard last hour
                     if ($yard->id != 999 && isset($lastYardHourIds[$shift->user_id][$yard->id]) &&
                         $lastYardHourId && $lastYardHourIds[$shift->user_id][$yard->id] == $lastYardHourId) {

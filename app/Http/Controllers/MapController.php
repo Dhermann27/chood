@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\YardCodes;
 use App\Models\Rotation;
+use App\Models\Yard;
+use App\Services\RotationSettings;
 use App\Traits\ChoodTrait;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -50,6 +53,12 @@ class MapController extends Controller
             'rotations' => Rotation::when(now()->isSunday(), function ($query) {
                 $query->where('is_sunday_hour', 1);
             })->orderBy('start_time')->get(),
+            'yards' => Yard::orderBy('display_order')->get(),
+            'yardPresets' => collect(YardCodes::cases())->map(fn ($case) => [
+                'value' => $case->value,
+                'label' => $case->label(),
+            ]),
+            'preset' => RotationSettings::get()->value,
         ]);
     }
 

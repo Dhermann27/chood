@@ -19,6 +19,7 @@
     },
     "dependencies": {
         "@awesome.me/kit-ed8e499057": "^1.0.22",
+        "@b4szymanski/vue3-timepicker": "^1.2.13",
         "@fortawesome/fontawesome-svg-core": "^6.7.1",
         "@fortawesome/vue-fontawesome": "^3.0.8",
         "puppeteer": "^23.9.0",

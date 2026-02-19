@@ -228,25 +228,25 @@ onUnmounted(() => {
                 <button
                     class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
                     @click="handleTaskClick('assignCabin')">
-                    <font-awesome-icon :icon="['fas', 'house-circle-check']" class="me-5"/>
+                    <FontAwesomeIcon :icon="$fa.fas['house-circle-check']" class="me-5"/>
                     Assigning a Cabin
                 </button>
                 <button
                     class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
                     @click="handleTaskClick('cleanCabin')">
-                    <font-awesome-icon :icon="['fas', 'broom']" class="me-5"/>
+                    <FontAwesomeIcon :icon="$fa.fas['broom']" class="me-5"/>
                     Cleaned a Cabin
                 </button>
                 <button
                     class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
                     @click="handleTaskClick('setLunch')">
-                    <font-awesome-icon :icon="['fas', 'turkey']" class="me-5"/>
+                    <FontAwesomeIcon :icon="$fa.fas['turkey']" class="me-5"/>
                     Set Lunch
                 </button>
                 <button
                     class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
                     @click="handleTaskClick('startBreak')">
-                    <font-awesome-icon :icon="['fas', 'alarm-clock']" class="me-5"/>
+                    <FontAwesomeIcon :icon="$fa.fas['alarm-clock']" class="me-5"/>
                     Rest Break
                 </button>
             </div>
@@ -371,17 +371,17 @@ onUnmounted(() => {
                     <div class="flex justify-between mb-4 text-3xl">
                         <button @click="handleFinishAction('Done')"
                             class="px-6 py-10 bg-meadow text-white rounded-md flex items-center space-x-2">
-                            <font-awesome-icon :icon="['fas', 'badge-check']"/>
+                            <FontAwesomeIcon :icon="$fa.fas['badge-check']"/>
                             <span>Done</span>
                         </button>
                         <button @click="handleFinishAction('Undo')"
                             class="px-6 py-10 bg-gray-500 text-white rounded-md flex items-center space-x-2">
-                            <font-awesome-icon :icon="['fas', 'rotate-left']"/>
+                            <FontAwesomeIcon :icon="$fa.fas['rotate-left']"/>
                             <span>Undo</span>
                         </button>
                         <button @click="handleFinishAction('More')"
                             class="px-6 py-10 bg-caregiver text-white rounded-md flex items-center space-x-2">
-                            <font-awesome-icon :icon="['fas', 'cowbell-circle-plus']"/>
+                            <FontAwesomeIcon :icon="$fa.fas['cowbell-circle-plus']"/>
                             <span>More</span>
                         </button>
                     </div>

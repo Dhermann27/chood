@@ -1,9 +1,9 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
 import {computed, onBeforeUnmount, onMounted, ref, watchEffect} from "vue";
-import {formatTime} from "@/utils.js";
 import DogCard from "@/Components/chood/DogCard.vue";
 import {ControlSchemes} from "@/controlSchemes.js";
+import {formatTime} from "@/utils.js";
 import Multiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.css';
 import VueTimepicker from 'vue3-timepicker';
@@ -13,6 +13,9 @@ const props = defineProps({
     dogsPerPage: Number,
     photoUri: String,
     rotations: Array,
+    yards: Array,
+    yardPresets: Array,
+    preset: String,
 });
 
 const controls = ref(ControlSchemes.NONE);
@@ -20,16 +23,28 @@ const inputRefs = ref({});
 const breaks = ref([]);
 const lunchDogs = ref([]);
 const medicatedDogs = ref([]);
+const selectedYardPreset = ref(props.preset);
 const employees = ref([]);
 const fohStaff = ref('');
 const assignments = ref({});
-const yards = ref([]);
+const headerYardIds = ref([]);
+const openYardIdsByRotation = ref({});
+const uiAssignments = ref({});
 const localChecksum = ref('');
 let refreshInterval;
 // const currentViewIndex = ref(0);
 const currentLoadingIndex = ref(0);
+
 const cardHeight = computed(() => Math.min(300, 800 / (lunchDogs.value.length + medicatedDogs.value.length)));
 const allDogs = computed(() => [...lunchDogs.value, ...medicatedDogs.value]);
+const employeesById = computed(() => {
+    const map = new Map();
+    for (const group of employees.value ?? []) {
+        for (const e of (group.employees ?? [])) map.set(String(e.homebase_user_id), e);
+    }
+    return map;
+});
+
 
 function setInputRef(key, el) {
     if (!inputRefs.value) inputRefs.value = {};
@@ -56,17 +71,86 @@ async function updateData() {
             medicatedDogs.value = response.data.medicatedDogs;
             employees.value = response.data.employees;
             fohStaff.value = response.data.fohStaff;
-            yards.value = response.data.yards;
+            selectedYardPreset.value = response.data.preset;
+            headerYardIds.value = response.data.headerYards;
+            openYardIdsByRotation.value = response.data.openYardsByRotation;
             localChecksum.value = response.data.checksum;
             currentLoadingIndex.value = 0;
             // } else if (dogs.value.length > props.dogsPerPage) {
             //     const maxChunks = Math.ceil(dogs.value.length / props.dogsPerPage);
             //     currentViewIndex.value = (currentViewIndex.value + 1) % maxChunks;
+
+            hydrateUiAssignments();
         }
 
     } catch (error) {
         console.error('Error fetching data:', error);
     }
+}
+
+const showOverwriteModal = ref(false);
+const pendingYardPreset = ref(null);
+const isSavingPreset = ref(false);
+
+function onYardPresetChange(e) {
+    pendingYardPreset.value = e.target.value;
+    showOverwriteModal.value = true;
+    e.target.value = selectedYardPreset.value;
+}
+
+function cancelOverwrite() {
+    pendingYardPreset.value = null;
+    showOverwriteModal.value = false;
+}
+
+async function applyPreset(overwrite) {
+    if (!pendingYardPreset.value || isSavingPreset.value) return;
+
+    isSavingPreset.value = true;
+    try {
+        const preset = pendingYardPreset.value;
+        await axios.post('/api/mealmap/markActive', {preset, overwrite});
+
+        selectedYardPreset.value = preset;
+        pendingYardPreset.value = null;
+        showOverwriteModal.value = false;
+    } finally {
+        isSavingPreset.value = false;
+    }
+}
+
+function hydrateUiAssignments() {
+    const out = {};
+
+    for (const rotation of props.rotations ?? []) {
+        const r = String(rotation.id);
+        out[r] = {};
+
+        for (const yardId of headerYardIds.value ?? []) {
+            const y = String(yardId);
+
+            if (!isYardOpen(rotation.id, yardId)) {
+                out[r][y] = null;
+                continue;
+            }
+
+            const s = assignments.value?.[r]?.[y] ?? null;
+            const userId = s?.homebase_user_id ? String(s.homebase_user_id) : null;
+
+            out[r][y] = userId ? (employeesById.value.get(userId) ?? null) : null;
+        }
+    }
+
+    uiAssignments.value = out;
+}
+
+function isYardOpen(rotationId, yardId) {
+    const ids = openYardIdsByRotation.value?.[String(rotationId)] ?? [];
+    return ids.includes(Number(yardId));
+}
+
+function slot(rotationId, yardId) {
+    return assignments.value?.[String(rotationId)]?.[String(yardId)] ?? null;
 }
 
 // const isVisible = (index) => {
@@ -101,14 +185,13 @@ function matchEmployeeInGroups(employee) {
 function matchByHour() {
     for (const rotationId in assignments.value) {
         for (const yardId in assignments.value[rotationId]) {
-            assignments.value[rotationId][yardId] = (assignments.value[rotationId][yardId] || []).map(employee => {
-                if (!employee || !employee.homebase_user_id) return employee;
-                return matchEmployeeInGroups(employee) ?? employee;
-            });
+            const slot = assignments.value?.[rotationId]?.[yardId] ?? null;
+            if (!slot || !slot.homebase_user_id) continue;
+
+            assignments.value[rotationId][yardId] = matchEmployeeInGroups(slot) ?? slot;
         }
     }
 }
-
 
 watchEffect(() => {
     if (employees.value && Object.keys(assignments.value).length) matchByHour();
@@ -116,29 +199,33 @@ watchEffect(() => {
 
 const handleYardChange = async (rotationId, yardId) => {
     const select = inputRefs.value[`multiselect-${rotationId}-${yardId}`];
+    const r = String(rotationId);
+    const y = String(yardId);
+    const selected = uiAssignments.value?.[r]?.[y] ?? null;
 
-    if (!Array.isArray(assignments.value[rotationId]?.[yardId])) {
-        assignments.value[rotationId][yardId] = assignments.value[rotationId][yardId]
-            ? [assignments.value[rotationId][yardId]] : [];
-    }
+    if (!assignments.value[r]) assignments.value[r] = {};
+    assignments.value[r][y] = selected ? {
+        homebase_user_id: selected.homebase_user_id,
+        first_name: selected.first_name
+    } : null;
 
     try {
-        select.style.backgroundColor = 'gray';
+        if (select) select.style.backgroundColor = 'gray';
 
         await axios.post('/api/mealmap/yard', {
-            rotation_id: rotationId,
-            yard_id: yardId,
-            homebase_user_id: assignments.value[rotationId][yardId].map(e => e.homebase_user_id),
+            rotation_id: Number(rotationId),
+            yard_id: Number(yardId),
+            homebase_user_id: selected ? selected.homebase_user_id : null,
         });
 
-        select.style.backgroundColor = 'green';
+        if (select) select.style.backgroundColor = 'green';
     } catch (error) {
         console.log('Error handling Yard Change', error);
-        select.style.backgroundColor = 'red';
+        if (select) select.style.backgroundColor = 'red';
     }
 
     setTimeout(() => {
-        select.style.backgroundColor = '';
+        if (select) select.style.backgroundColor = '';
     }, 5000);
 };
 
@@ -183,7 +270,7 @@ onBeforeUnmount(() => {
     <Head title="Mealmap"/>
     <div class="h-full w-full flex flex-col items-center justify-center">
         <div class="w-full grid grid-cols-2 print:grid-cols-1 gap-4 h-full">
-            <div class="flex flex-col ps-3 items-center divider pt-10 print:hidden">
+            <div class="flex flex-col ps-3 items-center divider pt-5 print:hidden">
                 <div class="text-3xl font-header mb-2">Medications</div>
                 <div class="grid grid-cols-1 w-full">
                     <div v-for="(dog, index) in medicatedDogs" :key="index" class="flex border-b-2 even:bg-gray-200">
@@ -195,16 +282,16 @@ onBeforeUnmount(() => {
                         <div class="flex-grow flex flex-col items-start justify-center p-1 text-xl">
                             <div v-for="medication in dog.medications" :key="medication.id"
                                  class="flex-col justify-center">
-                                <font-awesome-icon v-if="medication.type_id !== 15"
-                                                   :icon="['fas', 'prescription-bottle-pill']" class="me-1"/>
-                                <font-awesome-icon v-else :icon="['fas', 'note-medical']" class="me-1"/>
+                                <FontAwesomeIcon v-if="medication.type_id !== 15"
+                                                 :icon="$fa.fas['prescription-bottle-pill']" class="me-1"/>
+                                <FontAwesomeIcon v-else :icon="$fa.fas['note-medical']" class="me-1"/>
                                 {{ medication.type.trim() }}
                                 <span v-if="medication.type && medication.description">:&nbsp;</span>
                                 {{ medication.description.trim() }}
                             </div>
                             <div v-for="allergy in dog.allergies" :key="allergy.id"
                                  class="flex-col justify-center text-crimson">
-                                <font-awesome-icon :icon="['fas', 'hand-dots']" class="me-1"/>
+                                <FontAwesomeIcon :icon="$fa.fas['hand-dots']" class="me-1"/>
                                 ALLERGY: {{ allergy.description.trim() }}
                             </div>
                         </div>
@@ -220,14 +307,28 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="flex-grow flex items-center gap-3 p-1 text-xl min-w-0">
-                            <font-awesome-icon :icon="['fas','turkey']" class="flex-shrink-0 me-1"/>
+                            <FontAwesomeIcon :icon="$fa.fas['turkey']" class="flex-shrink-0 me-1"/>
                             {{ dog.lunch_notes }}
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="flex flex-col items-center pt-10 print:flex">
+            <div class="flex flex-col items-center pt-5 print:flex relative">
+                <div class="absolute top-5 right-10">
+                    <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
+                        {{ yards.filter(e => e.id >= 1000).map(e => e.name).join(', ') }}
+                    </div>
+                    <select
+                        v-if="controls !== ControlSchemes.NONE"
+                        class="print:hidden text-sm rounded-md border border-gray-300 bg-white px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        v-model="selectedYardPreset" @change="onYardPresetChange($event)">
+                        <option v-for="preset in props.yardPresets" :key="preset.value" :value="preset.value">
+                            {{ preset.label }}
+                        </option>
+                    </select>
+                </div>
+
                 <div class="text-3xl font-header mb-2">Daily Rotation</div>
                 <div v-if="fohStaff" class="text-base mb-2">{{ fohStaff }}</div>
 
@@ -235,30 +336,36 @@ onBeforeUnmount(() => {
                     <thead>
                     <tr>
                         <th>&nbsp;</th>
-                        <th class="font-subheader uppercase" v-for="yard in yards" :key="yard.id">{{
-                                yard.name
-                            }}
+                        <th class="font-subheader uppercase" v-for="yardId in headerYardIds" :key="yardId">
+                            {{ (props.yards ?? []).find(y => y.id === Number(yardId))?.name ?? yardId }}
                         </th>
                     </tr>
                     </thead>
+
                     <tbody>
                     <tr v-for="rotation in props.rotations" :key="rotation.id">
                         <td class="border border-DEFAULT px-4 py-2">{{ rotation.label }}</td>
-                        <td v-for="yard in yards" :key="yard.id" class="border border-DEFAULT px-4 py-2"
-                            :ref="el => setInputRef(`multiselect-${rotation.id}-${yard.id}`, el)">
+
+                        <td v-for="yardId in headerYardIds" :key="yardId" class="border border-DEFAULT px-4 py-2">
+
                             <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
-                                {{ (assignments[rotation.id]?.[yard.id] || []).map(e => e.first_name).join(', ') }}
+                              <span v-if="slot(rotation.id, yardId)">
+                                {{ slot(rotation.id, yardId).first_name }}
+                              </span>
                             </div>
-                            <multiselect v-if="controls !== ControlSchemes.NONE" class="print-hide"
-                                         :key="`multiselect-${rotation.id}-${yard.id}`"
-                                         :id="`multiselect-${rotation.id}-${yard.id}`"
-                                         v-model="assignments[rotation.id][yard.id]" :options="employees"
-                                         group-label="status" group-values="employees" :group-select="true"
-                                         label="first_name" track-by="homebase_user_id" :searchable="true"
-                                         :clearable="true" placeholder="Unassigned"
-                                         @select="() => handleYardChange(rotation.id, yard.id)"
-                                         @remove="() => handleYardChange(rotation.id, yard.id)">
-                            </multiselect>
+
+                            <!-- editor -->
+                            <multiselect
+                                v-if="controls !== ControlSchemes.NONE"
+                                class="print-hide"
+                                :key="`multiselect-${rotation.id}-${yardId}`"
+                                :id="`multiselect-${rotation.id}-${yardId}`"
+                                v-model="uiAssignments[rotation.id][yardId]" :options="employees"
+                                group-label="status" group-values="employees" :group-select="true"
+                                label="first_name" track-by="homebase_user_id" :searchable="true"
+                                :clearable="true" placeholder="Unassigned"
+                                @select="() => handleYardChange(rotation.id, yardId)"
+                                @remove="() => handleYardChange(rotation.id, yardId)"/>
                         </td>
                     </tr>
                     </tbody>
@@ -323,6 +430,31 @@ onBeforeUnmount(() => {
                     </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+    <div v-if="showOverwriteModal" class="fixed inset-0 z-50 flex items-center justify-center print:hidden">
+        <!-- backdrop -->
+        <div class="absolute inset-0 bg-black/50" @click="cancelOverwrite"></div>
+
+        <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-700" @click="cancelOverwrite">
+                <FontAwesomeIcon :icon="$fa.fas['xmark']" class="text-xl"/>
+            </button>
+            <div class="text-lg font-semibold mb-2">Recalculate?</div>
+            <div class="text-sm text-gray-600 mb-6">
+                Do you want to recalculate all assignments, overwriting any changes you have made, or leave new slots
+                unassigned?
+            </div>
+            <div class="flex justify-end gap-3">
+                <button class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50"
+                        @click="applyPreset(true)">
+                    Recalculate, lose changes
+                </button>
+                <button class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-red-700"
+                        @click="applyPreset(false)">
+                    Keep existing assignments, add manually
+                </button>
             </div>
         </div>
     </div>

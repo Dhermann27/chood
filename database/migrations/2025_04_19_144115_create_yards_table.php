@@ -13,7 +13,6 @@ return new class extends Migration {
     {
         Schema::create('yards', function (Blueprint $table) {
             $table->id();
-            $table->tinyInteger('is_active')->default(0);
             $table->string('name');
             $table->integer('display_order')->default(0);
         });

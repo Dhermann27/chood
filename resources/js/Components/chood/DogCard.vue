@@ -230,7 +230,7 @@ onUnmounted(() => {
                 <div v-for="(iconData, index) in currentDog.left_icons" :key="index"
                      class="relative flex items-center justify-center mt-2"
                      :style="{ height: props.cardHeight * .12 + 'px' }">
-                    <font-awesome-icon :icon="['fas', iconData.icon]" class="text-white icon-with-outline"
+                    <FontAwesomeIcon :icon="$fa.fas[iconData.icon]" class="text-white icon-with-outline"
                                        :style="{ fontSize: props.cardHeight * .12 + 'px' }"/>
                     <span v-if="iconData.text"
                           class="absolute inset-0 flex items-center justify-center font-bold pointer-events-none"
@@ -244,7 +244,7 @@ onUnmounted(() => {
                 <div v-for="(iconData, index) in currentDog.right_icons" :key="index"
                      class="relative flex items-center justify-center mt-2"
                      :style="{ height: props.cardHeight * .12 + 'px' }">
-                    <font-awesome-icon :icon="['fas', iconData.icon]" class="text-white icon-with-outline"
+                    <FontAwesomeIcon :icon="$fa.fas[iconData.icon]" class="text-white icon-with-outline"
                                        :style="{ fontSize: props.cardHeight * .12 + 'px' }"/>
                     <span v-if="iconData.text"
                           class="absolute inset-0 flex items-center justify-center font-bold pointer-events-none"

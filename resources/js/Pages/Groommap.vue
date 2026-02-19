@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
-import {formatTime, getYardGridStyle} from "@/utils.js";
+import {getYardGridStyle} from "@/utils.js";
 
 const props = defineProps({
     photoUri: String
@@ -121,7 +121,7 @@ onBeforeUnmount(() => {
                         <ol v-if="appointment.service.category === 'Bath'" class="mt-3 list-none text-gray-800">
                             <li v-for="step in getBathServiceSteps(appointment)" :key="step.text"
                                 class="flex items-center gap-2">
-                                <font-awesome-icon :icon="['fas', step.icon]" class="text-2xl" fixed-width/>
+                                <FontAwesomeIcon :icon="$fa.fas[step.icon]" class="text-2xl" fixed-width/>
                                 <span>{{ step.text }}</span>
                             </li>
                         </ol>

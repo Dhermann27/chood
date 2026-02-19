@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\YardCodes;
+use App\Jobs\Homebase\GoFetchShiftsJob;
 use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\Employee;
 use App\Models\EmployeeYardRotation;
 use App\Models\Feeding;
+use App\Models\Rotation;
 use App\Models\RotationYardView;
 use App\Models\Shift;
-use App\Models\Yard;
+use App\Services\RotationSettings;
 use App\Traits\ChoodTrait;
 use Carbon\Carbon;
 use Exception;
@@ -45,15 +48,26 @@ class DataController extends Controller
 
     function mealmap(string $checksum = null): JsonResponse
     {
-        $yards = Yard::where('is_active', '1')->orderBy('display_order')->get();
+        $preset = RotationSettings::get();
 
-        $assignments = RotationYardView::orderBy('rotation_id')->orderBy('display_order')->get()
-            ->groupBy('rotation_id')->map(function ($rotationGroup) {
-                return $rotationGroup->groupBy('yard_id')->map(function ($yardGroup) {
-                    return $yardGroup->pluck('homebase_user_id')->filter()
-                        ->map(fn($id) => ['homebase_user_id' => $id])->values();
-                });
-            });
+        $rotations = Rotation::query()
+            ->when(now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))
+            ->orderBy('start_time')->get(['id', 'is_midday']);
+
+        $openByRotation = $rotations->mapWithKeys(function ($r) use ($preset) {
+            $allowed = $preset->allowedYards((bool)$r->is_midday);
+            $allowed[] = 999;
+            return [$r->id => array_values(array_unique($allowed))];
+        });
+
+        $headerYardIds = $openByRotation->flatten()->unique()->values();
+
+        $assignments = RotationYardView::query()->get(['rotation_id', 'yard_id', 'homebase_user_id', 'first_name'])
+            ->groupBy('rotation_id')->map(fn($group) => $group->mapWithKeys(fn($row) => [
+                $row->yard_id => $row->homebase_user_id ?
+                    ['homebase_user_id' => $row->homebase_user_id, 'first_name' => $row->first_name,] : null,
+            ]));
+
 
         $breaks = Shift::where('role', 'Camp Counselor')->orWhere('role', 'Shift Supervisor')
             ->with('employee')->get()->map(function ($shift) {
@@ -114,7 +128,9 @@ class DataController extends Controller
             });
             return $dogData->toArray();
         });
-        $new_checksum = md5(json_encode($assignments) . $breaks . json_encode($groupedEmployees) . json_encode($lunchDogs). $md5Dogs);
+        $new_checksum = md5(json_encode($assignments) . json_encode($breaks) . json_encode($groupedEmployees)
+            . json_encode($lunchDogs) . $md5Dogs . $preset->value . json_encode($headerYardIds)
+            . json_encode($openByRotation));
         if ($checksum !== $new_checksum) {
             $response = [
                 'assignments' => $assignments,
@@ -123,7 +139,9 @@ class DataController extends Controller
                 'medicatedDogs' => $medicatedDogs,
                 'employees' => $groupedEmployees,
                 'fohStaff' => Cache::get('foh_staff'),
-                'yards' => $yards,
+                'preset' => $preset->value,
+                'headerYards' => $headerYardIds,
+                'openYardsByRotation' => $openByRotation,
                 'checksum' => $new_checksum,
             ];
 
@@ -131,6 +149,37 @@ class DataController extends Controller
         }
         return Response::json(false);
 
+    }
+
+    function markActiveYards(Request $request): JsonResponse
+    {
+        try {
+            $validatedData = $request->validate([
+                'preset' => 'required|string|in:default,three-two,three,four-two,four-three,four',
+                'overwrite' => 'required|boolean'
+            ]);
+
+            RotationSettings::put(YardCodes::from($validatedData['preset']));
+
+            if ($validatedData['overwrite']) {
+                GoFetchShiftsJob::dispatchSync();
+            }
+
+            return response()->json([
+                'message' => 'Noice.',
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'errors' => $e->errors(),
+                'message' => 'There was a validation error.',
+            ], 422);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while creating the assignment.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     function assignYard(Request $request): JsonResponse
