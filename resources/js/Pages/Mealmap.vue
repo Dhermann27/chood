@@ -24,6 +24,7 @@ const breaks = ref([]);
 const lunchDogs = ref([]);
 const medicatedDogs = ref([]);
 const selectedYardPreset = ref(props.preset);
+const isUpdatingPreset = ref(false);
 const employees = ref([]);
 const fohStaff = ref('');
 const assignments = ref({});
@@ -104,18 +105,18 @@ function cancelOverwrite() {
 }
 
 async function applyPreset(overwrite) {
-    if (!pendingYardPreset.value || isSavingPreset.value) return;
+    isUpdatingPreset.value = true;
+    showOverwriteModal.value = false;
 
-    isSavingPreset.value = true;
     try {
         const preset = pendingYardPreset.value;
         await axios.post('/api/mealmap/markActive', {preset, overwrite});
 
-        selectedYardPreset.value = preset;
-        pendingYardPreset.value = null;
-        showOverwriteModal.value = false;
+        selectedYardPreset.value = pendingYardPreset.value;
+        await updateData();
     } finally {
-        isSavingPreset.value = false;
+        isUpdatingPreset.value = false;
+        pendingYardPreset.value = null;
     }
 }
 
@@ -320,7 +321,7 @@ onBeforeUnmount(() => {
                         {{ yards.filter(e => e.id >= 1000).map(e => e.name).join(', ') }}
                     </div>
                     <select
-                        v-if="controls !== ControlSchemes.NONE"
+                        v-if="controls !== ControlSchemes.NONE" :disabled="isUpdatingPreset"
                         class="print:hidden text-sm rounded-md border border-gray-300 bg-white px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         v-model="selectedYardPreset" @change="onYardPresetChange($event)">
                         <option v-for="preset in props.yardPresets" :key="preset.value" :value="preset.value">

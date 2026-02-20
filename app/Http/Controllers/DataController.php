@@ -20,7 +20,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Validation\ValidationException;
 
@@ -182,60 +181,46 @@ class DataController extends Controller
         }
     }
 
-    function assignYard(Request $request): JsonResponse
+    public function assignYard(Request $request): JsonResponse
     {
-        try {
-            $validatedData = $request->validate([
-                'rotation_id' => 'required|exists:rotations,id',
-                'yard_id' => 'required|exists:yards,id',
-                'homebase_user_id' => 'array',
-                'homebase_user_id.*' => 'nullable|exists:employees,homebase_user_id',
-            ]);
+        $validated = $request->validate([
+            'rotation_id' => ['required', 'exists:rotations,id'],
+            'yard_id' => ['required', 'exists:yards,id'],
+            'homebase_user_id' => ['nullable', 'exists:employees,homebase_user_id'],
+        ]);
 
-            $homebaseUserIds = $validatedData['homebase_user_id'] ?? [];
+        $rotationId = $validated['rotation_id'];
+        $yardId = $validated['yard_id'];
+        $homebaseUserId = $validated['homebase_user_id'] ?? null;
 
-            if (!empty($homebaseUserIds)) {
-                EmployeeYardRotation::where('rotation_id', $validatedData['rotation_id'])
-                    ->whereNot('yard_id', $validatedData['yard_id'])
-                    ->whereIn('homebase_user_id', $homebaseUserIds)->delete();
+        // Unassign
+        if ($homebaseUserId === null) {
+            EmployeeYardRotation::where('rotation_id', $rotationId)
+                ->where('yard_id', $yardId)
+                ->delete();
 
-                EmployeeYardRotation::where('rotation_id', $validatedData['rotation_id'])
-                    ->where('yard_id', $validatedData['yard_id'])
-                    ->whereNotIn('homebase_user_id', $homebaseUserIds)->delete();
-
-                $rows = collect($homebaseUserIds)->map(function ($userId) use ($validatedData) {
-                    return [
-                        'rotation_id' => $validatedData['rotation_id'],
-                        'yard_id' => $validatedData['yard_id'],
-                        'homebase_user_id' => $userId,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                })->toArray();
-                DB::table('employee_yard_rotations')->insertOrIgnore($rows);
-            } else {
-                EmployeeYardRotation::where('rotation_id', $validatedData['rotation_id'])
-                    ->where('yard_id', $validatedData['yard_id'])->delete();
-            }
-
-
-            return response()->json([
-                'message' => 'Joy.',
-            ], 200);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'errors' => $e->errors(),
-                'message' => 'There was a validation error.',
-            ], 422);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'message' => 'An error occurred while creating the assignment.',
-                'error' => $e->getMessage(),
-            ], 500);
+            return response()->json(['message' => 'Joy.'], 200);
         }
-    }
 
+        // Ensure employee is not assigned to a different yard this hour
+        EmployeeYardRotation::where('rotation_id', $rotationId)
+            ->where('homebase_user_id', $homebaseUserId)
+            ->where('yard_id', '!=', $yardId)
+            ->delete();
+
+        // Set (replace whatever is currently in this slot)
+        EmployeeYardRotation::where('rotation_id', $rotationId)
+            ->where('yard_id', $yardId)
+            ->delete();
+
+        EmployeeYardRotation::create([
+            'rotation_id' => $rotationId,
+            'yard_id' => $yardId,
+            'homebase_user_id' => $homebaseUserId,
+        ]);
+
+        return response()->json(['message' => 'Joy.'], 200);
+    }
 
     function assignBreak(Request $request): JsonResponse
     {
