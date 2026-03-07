@@ -44,12 +44,27 @@ export async function fetchMapData(uri, checksum) {
     return false;
 }
 
-
-export function getYardGridStyle(rows, columns) {
+export function getYardGridStyle(rows, columns, includeFooter = true) {
     return {
         display: 'grid',
         gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr) 100px`,
+        gridTemplateRows: includeFooter ? `repeat(${rows}, 1fr) 100px` : `repeat(${rows}, 1fr)`,
         gap: '10px',
     };
+}
+
+export function getBannerStyle(currentDog, breakTimeLeft) {
+    if (breakTimeLeft?.expired) {
+        return { label: 'Return to Yard', class: 'bg-alerted' };
+    }
+    if (currentDog?.is_boarding) {
+        return { label: 'Sleepover', class: 'bg-caregiver' };
+    }
+    if (currentDog?.is_daycare) {
+        return { label: 'Daycamper', class: 'bg-meadow' };
+    }
+    if (currentDog?.is_interview) {
+        return { label: 'Orientation', class: 'bg-crimson' };
+    }
+    return { label: 'Grooming/Training Only', class: 'bg-greyhound' };
 }

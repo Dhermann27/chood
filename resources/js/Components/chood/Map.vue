@@ -186,7 +186,7 @@ const cabinStyle = (cabin) => {
         width: props.cardWidth + 'px',
         height: (props.cardHeight * cabin.rowspan) + 'px',
         transition: 'background-color 0.3s ease',
-        cursor: props.controls !== ControlSchemes.NONE && props.statuses?.[cabin.id] ? 'pointer' : 'auto',
+        cursor: props.controls !== ControlSchemes.NONE ? 'pointer' : 'auto',
     };
 };
 

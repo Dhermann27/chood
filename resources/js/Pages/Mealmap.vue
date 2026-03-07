@@ -45,6 +45,11 @@ const employeesById = computed(() => {
     }
     return map;
 });
+const openYards = computed(() => {
+    const ids = (headerYardIds.value ?? []).map(Number);
+    if (!ids.length) return [];
+    return (props.yards ?? []).filter(e => ids.includes(Number(e.id)));
+});
 
 
 function setInputRef(key, el) {
@@ -83,7 +88,6 @@ async function updateData() {
 
             hydrateUiAssignments();
         }
-
     } catch (error) {
         console.error('Error fetching data:', error);
     }
@@ -318,7 +322,7 @@ onBeforeUnmount(() => {
             <div class="flex flex-col items-center pt-5 print:flex relative">
                 <div class="absolute top-5 right-10">
                     <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
-                        {{ yards.filter(e => e.id >= 1000).map(e => e.name).join(', ') }}
+                        Yards: {{ openYards.filter(y => Number(y.id) >= 1000).map(y => y.name).join(', ') }}
                     </div>
                     <select
                         v-if="controls !== ControlSchemes.NONE" :disabled="isUpdatingPreset"

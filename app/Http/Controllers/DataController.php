@@ -54,7 +54,7 @@ class DataController extends Controller
             ->orderBy('start_time')->get(['id', 'is_midday']);
 
         $openByRotation = $rotations->mapWithKeys(function ($r) use ($preset) {
-            $allowed = $preset->allowedYards((bool)$r->is_midday);
+            $allowed = $preset->allowedYards(false); // (bool)$r->is_midday); Display all assignments
             $allowed[] = 999;
             return [$r->id => array_values(array_unique($allowed))];
         });
@@ -262,9 +262,18 @@ class DataController extends Controller
     function yardmap(string $size, string $checksum = null): JsonResponse
     {
         $now = Carbon::now();
+        $hour = $now->hour;
+
+        $preset = RotationSettings::get();
+        $isMidday = $hour >= 11 && $hour < 13;
+
         $dogs = $this->getDogs(false, $size);
+        $groupBy = count($preset->allowedYards($isMidday)) > 2 ? 'yard_id' : fn ($dog) => 'all';
+        $dogsByGroup = $dogs->values()->groupBy($groupBy);
+
         $assignments = EmployeeYardRotation::join('rotations', 'employee_yard_rotations.rotation_id', '=', 'rotations.id')
             ->join('yards', 'employee_yard_rotations.yard_id', '=', 'yards.id')
+            ->whereIn('yards.id', $preset->allowedYards($isMidday))
             ->whereTime('rotations.start_time', '<=', $now)
             ->whereTime('rotations.end_time', '>=', $now)
             ->orderBy('yards.display_order')->with('employee', 'rotation', 'yard')->get();
@@ -309,7 +318,7 @@ class DataController extends Controller
             json_encode($nextLunch));
         if ($checksum !== $new_checksum) {
             $response = [
-                'dogs' => $dogs,
+                'dogs' => $dogsByGroup,
                 'assignments' => $assignments,
                 'nextBreak' => $nextBreak,
                 'nextLunch' => $nextLunch,

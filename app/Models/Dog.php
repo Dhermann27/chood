@@ -14,8 +14,9 @@ class Dog extends Model
     use HasFactory;
 
     protected $fillable = ['booking_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'gender', 'photoUri',
-        'nickname', 'weight', 'cabin_id', 'housing_code', 'checkin', 'checkout',
-        'rest_starts_at', 'rest_duration_minutes'];
+        'nickname', 'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout',
+        'rest_starts_at', 'rest_duration_minutes'
+    ];
 
     protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s'];
 
@@ -97,7 +98,7 @@ class Dog extends Model
     {
         return $this->hasMany(Feeding::class, 'pet_id', 'pet_id');
     }
-    
+
     public function medications(): HasMany
     {
         return $this->hasMany(Medication::class, 'pet_id', 'pet_id');

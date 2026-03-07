@@ -37,9 +37,11 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
         $payload = $fetchDataService->createPayload($report);
         $reportData = $report->data ?? [];
 
-        $this->processGroup($fetchDataService, $payload, $reportData, 'deposits', ['paymentType', 'qty', 'total']);
-        if (!empty($reportData['deposits']['Cash'])) {
-            $reportData['cash'] = $this->processCashDeposits($fetchDataService, $report);
+        $this->processGroup($fetchDataService, $payload, $reportData, 'deposits', ['cardType', 'qty', 'total']);
+
+        if (!empty(array_filter(array_keys($reportData['deposits'] ?? []),
+            fn($key) => !str_contains($key, 'Transafe')))) {
+            $reportData['cash'] = $this->processCashDeposits($fetchDataService, $payload);
         }
 
         $this->saveAndSleep($report, $reportData);
@@ -104,33 +106,32 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
 
     /**
      * @param FetchDataService $service
-     * @param Report $report
+     * @param array $payload
      * @return array
      * @throws Exception
      */
-    private function processCashDeposits(FetchDataService $service, Report $report): array
+    private function processCashDeposits(FetchDataService $service, array $payload): array
     {
         $data = [];
 
-            $payload = $service->createConstrainedPayload($report, 'paymentTypeId', 'eq', '1');
+        $output = $service->fetchData(config('services.dd.uris.reports.depositDetails'), $payload)->getData(true);
 
-            $output = $service->fetchData(config('services.dd.uris.reports.depositDetails'), $payload)->getData(true);
+        $columns = array_flip(array_column($output['data'][0]['columns'], 'filterKey'));
+        $rows = $output['data'][0]['rows'] ?? [];
 
-            $columns = array_flip(array_column($output['data'][0]['columns'], 'filterKey'));
-            $rows = $output['data'][0]['rows'] ?? [];
+        foreach ($rows as $row) {
+            $orderId = $row[$columns['orderId']] ?? null;
+            if (!$orderId) continue;
 
-            foreach ($rows as $row) {
-                $orderId = $row[$columns['orderId']] ?? null;
-                if (!$orderId) continue;
-
-                $data[$orderId] = [
-                    'date' => substr($row[$columns['paymentDate']] ?? '', 0, 10),
-                    'firstName' => $row[$columns['firstName']] ?? null,
-                    'lastName' => $row[$columns['lastName']] ?? null,
-                    'items' => $row[$columns['items']] ?? null,
-                    'amount' => $row[$columns['amount']] ?? null,
-                ];
-            }
+            $data[$orderId] = [
+                'date' => substr($row[$columns['paymentDate']] ?? '', 0, 10),
+                'paymentType' => $row[$columns['paymentType']] ?? null,
+                'firstName' => $row[$columns['firstName']] ?? null,
+                'lastName' => $row[$columns['lastName']] ?? null,
+                'items' => $row[$columns['items']] ?? null,
+                'amount' => $row[$columns['amount']] ?? null,
+            ];
+        }
 
         return $data;
     }

@@ -1,6 +1,6 @@
 <script setup>
 import {computed, nextTick, onUnmounted, ref, watch} from "vue";
-import {getFittedFontSize} from "@/utils.js";
+import {getBannerStyle, getFittedFontSize} from "@/utils.js";
 import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
 
 const props = defineProps({
@@ -27,7 +27,12 @@ const setIconRef = (index, dir) => (el) => {
     if (el) iconRefs.value[`chood${dir}Icon${index}`] = el;
 };
 const intervals = [null, null]; // [rotationInterval, timerInterval]
+
 const emit = defineEmits(['imageLoaded']);
+
+const bannerStyle = computed(() =>
+    getBannerStyle(currentDog.value, breakTimeLeft.value)
+);
 
 const getTimeColor = (iconData) => {
     const now = new Date();
@@ -63,23 +68,6 @@ const breakTimeLeft = computed(() => {
         };
     }
 });
-
-const bannerStyle = computed(() => {
-    if (breakTimeLeft.value?.expired) {
-        return {label: 'Return to Yard', class: 'bg-alerted'};
-    }
-    if (currentDog.value?.is_boarding) {
-        return {label: 'Sleepover', class: 'bg-caregiver'};
-    }
-    if (currentDog.value?.is_daycare) {
-        return {label: 'Daycamper', class: 'bg-meadow'};
-    }
-    if (currentDog.value?.is_interview) {
-        return {label: 'Orientation', class: 'bg-crimson'};
-    }
-    return {label: 'Grooming/Training Only', class: 'bg-greyhound'};
-});
-
 
 const preloadImage = (dog) => {
     return new Promise((resolve) => {

@@ -39,7 +39,7 @@ class MapController extends Controller
 
     public function yardmap($size): Response
     {
-        return Inertia::render('Yardmap', [
+        return Inertia::render('Yardmap/Yardmap', [
             'size' => $size,
             'photoUri' => config('services.dd.uris.photo'),
         ]);

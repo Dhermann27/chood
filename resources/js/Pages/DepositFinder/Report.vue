@@ -88,7 +88,10 @@ function pollResults(reportId) {
                 const response = await axios.get('/depositfinder/results/' + reportId);
 
                 results.value = response.data.data;
-                if ('accrual_services' in results.value) clearInterval(pollInterval);
+                if ('accrual_services' in results.value) {
+                    started.value = false;
+                    clearInterval(pollInterval);
+                }
 
             } catch (error) {
                 errorMessage.value = error.response?.data?.output || 'Error fetching results';
@@ -237,7 +240,7 @@ const copyFullReport = async (e) => {
                  class="w-2/3 max-w-full min-w-0 mt-8 p-8 bg-white shadow-md rounded-lg">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-xl font-subheader uppercase">Date: {{ results?.report_date ?? date }}</h3>
-                    <button id="copy-report-button" @click="copyFullReport($event)"
+                    <button id="copy-report-button" @click="copyFullReport($event)" :disabled="started"
                             class="w-1/3 px-4 py-2 bg-caregiver text-white text-sm rounded shadow">
                         Copy Report to Clipboard
                     </button>
@@ -473,11 +476,12 @@ const copyFullReport = async (e) => {
                    class="min-w-full table-auto bg-white rounded-lg mt-10">
                 <thead>
                 <tr class="bg-greyhound">
-                    <td colspan="6" class="text-lg text-white font-subheader uppercase">Cash Transactions</td>
+                    <td colspan="6" class="text-lg text-white font-subheader uppercase">Other Transactions</td>
                 </tr>
                 <tr class="bg-greyhound border-b text-sm text-white font-subheader uppercase whitespace-nowrap">
                     <th class="px-4 py-2 text-center">Order Id</th>
                     <th class="px-4 py-2">Date</th>
+                    <th class="px-4 py-2">Type</th>
                     <th class="px-4 py-2">First</th>
                     <th class="px-4 py-2">Last</th>
                     <th class="px-4 py-2">Items</th>
@@ -489,6 +493,7 @@ const copyFullReport = async (e) => {
                     class="border-b">
                     <td>{{ orderId }}</td>
                     <td>{{ data.date?.substring(5) }}</td>
+                    <td>{{ data.paymentType }}</td>
                     <td>{{ data.firstName }}</td>
                     <td>{{ data.lastName }}</td>
                     <td>{{ data.items }}</td>

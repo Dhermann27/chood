@@ -7,15 +7,19 @@ use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\Employee;
 use App\Models\Feeding;
+use App\Models\Yard;
+use App\Services\RotationSettings;
 use App\Traits\ChoodTrait;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Throwable;
 
 class TaskController extends Controller
 {
@@ -33,6 +37,8 @@ class TaskController extends Controller
     function getData(string $checksum = null): JsonResponse
     {
         $dogs = $this->getDogs();
+        $yards = Yard::whereIn('id', RotationSettings::get()->allowedYards(false))
+            ->orderBy('display_order')->get();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
         $employees = Employee::whereHas('shifts', function ($query) {
             $query->where('is_working', true);
@@ -41,6 +47,7 @@ class TaskController extends Controller
         if ($checksum !== $new_checksum) {
             $response = [
                 'dogs' => $dogs,
+                'openYards' => $yards,
                 'statuses' => $statuses,
                 'employees' => $employees,
                 'checksum' => $new_checksum,
@@ -56,20 +63,25 @@ class TaskController extends Controller
         try {
             $validatedData = $request->validate([
                 'homebase_user_id' => 'required|exists:employees,homebase_user_id',
-                'cabin_id' => 'required|exists:cabins,id'
+                'cabin_id' => 'required|exists:cabins,id',
+                'is_cleaned' => 'required|boolean',
             ]);
-            $cleaningStatus = CleaningStatus::where('cabin_id', $validatedData['cabin_id'])->firstOrFail();
-            if ($cleaningStatus->cleaning_type == CleaningStatus::STATUS_DEEP && Carbon::today()->isSunday()) {
-                $cleaningStatus->delete();
+            $isClean = $validatedData['is_cleaned'];
+
+            $cleaningStatus = CleaningStatus::firstOrNew(['cabin_id' => $validatedData['cabin_id']]);
+            if (!$cleaningStatus->exists) {
+                $cleaningStatus->created_by = $isClean ? 'ApiMarkClean' : 'ApiMarkDirty';;
+                $cleaningStatus->created_at = Carbon::now();
             } else {
-                $cleaningStatus->update([
-                    'homebase_user_id' => $validatedData['homebase_user_id'],
-                    'completed_at' => Carbon::now(),
-                    'updated_by' => 'ApiMarkClean',
-                    'updated_at' => Carbon::now()]);
+                $cleaningStatus->updated_by = $isClean ? 'ApiMarkClean' : 'ApiMarkDirty';
+                $cleaningStatus->updated_at = Carbon::now();
             }
+            $cleaningStatus->homebase_user_id = $validatedData['homebase_user_id'];
+            $cleaningStatus->completed_at = $isClean ? now() : null;
+            $cleaningStatus->save();
+
             return response()->json([
-                'message' => 'Cabin ' . $cleaningStatus->cabin->cabinName . ' successfully marked as clean'], 200);
+                'message' => 'Cabin ' . $cleaningStatus->cabin->cabinName . ' successfully marked as ' . ($isClean ? 'clean' : 'dirty')], 200);
         } catch (ValidationException $e) {
             return response()->json([
                 'error' => $e->errors(),
@@ -174,6 +186,26 @@ class TaskController extends Controller
         ]);
 
         return response()->json(['message' => "Marked {$dog->firstname} as returned to yard"]);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function moveDogs(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'yardsToAssign' => ['required', 'array', 'min:1'],
+            'yardsToAssign.*.dog_id' => ['required', 'integer', 'exists:dogs,id'],
+            'yardsToAssign.*.yard_id' => ['required', 'integer', 'exists:yards,id'],
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            foreach ($validated['yardsToAssign'] as $move) {
+                Dog::where('id', $move['dog_id'])->update(['yard_id' => $move['yard_id']]);
+            }
+        });
+
+        return response()->json(['message' => "Assigned dogs to yard"]);
     }
 
 }

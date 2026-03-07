@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Homebase;
 
+use App\Models\Dog;
 use App\Models\Employee;
 use App\Models\EmployeeYardRotation;
 use App\Models\Rotation;
@@ -59,15 +60,14 @@ class GoFetchShiftsJob implements ShouldQueue
 
                 $homebaseShifts = collect(json_decode($response->getBody()->getContents()))->sortBy(['start_at', 'role']);
 
-                $qualifiedShifts = $homebaseShifts->reject(fn($shift) =>
-                        Str::contains($shift->department, 'FOH') ||
-                        Str::contains($shift->role, self::TRAINING) ||
-                        Str::contains($shift->role, self::EVENT)
-                    )->map(function ($shift) use ($yards) {
-                        $shift->yardHoursWorked = $yards->pluck('id')->mapWithKeys(fn($id) => [$id => 0])->toArray();
-                        $shift->next_lunch_break = null;
-                        return $shift;
-                    });
+                $qualifiedShifts = $homebaseShifts->reject(fn($shift) => Str::contains($shift->department, 'FOH') ||
+                    Str::contains($shift->role, self::TRAINING) ||
+                    Str::contains($shift->role, self::EVENT)
+                )->map(function ($shift) use ($yards) {
+                    $shift->yardHoursWorked = $yards->pluck('id')->mapWithKeys(fn($id) => [$id => 0])->toArray();
+                    $shift->next_lunch_break = null;
+                    return $shift;
+                });
 
                 $fohStaff = $homebaseShifts->filter(fn($shift) => str_contains($shift->role, 'Supervisor'))
                     ->map(function ($shift) {
@@ -312,6 +312,26 @@ class GoFetchShiftsJob implements ShouldQueue
         $lastYardHourId = null;
 
         $openYardCodes = RotationSettings::get();
+        $allowed = $openYardCodes->allowedYards(false);
+
+        if (in_array(1002, $allowed, true)) {
+            $dogs = Dog::whereIn('size_letter', ['L', 'LS'])->orderBy('id')->pluck('id');
+            $half = intdiv($dogs->count(), 2);
+            Dog::whereIn('id', $dogs->slice(0, $half))->update(['yard_id' => 1001]);
+            Dog::whereIn('id', $dogs->slice($half))->update(['yard_id' => 1002]);
+        } else {
+            Dog::whereIn('size_letter', ['L', 'LS'])->update(['yard_id' => 1001]);
+        }
+
+        if (in_array(1003, $allowed, true)) {
+            $dogs = Dog::where('size_letter', 'S')->orderBy('id')->pluck('id');
+            $half = intdiv($dogs->count(), 2);
+            Dog::whereIn('id', $dogs->slice(0, $half))->update(['yard_id' => 1000]);
+            Dog::whereIn('id', $dogs->slice($half))->update(['yard_id' => 1003]);
+        } else {
+            Dog::where('size_letter', 'S')->update(['yard_id' => 1000]);
+        }
+
         $rotations = Rotation::query()->when(Carbon::now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))->get();
         $names = Employee::all()->pluck('first_name', 'homebase_user_id'); // id => name
 
@@ -336,7 +356,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 return $isWorking && $noBreaks && $notSuperHandoff;
             });
 
-            $openYardIds = $openYardCodes->allowedYards((bool) $rotation->is_midday);
+            $openYardIds = $openYardCodes->allowedYards((bool)$rotation->is_midday);
             $openYardIds[] = 999;
             $openYards = $yards->whereIn('id', $openYardIds)->values();
             foreach ($openYards as $yard) {
