@@ -66,6 +66,7 @@ return [
         'special_service_cats' => array_map('trim', explode(',', env('SPECIAL_SERVICE_CATEGORIES'))),
         'bath_service_cats' => array_map('trim', explode(',', env('BATH_SERVICE_CATEGORIES'))),
         'fsg_service_cats' => array_map('trim', explode(',', env('FSG_SERVICE_CATEGORIES'))),
+        'card_types' => array_map('trim', explode(',', env('CARD_TYPES_LIST'))),
         'sandbox_service_condition' => env('SB_SERVICE_CONDITION', '='),
         'yards_to_open' => env('YARDS_TO_OPEN'),
         'username' => env('DD_USERNAME'),

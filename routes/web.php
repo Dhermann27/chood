@@ -50,6 +50,7 @@ Route::prefix('task')->group(function () {
     Route::post('/setLunch', [TaskController::class, 'setLunch']);
     Route::post('/startBreak', [TaskController::class, 'startBreak']);
     Route::post('/markReturned/{dogId}', [TaskController::class, 'markReturned']);
+    Route::post('/moveDog', [TaskController::class, 'moveDogs']);
 
 });
 

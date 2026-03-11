@@ -177,7 +177,6 @@ const copyFullReport = async (e) => {
 <template>
     <div class="flex items-center justify-center min-h-screen bg-greyhound">
         <div class="w-full max-w-full flex flex-col items-center">
-            <!-- Form Container -->
             <div class="w-1/2 max-w-full min-w-0 p-8 space-y-8 bg-white shadow-md rounded-lg">
                 <h2 class="text-2xl font-header text-center">Daily Deposit Finder</h2>
                 <div class="bg-sunshine border-l-4 p-4 mt-4 rounded">
@@ -190,36 +189,21 @@ const copyFullReport = async (e) => {
                     <div>
                         <label for="username" class="block font-medium text-greyhound">Data Dawg Username</label>
                         <input
-                            v-model="username"
-                            type="text"
-                            id="username"
-                            class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"
-                            placeholder="Enter your username"
-                            required
-                        />
+                            v-model="username" type="text" id="username" placeholder="Enter your username" required
+                            class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"/>
                     </div>
 
                     <div>
                         <label for="password" class="block font-medium text-greyhound">Data Dawg Password</label>
-                        <input
-                            v-model="password"
-                            type="password"
-                            id="password"
-                            class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"
-                            placeholder="Enter your password"
-                            required
-                        />
+                        <input v-model="password" type="password" id="password" placeholder="Enter your password"
+                               class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"
+                               required/>
                     </div>
 
                     <div>
                         <label for="date" class="block font-medium text-greyhound">Date</label>
-                        <input
-                            v-model="date"
-                            type="date"
-                            id="date"
-                            class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"
-                            required
-                        />
+                        <input v-model="date" type="date" id="date" required
+                               class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"/>
                     </div>
 
                     <div v-if="errorMessage" class="p-4 mb-4 bg-alerted border rounded">
@@ -227,16 +211,13 @@ const copyFullReport = async (e) => {
                     </div>
 
                     <div>
-                        <button
-                            type="submit"
-                            class="w-full px-4 py-2 text-white bg-caregiver rounded-lg shadow-sm"
-                        >
+                        <button type="submit" class="w-full px-4 py-2 text-white bg-caregiver rounded-lg shadow-sm">
                             Search
                         </button>
                     </div>
                 </form>
             </div>
-            <div v-if="results && started" id="report-table-wrapper"
+            <div v-if="Object.keys(results ?? {}).length > 0 || started" id="report-table-wrapper"
                  class="w-2/3 max-w-full min-w-0 mt-8 p-8 bg-white shadow-md rounded-lg">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-xl font-subheader uppercase">Date: {{ results?.report_date ?? date }}</h3>
@@ -260,7 +241,6 @@ const copyFullReport = async (e) => {
                     </tr>
                     </thead>
                     <tbody>
-
                     <tr class="bg-greyhound">
                         <td colspan="5" class="text-lg text-white font-subheader uppercase">Overall</td>
                     </tr>
@@ -268,7 +248,7 @@ const copyFullReport = async (e) => {
                         <tr>
                             <td colspan="5" class="text-center py-4">
                                 <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
-                                                   class="text-6xl text-greyhound py-5"/>
+                                                 class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
                     </template>
@@ -280,8 +260,8 @@ const copyFullReport = async (e) => {
                                 <td class="text-right">
                                     {{ formatCurrency(result.total) }}
                                     <FontAwesomeIcon :icon="$fa.fas['clipboard']"
-                                                       class="ml-2 text-caregiver cursor-pointer inline-block"
-                                                       @click="() => copyToClipboard(result.total)"/>
+                                                     class="ml-2 text-caregiver cursor-pointer inline-block"
+                                                     @click="() => copyToClipboard(result.total)"/>
                                 </td>
 
 
@@ -294,7 +274,7 @@ const copyFullReport = async (e) => {
                                     </td>
                                     <td v-else colspan="2" class="text-center">
                                         <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
-                                                           class="text-xl text-greyhound py-2"/>
+                                                         class="text-xl text-greyhound py-2"/>
                                     </td>
                                 </template>
 
@@ -304,7 +284,6 @@ const copyFullReport = async (e) => {
                                 </template>
                             </tr>
                         </template>
-                        <!-- No deposit data, but accrual_total exists -->
                         <template v-else-if="'accrual_total' in results">
                             <tr class="border-b">
                                 <td colspan="3" class="text-right font-semibold">Accruals Total</td>
@@ -312,8 +291,6 @@ const copyFullReport = async (e) => {
                                 <td class="text-right">{{ formatCurrency(results.accrual_total.total) }}</td>
                             </tr>
                         </template>
-
-                        <!-- No deposits, no accrual_total yet -->
                         <template v-else>
                             <tr>
                                 <td colspan="5" class="text-center py-4 text-greyhound italic">
@@ -332,7 +309,7 @@ const copyFullReport = async (e) => {
                         <tr>
                             <td colspan="5" class="text-center">
                                 <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
-                                                   class="text-6xl text-greyhound py-5"/>
+                                                 class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
                     </template>
@@ -358,7 +335,7 @@ const copyFullReport = async (e) => {
                             <template v-else>
                                 <td colspan="2" class="text-center">
                                     <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
-                                                       class="text-xl text-greyhound py-2"/>
+                                                     class="text-xl text-greyhound py-2"/>
                                 </td>
                             </template>
                         </tr>
@@ -376,7 +353,7 @@ const copyFullReport = async (e) => {
                         <tr>
                             <td colspan="5" class="text-center">
                                 <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
-                                                   class="text-6xl text-greyhound py-5"/>
+                                                 class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
                     </template>
@@ -412,20 +389,20 @@ const copyFullReport = async (e) => {
                             <template v-else>
                                 <td colspan="2" class="text-center">
                                     <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
-                                                       class="text-xl text-greyhound"/>
+                                                     class="text-xl text-greyhound"/>
                                 </td>
                             </template>
                         </tr>
                     </template>
 
                     <tr class="bg-greyhound">
-                        <td colspan="5" class="text-lg text-white font-subheader uppercase">Other</td>
+                        <td colspan="6" class="text-lg text-white font-subheader uppercase">Other</td>
                     </tr>
                     <template v-if="!('tips' in results)">
                         <tr>
                             <td colspan="5" class="text-center">
                                 <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
-                                                   class="text-6xl text-greyhound py-5"/>
+                                                 class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
                     </template>
@@ -435,8 +412,8 @@ const copyFullReport = async (e) => {
                             <td class="text-center">{{ results.tips.qty }}</td>
                             <td class="text-right">{{ formatCurrency(results.tips.total) }}
                                 <FontAwesomeIcon :icon="$fa.fas['clipboard']"
-                                                   class="ml-2 text-caregiver cursor-pointer inline-block"
-                                                   @click="() => copyToClipboard(results.tips.total)"
+                                                 class="ml-2 text-caregiver cursor-pointer inline-block"
+                                                 @click="() => copyToClipboard(results.tips.total)"
                                 />
                             </td>
                             <td>&nbsp;</td>
@@ -447,8 +424,8 @@ const copyFullReport = async (e) => {
                             <td class="text-center">{{ results.product.qty }}</td>
                             <td class="text-right">{{ formatCurrency(results.product.total) }}
                                 <FontAwesomeIcon :icon="$fa.fas['clipboard']"
-                                                   class="ml-2 text-caregiver cursor-pointer inline-block"
-                                                   @click="() => copyToClipboard(results.product.total)"
+                                                 class="ml-2 text-caregiver cursor-pointer inline-block"
+                                                 @click="() => copyToClipboard(results.product.total)"
                                 />
                             </td>
                             <td>&nbsp;</td>
@@ -459,8 +436,8 @@ const copyFullReport = async (e) => {
                             <td>&nbsp;</td>
                             <td class="text-right">{{ formatCurrency(results.tax.total) }}
                                 <FontAwesomeIcon :icon="$fa.fas['clipboard']"
-                                                   class="ml-2 text-caregiver cursor-pointer inline-block"
-                                                   @click="() => copyToClipboard(results.tax.total)"
+                                                 class="ml-2 text-caregiver cursor-pointer inline-block"
+                                                 @click="() => copyToClipboard(results.tax.total)"
                                 />
                             </td>
                             <td>&nbsp;</td>
@@ -476,7 +453,7 @@ const copyFullReport = async (e) => {
                    class="min-w-full table-auto bg-white rounded-lg mt-10">
                 <thead>
                 <tr class="bg-greyhound">
-                    <td colspan="6" class="text-lg text-white font-subheader uppercase">Other Transactions</td>
+                    <td colspan="7" class="text-lg text-white font-subheader uppercase">Other Transactions</td>
                 </tr>
                 <tr class="bg-greyhound border-b text-sm text-white font-subheader uppercase whitespace-nowrap">
                     <th class="px-4 py-2 text-center">Order Id</th>
