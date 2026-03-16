@@ -14,7 +14,7 @@ return new class extends Migration
     {
         Schema::create('services', function (Blueprint $table) {
             $table->id();
-            $table->integer('dd_id')->unique()->nullable();
+            $table->integer('gingr_id')->unique()->nullable();
             $table->string('name')->nullable();
             $table->string('category')->index()->nullable();
             $table->string('code')->nullable();

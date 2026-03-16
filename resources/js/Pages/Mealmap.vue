@@ -11,7 +11,6 @@ import 'vue3-timepicker/dist/VueTimepicker.css';
 
 const props = defineProps({
     dogsPerPage: Number,
-    photoUri: String,
     rotations: Array,
     yards: Array,
     yardPresets: Array,
@@ -280,7 +279,7 @@ onBeforeUnmount(() => {
                 <div class="grid grid-cols-1 w-full">
                     <div v-for="(dog, index) in medicatedDogs" :key="index" class="flex border-b-2 even:bg-gray-200">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: cardHeight + 'px'}">
-                            <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"
+                            <DogCard :dogs="[dog]" :maxlength="20" :card-height="cardHeight"
                                      :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
                         </div>
 
@@ -306,7 +305,7 @@ onBeforeUnmount(() => {
                 <div class="grid grid-cols-1 w-full">
                     <div v-for="(dog, index) in lunchDogs" :key="index" class="flex border-b-2 even:bg-gray-200">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: cardHeight + 'px'}">
-                            <DogCard :dogs="[dog]" :photoUri="props.photoUri" :maxlength="20" :card-height="cardHeight"
+                            <DogCard :dogs="[dog]" :maxlength="20" :card-height="cardHeight"
                                      :shouldLoad="index + medicatedDogs.length === currentLoadingIndex"
                                      @imageLoaded="handleImageLoaded"/>
                         </div>

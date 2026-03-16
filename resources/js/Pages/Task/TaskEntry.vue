@@ -11,7 +11,6 @@ import MoveDogs from "@/Pages/Task/MoveDogs.vue";
 
 const props = defineProps({
     cabins: Array,
-    photoUri: String,
 });
 
 const breakButtons = [
@@ -82,7 +81,7 @@ async function preloadDogPhotos(dogs) {
 
         await new Promise(resolve => {
             const img = new Image();
-            img.src = `${props.photoUri}${dog.photoUri}`;
+            img.src = dog.photoUri;
             img.onload = resolve;
             img.onerror = resolve;
         });
@@ -318,7 +317,7 @@ onUnmounted(() => {
                     @update:modelValue="handleAssignDogUpdate">
                     <template #option="{ option }">
                         <div class="dog-option-item">
-                            <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
+                            <img v-if="option.photoUri" :src="option.photoUri"
                                  :alt="'Picture of ' + option.firstname" class="dog-photo"
                                  @error="e => e.target.style.display = 'none'"/>
                             <span class="text-3xl ml-10">{{ option.firstname }}</span>
@@ -328,7 +327,7 @@ onUnmounted(() => {
                 <div class="choodmap items-center justify-center p-1">
                     <Map :cabins="cabins" :statuses="statuses" :dogs="dogsByCabin"
                          :controls="ControlSchemes.SELECT_CABIN" :maxlength="6"
-                         :card-width="46" :card-height="55" :photoUri="photoUri" @cabinClicked="handleTargetClick"/>
+                         :card-width="46" :card-height="55" @cabinClicked="handleTargetClick"/>
                 </div>
             </template>
             <template v-else-if="todo === 'cleanCabin'">
@@ -345,7 +344,7 @@ onUnmounted(() => {
                     label="firstname" placeholder="Select Dog(s) (Required)">
                     <template #option="{ option }">
                         <div class="dog-option-item">
-                            <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
+                            <img v-if="option.photoUri" :src="option.photoUri"
                                  :alt="'Picture of ' + option.firstname" class="dog-photo"
                                  @error="e => e.target.style.display = 'none'"/>
                             <span class="text-3xl ml-10">{{ option.firstname }}</span>
@@ -372,7 +371,7 @@ onUnmounted(() => {
                     label="firstname" placeholder="Select Dog(s) (Required)" @click="counter = 0;">
                     <template #option="{ option }">
                         <div class="dog-option-item">
-                            <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
+                            <img v-if="option.photoUri" :src="option.photoUri"
                                  :alt="'Picture of ' + option.firstname" class="dog-photo"
                                  @error="e => e.target.style.display = 'none'"/>
                             <span class="text-3xl ml-10">{{ option.firstname }}</span>
@@ -391,13 +390,13 @@ onUnmounted(() => {
                 <div class="items-center justify-center p-1" :style="restGridStyle">
                     <div v-for="(dog, index) in dogsOnBreak" :id="index"
                          :style="{height: restCardHeight + 'px', width: restCardWidth + 'px'}">
-                        <DogCard :dogs="[dog]" :photoUri="props.photoUri" @click="handleBreakDogDelete(dog)"
+                        <DogCard :dogs="[dog]" @click="handleBreakDogDelete(dog)"
                                  :card-width="restCardWidth" :card-height="restCardHeight" :shouldLoad="true" />
                     </div>
                 </div>
             </template>
             <template v-else-if="todo === 'moveDog'">
-                <MoveDogs :dogs="dogs" :yards="openYards" :photoUri="props.photoUri" :imageCache="imageCache"
+                <MoveDogs :dogs="dogs" :yards="openYards" :imageCache="imageCache"
                           @changed="counter = 0;" @submit="handleYardChange" style="height: 650px;"/>
             </template>
 

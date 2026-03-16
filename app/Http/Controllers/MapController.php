@@ -23,7 +23,6 @@ class MapController extends Controller
     public function fullmap(): Response
     {
         return Inertia::render('Fullmap', [
-            'photoUri' => config('services.dd.uris.photo'),
             'cabins' => $this->getCabins(),
         ]);
     }
@@ -32,7 +31,6 @@ class MapController extends Controller
     {
         // 0 means First rowmap
         return Inertia::render('Rowmap' . $row, [
-            'photoUri' => config('services.dd.uris.photo'),
             'cabins' => $this->getCabins(self::ROW_VIEWS[$row][0], self::ROW_VIEWS[$row][1], self::ROW_VIEWS[$row][2]),
         ]);
     }
@@ -41,15 +39,13 @@ class MapController extends Controller
     {
         return Inertia::render('Yardmap/Yardmap', [
             'size' => $size,
-            'photoUri' => config('services.dd.uris.photo'),
         ]);
     }
 
     public function mealmap(): Response
     {
         return Inertia::render('Mealmap', [
-            'dogsPerPage' => intval(config('services.dd.mealmap_dpp')),
-            'photoUri' => config('services.dd.uris.photo'),
+            'dogsPerPage' => intval(config('services.gingr.mealmap_dpp')),
             'rotations' => Rotation::when(now()->isSunday(), function ($query) {
                 $query->where('is_sunday_hour', 1);
             })->orderBy('start_time')->get(),
@@ -65,7 +61,6 @@ class MapController extends Controller
     public function groommap(): Response
     {
         return Inertia::render('Groommap', [
-            'photoUri' => config('services.dd.uris.photo'),
         ]);
     }
 

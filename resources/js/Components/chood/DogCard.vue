@@ -4,7 +4,6 @@ import {getBannerStyle, getFittedFontSize} from "@/utils.js";
 import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
 
 const props = defineProps({
-    photoUri: String,
     dogs: Array,
     maxlength: Number,
     cardHeight: Number,
@@ -73,7 +72,7 @@ const preloadImage = (dog) => {
     return new Promise((resolve) => {
         if (dog.photoUri && !imageCache.has(dog.photoUri)) {
             const img = new Image();
-            img.src = `${props.photoUri}${dog.photoUri}`;
+            img.src = dog.photoUri;
 
             const timer = setTimeout(() => {
                 console.warn('Timeout loading image:', dog.photoUri);
@@ -193,7 +192,7 @@ onUnmounted(() => {
 
 
         <div ref="photoContainer" class="relative bg-cover bg-center z-0 overflow-hidden" style="flex: 1 1 auto"
-             :style="{ backgroundImage: currentDog.photoUri && imageCache.has(currentDog.photoUri) ? `url(${props.photoUri}${currentDog.photoUri})` : 'none' }"
+             :style="{ backgroundImage: currentDog.photoUri && imageCache.has(currentDog.photoUri) ? `url(${currentDog.photoUri})` : 'none' }"
         >
             <svg v-if="breakTimeLeft && !breakTimeLeft.expired" preserveAspectRatio="none"
                  class="absolute top-0 left-0 w-full h-full pointer-events-none z-10" viewBox="0 0 1 1">

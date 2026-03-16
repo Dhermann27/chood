@@ -6,7 +6,6 @@ import {fetchMapData} from "@/utils.js";
 import {ControlSchemes} from "@/controlSchemes.js";
 
 const props = defineProps({
-    photoUri: String,
     cabins: Array
 });
 const dogs = ref([]);
@@ -45,7 +44,7 @@ onBeforeUnmount(() => {
     <Head title="Fullmap"/>
     <main class="w-full h-full">
         <div class="choodmap items-center justify-center p-1">
-            <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :photoUri="photoUri" :controls="controls"
+            <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :controls="controls"
                  :maxlength="8" :card-width="96" :card-height="117"/>
         </div>
     </main>

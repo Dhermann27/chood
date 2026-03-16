@@ -13,7 +13,7 @@ class Dog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['booking_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'gender', 'photoUri',
+    protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'gender', 'photoUri',
         'nickname', 'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout',
         'rest_starts_at', 'rest_duration_minutes'
     ];
@@ -49,14 +49,14 @@ class Dog extends Model
             foreach ($this->appointments as $appointment) {
                 $start = Carbon::parse($appointment->scheduled_start);
                 $today = Carbon::today();
-                if (config('services.dd.sandbox_service_condition') === '<=' ? $start->lessThanOrEqualTo($today)
+                if (config('services.gingr.sandbox_service_condition') === '<=' ? $start->lessThanOrEqualTo($today)
                     : $start->isSameDay($today)) {
-                    if (in_array($appointment->service->category, config('services.dd.bath_service_cats')) &&
+                    if (in_array($appointment->service->category, config('services.gingr.bath_service_cats')) &&
                         !array_search('droplet', array_column($icons, 'icon'))) {
                         $icons[] = ['icon' => 'droplet', 'text' => substr($start->format('ga'), 0, 2),
                             'transform' => 'grow-1', 'start' => $appointment->scheduled_start, 'checkout' => $this->checkout,
                             'completed' => $appointment->completed_at != null];
-                    } elseif (in_array($appointment->service->category, config('services.dd.fsg_service_cats')) &&
+                    } elseif (in_array($appointment->service->category, config('services.gingr.fsg_service_cats')) &&
                         !array_search('sheep', array_column($icons, 'icon'))) {
                         $icons[] = ['icon' => 'sheep', 'text' => substr($start->format('ga'), 0, 2),
                             'transform' => 'grow-1 right-2', 'start' => $appointment->scheduled_start, 'checkout' => $this->checkout,

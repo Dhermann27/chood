@@ -29,7 +29,6 @@ class TaskController extends Controller
     {
         return Inertia::render('Task/TaskEntry', [
             'cabins' => $this->getCabins(),
-            'photoUri' => config('services.dd.uris.photo'),
         ]);
     }
 

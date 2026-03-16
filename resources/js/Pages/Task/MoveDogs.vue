@@ -7,7 +7,6 @@ import MoveDogCard from "./MoveDogCard.vue";
 const props = defineProps({
     dogs: {type: Array, required: true},
     yards: {type: Array, required: true},
-    photoUri: {type: String, required: true},
     imageCache: {type: Set, required: true},
 });
 
@@ -107,8 +106,7 @@ watch(() => [moveDogYards.value, props.dogs], rebuildYardTiles, {deep: true, imm
                             <div class="flex items-center justify-center"
                                  :style="{ width: cardWidth + 'px', height: cardHeight + 'px' }">
                                 <div class="cursor-grab active:cursor-grabbing w-full h-full">
-                                    <MoveDogCard :dog="element" :photoUri="props.photoUri"
-                                                 :card-width="cardWidth" :card-height="cardHeight"/>
+                                    <MoveDogCard :dog="element"                                                  :card-width="cardWidth" :card-height="cardHeight"/>
                                 </div>
                             </div>
                         </template>

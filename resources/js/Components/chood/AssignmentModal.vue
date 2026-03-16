@@ -9,7 +9,6 @@ const props = defineProps({
     isNewDog: Boolean,
     assignment: Object,
     errorMessages: Array,
-    photoUri: String,
 });
 
 const emit = defineEmits(['closeModal', 'submitForm', 'updateIsNewDog']);
@@ -68,7 +67,7 @@ const closeModal = () => {
                                     Enter a new dog
                                 </div>
                                 <div v-else>
-                                    <img v-if="props.option.photoUri" :src="photoUri + props.option.photoUri"
+                                    <img v-if="props.option.photoUri" :src="props.option.photoUri"
                                          :alt="'Picture of' + props.option.firstname" class="dog-photo"/>
                                     {{ props.option.firstname }}
                                 </div>

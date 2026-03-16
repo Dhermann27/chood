@@ -9,7 +9,6 @@ const props = defineProps({
     colsByGroup: {type: Object, required: true},
     cardWidth: {type: Number, required: true},
     cardHeight: {type: Number, required: true},
-    photoUri: {type: String, default: ''},
 
     dogIndexById: {type: Object, required: true},
     currentLoadingIndex: {type: Number, required: true},
@@ -45,7 +44,7 @@ const gridStyle = computed(() => {
     <div class="h-full overflow-y-auto overflow-x-hidden min-w-0">
         <div class="p-1 w-full h-full overflow-x-hidden min-w-0" :style="gridStyle">
             <div v-for="(dog, dogIndex) in dogs" :key="dog.id ?? `${groupKey}-${dogIndex}`" class="w-full h-full">
-                <DogCard :dogs="[dog]" :photoUri="photoUri" :card-width="cardWidth" :card-height="cardHeight"
+                <DogCard :dogs="[dog]" :card-width="cardWidth" :card-height="cardHeight"
                          :shouldLoad="dogIndexById?.[dog.id] === currentLoadingIndex"
                          @imageLoaded="emit('imageLoaded')"/>
             </div>

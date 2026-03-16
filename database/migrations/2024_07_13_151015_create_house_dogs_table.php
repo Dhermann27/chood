@@ -17,8 +17,8 @@ return new class extends Migration {
             $table->unsignedBigInteger('pet_id')->unique();
             $table->string('account_id')->nullable();
             $table->string('firstname')->default('Dog');
-            $table->string('lastname')->default('Smith');
             $table->string('gender')->nullable();
+            $table->unsignedBigInteger('order_id')->nullable();
             $table->integer('weight')->nullable();
             $table->foreignId('yard_id')->nullable()->constrained()->nullOnDelete()->index();
             $table->string('photoUri')->nullable();

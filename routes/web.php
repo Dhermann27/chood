@@ -6,6 +6,7 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TaskController;
+use App\Jobs\GoFetchListJob;
 use App\Jobs\GoFetchServiceListJob;
 use App\Jobs\Homebase\GoFetchEmployeesJob;
 use App\Jobs\Homebase\GoFetchShiftsJob;
@@ -95,6 +96,10 @@ if (app()->environment('local')) {
     Route::get('/markForCleaningJob', function () {
         MarkCabinsForCleaningJob::dispatchSync();
         return 'Cleaning jobbed';
+    });
+    Route::get('/sync', function () {
+        GoFetchListJob::dispatchSync();
+        return 'Sync complete';
     });
     Route::get('/fetch', function () {
         GoFetchServiceListJob::dispatchSync(new FetchDataService());

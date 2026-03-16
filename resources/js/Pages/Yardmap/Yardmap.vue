@@ -8,7 +8,6 @@ const GROUP_W = 955;
 
 const props = defineProps({
     size: String,
-    photoUri: String
 });
 const dogsByGroup = ref({});
 const assignments = ref([]);
@@ -156,7 +155,7 @@ onBeforeUnmount(() => {
             <div v-if="groupKeys.length >= 1" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[0]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
-                           :cardHeight="cardHeight" :photoUri="photoUri" :dogIndexById="dogIndexById"
+                           :cardHeight="cardHeight" :dogIndexById="dogIndexById"
                            :currentLoadingIndex="currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
             </div>
 
@@ -165,7 +164,7 @@ onBeforeUnmount(() => {
             <div v-if="groupKeys.length === 2" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[1]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
-                           :cardHeight="cardHeight" :photoUri="photoUri" :dogIndexById="dogIndexById"
+                           :cardHeight="cardHeight" :dogIndexById="dogIndexById"
                            :currentLoadingIndex="currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
             </div>
 

@@ -7,7 +7,6 @@ import AssignmentModal from "@/Components/chood/AssignmentModal.vue";
 import {ControlSchemes} from "@/controlSchemes.js";
 
 const props = defineProps({
-    photoUri: String,
     cabins: Array,
     statuses: Object,
     dogs: Object,
@@ -213,7 +212,7 @@ const handleClick = (cabin) => {
         @mouseover="handleHover(cabin.id)" @mouseleave="handleHoverLeave" @click="handleClick(cabin)"
     >
         <div v-if="props.dogs[cabin.id] && props.dogs[cabin.id].length > 0" class="h-full w-full relative">
-            <DogCard :dogs="props.dogs[cabin.id]" :photoUri="photoUri" :maxlength="maxlength" :card-height="cardHeight"
+            <DogCard :dogs="props.dogs[cabin.id]" :maxlength="maxlength" :card-height="cardHeight"
                      :shouldLoad="cabin.id === getCurrentCabinKey()"
                      @imageLoaded="handleImageLoaded"/>
             <div v-if="controls === ControlSchemes.MODAL && !props.dogs[cabin.id][0].is_boarding"
@@ -242,6 +241,6 @@ const handleClick = (cabin) => {
 
     <AssignmentModal v-if="controls === ControlSchemes.MODAL && showModal"
                      :modalType="modalType" :cabins="cabins" :dogs="props.dogs['unassigned']" :assignment="assignment"
-                     :errorMessages="errorMessages" :photoUri="photoUri" :is-new-dog="isNewDog"
+                     :errorMessages="errorMessages" :is-new-dog="isNewDog"
                      @closeModal="showModal = false" @submitForm="submitForm" @updateIsNewDog="updateIsNewDog"/>
 </template>

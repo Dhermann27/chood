@@ -13,9 +13,6 @@ defineProps({
     dogList: {
         type: Array,
     },
-    photoUri: {
-        type: String,
-    },
     laravelVersion: {
         type: String,
         required: true,

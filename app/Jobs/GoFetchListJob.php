@@ -2,13 +2,9 @@
 
 namespace App\Jobs;
 
-use App\Enums\ServiceSyncStatus;
-use App\Models\Allergy;
-use App\Models\Appointment;
+use App\Enums\HousingServiceCodes;
 use App\Models\Cabin;
 use App\Models\Dog;
-use App\Models\Feeding;
-use App\Models\Medication;
 use App\Services\FetchDataService;
 use Carbon\Carbon;
 use Exception;
@@ -18,24 +14,14 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
-/**
- *
- */
 class GoFetchListJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected FetchDataService $fetchDataService;
-
-    /**
-     * Create a new job instance.
-     */
-    public function __construct(FetchDataService $fetchDataService)
+    public function __construct()
     {
-        $this->fetchDataService = $fetchDataService;
         $this->onQueue('high');
     }
 
@@ -47,93 +33,69 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
     /**
      * @throws Exception
      */
-    public function handle(): void
+    public function handle(FetchDataService $fetchDataService): void
     {
-        $payload = [
-            "username" => config('services.dd.username'),
-            "password" => config('services.dd.password'),
-        ];
-        $output = $this->fetchDataService->fetchData(config('services.dd.uris.inHouseList'), $payload)
-            ->getData(true);
-        if (!isset($output['data']) || !is_array($output['data'])) {
-            Log::warning('GoFetchListJob returned no usable data.', [
-                'output_type' => gettype($output),
-                'output_preview' => is_array($output) ? array_slice($output, 0, 5) : $output,
-            ]);
+        $output = $fetchDataService->fetchApi('checkedIn');
+
+        if (empty($output['data']) || !is_array($output['data'])) {
+            Log::warning('GoFetchListJob returned no usable data.', ['output' => $output]);
             throw new Exception('No usable data found in response.');
         }
 
-        $data = $output['data'][0];
-        $columns = collect($data['columns'])->pluck('index', 'filterKey');
-        $cabins = Cabin::all()->keyBy(fn($c) => $this->normCabinName($c->cabinName))->map(fn($c) => $c->id);
+        $cabins = Cabin::all()
+            ->keyBy(fn($c) => $this->normCabinName($c->cabinName))
+            ->map(fn($c) => $c->id);
 
         $activePetIds = [];
-        foreach ($data['rows'] as $row) {
-            $updateValues = $this->getFilteredValues($row, $columns, $cabins);
-            $dog = Dog::updateOrCreate(['pet_id' => $row[$columns['petId']]], $updateValues);
+        $dispatchedOwnerIds = [];
+
+        foreach ($output['data'] as $row) {
+            $dog = Dog::updateOrCreate(
+                ['pet_id' => $row['a_id']],
+                $this->getUpdateValues($row, $cabins)
+            );
             $activePetIds[] = $dog->pet_id;
 
-            GoFetchBookingJob::dispatch($row[$columns['bookingId']], $row[$columns['orderId']]);
-
-//            GoFetchDogJob::dispatch($dog->pet_id); Order contains photo and nickname
-            if ($row[$columns['feedingAttributeCount']] > 0) {
-                GoFetchFeedingJob::dispatch($dog->pet_id, $dog->account_id);
-            } else {
-                Feeding::where('pet_id', $dog->pet_id)->where('is_task', 0)->delete();
+            if (!in_array($row['o_id'], $dispatchedOwnerIds)) {
+                GoFetchOwnerDataJob::dispatch($row['o_id']);
+                $dispatchedOwnerIds[] = $row['o_id'];
             }
-            if ($row[$columns['medicationAttributeCount']] > 0 ||
-                $row[$columns['medicalConditionsAttributeCount']] > 0) {
-                GoFetchMedicationJob::dispatch($dog->pet_id, $dog->account_id);
-            } else {
-                Medication::where('pet_id', $dog->pet_id)->delete();
-            }
-            if ($row[$columns['allergiesAttributeCount']] > 0) {
-                GoFetchAllergyJob::dispatch($dog->pet_id, $dog->account_id);
-            } else {
-                Allergy::where('pet_id', $dog->pet_id)->delete();
-            }
-
         }
 
-        $inactivePetIds = Dog::whereNotIn('pet_id', $activePetIds)->pluck('pet_id');
-        Appointment::whereIn('pet_id', $inactivePetIds)->update(['sync_status' => ServiceSyncStatus::Archived]);
-        Dog::whereIn('pet_id', $inactivePetIds)->delete();
+        Dog::whereNotIn('pet_id', $activePetIds)->delete();
 
-        $delay = config('services.dd.queue_delay');
+        $delay = config('services.gingr.queue_delay');
         usleep(mt_rand($delay, $delay + 1000) * 1000);
-
     }
 
-    private function getFilteredValues(array $row, Collection $columns, Collection $cabins): array
+    private function getUpdateValues(array $row, $cabins): array
     {
-        $cabinId = $cabins->get($this->normCabinName($row[$columns['dateCabin']]), null);
-        $updateValues = [
-            'order_id' => $row[$columns['orderId']],
-            'account_id' => $this->trimToNull($row[$columns['accountId']]),
-            'firstname' => $this->trimToNull($row[$columns['name']]),
-            'lastname' => $this->trimToNull($row[$columns['lastName']]),
-            'gender' => $this->trimToNull($row[$columns['gender']]),
-            'weight' => $this->trimToNull(intval($row[$columns['weight']])),
-            'cabin_id' => $cabinId,
-            'housing_code' => $this->trimToNull(explode(',', $row[$columns['serviceCode']])[0]),
-            'checkin' => Carbon::createFromFormat('m/d/y g:i A', $row[$columns['checkInDate']] . " " . $row[$columns['checkInTime']]),
-            'checkout' => Carbon::createFromFormat('m/d/Y g:i A', $row[$columns['checkOutDate']] . " " . $row[$columns['checkOutTime']])
-        ];
-        return array_filter($updateValues, function ($value) {
-            return !is_null($value);
-        });
+        return array_filter([
+            'order_id'     => $row['id'],
+            'account_id'   => $row['o_id'],
+            'firstname'    => $row['a_first'] ?: null,
+            'weight'       => $row['weight'] ? (int) $row['weight'] : null,
+            'cabin_id'     => $cabins->get($this->normCabinName($row['run_name'] ?? ''), null),
+            'housing_code' => $this->housingCodeFromTypeId($row['type_id']),
+            'photoUri'     => $row['image'] ?: null,
+            'checkin'      => $row['check_in_stamp'] ? Carbon::createFromTimestamp($row['check_in_stamp']) : null,
+            'checkout'     => $row['end_date'] ? Carbon::createFromTimestamp($row['end_date']) : null,
+        ], fn($v) => !is_null($v));
     }
 
-    private function trimToNull($value): ?string
+    private function housingCodeFromTypeId(string $typeId): string
     {
-        $trimmed = trim($value);
-        return $trimmed === '' ? null : $trimmed;
+        return match($typeId) {
+            '1' => HousingServiceCodes::BRDC->value,
+            '2' => HousingServiceCodes::BRDL->value,
+            '3' => HousingServiceCodes::DCFD->value,
+            '4' => HousingServiceCodes::DCHD->value,
+            default => HousingServiceCodes::UNKNOWN->value,
+        };
     }
 
-    function normCabinName(string $key): string
+    private function normCabinName(string $key): string
     {
-        // Remove all spaces, dashes, hyphens, em-dashes, etc., and lowercase
         return strtolower(preg_replace('/[\s\-—–]+/', '', $key));
     }
-
 }

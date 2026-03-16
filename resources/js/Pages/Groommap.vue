@@ -4,9 +4,7 @@ import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
 import {getYardGridStyle} from "@/utils.js";
 
-const props = defineProps({
-    photoUri: String
-});
+const props = defineProps({});
 const dogs = ref([]);
 const currentGif = ref('/images/doggifs/dog1.webp');
 const randomPosition = ref({top: 0, left: 0});
@@ -108,7 +106,7 @@ onBeforeUnmount(() => {
             <template v-for="(dog, index) in displayDogs" :id="dog.id">
                 <div class="rounded-tl-2xl rounded-bl-2xl shadow-xl py-4 h-full"
                      :style="{ width: cardWidth + 'px'}">
-                    <DogCard :dogs="[dog]" :photoUri="props.photoUri" :card-width="cardWidth" :card-height="cardHeight"
+                    <DogCard :dogs="[dog]" :card-width="cardWidth" :card-height="cardHeight"
                              :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
                 </div>
                 <div
