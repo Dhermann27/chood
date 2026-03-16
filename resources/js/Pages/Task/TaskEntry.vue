@@ -21,6 +21,7 @@ const breakButtons = [
     {label: '60', value: '60'},
     {label: '120', value: '120'},
     {label: 'Lunch', value: '1000'},
+    {label: 'Grooming', value: '2000'},
     {label: 'Until Marked', value: '999'},
 ]
 
@@ -73,7 +74,7 @@ let counter = 0;
 let refreshInterval;
 
 async function preloadDogPhotos(dogs) {
-    if(!dogs) return;
+    if (!dogs) return;
     for (const dog of dogs) {
         if (!dog?.photoUri) continue;
         if (imageCache.has(dog.photoUri)) continue;
@@ -228,10 +229,16 @@ const handleFinishAction = async (action) => {
 }
 
 const breakStatus = computed(() => {
-    const d = targets.value.break_duration;
-    if (d === '1000') return 'on lunch break';
-    if (d === '999') return 'out until Marked';
-    return `rest for ${d} minutes`;
+    switch (targets.value.break_duration) {
+        case '999':
+            return 'out until Marked';
+        case '1000':
+            return 'on lunch break';
+        case '2000':
+            return 'in the Groom Room';
+        default:
+            return `rest for ${targets.value.break_duration} minutes`;
+    }
 });
 
 onMounted(() => {
@@ -392,7 +399,7 @@ onUnmounted(() => {
                     <div v-for="(dog, index) in dogsOnBreak" :id="index"
                          :style="{height: restCardHeight + 'px', width: restCardWidth + 'px'}">
                         <DogCard :dogs="[dog]" :photoUri="props.photoUri" @click="handleBreakDogDelete(dog)"
-                                 :card-width="restCardWidth" :card-height="restCardHeight" :shouldLoad="true" />
+                                 :card-width="restCardWidth" :card-height="restCardHeight" :shouldLoad="true"/>
                     </div>
                 </div>
             </template>
