@@ -37,7 +37,7 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
         $payload = $fetchDataService->createPayload($report);
         $reportData = $report->data ?? [];
 
-        $this->processGroup($fetchDataService, $payload, $reportData, 'deposits', ['cardType', 'qty', 'total']);
+        $this->processGroup($fetchDataService, $payload, $reportData, 'deposits', ['paymentType', 'qty', 'total']);
         $reportData['cash'] = $this->processCashDeposits($fetchDataService, $payload);
         $this->saveAndSleep($report, $reportData);
 

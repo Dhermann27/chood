@@ -61,10 +61,6 @@ const rowsByGroup = computed(() => {
     });
     return out;
 });
-const maxCols = computed(() => {
-    const vals = Object.values(colsByGroup.value);
-    return vals.length ? Math.max(...vals) : 1;
-});
 const maxRows = computed(() => {
     const vals = Object.values(rowsByGroup.value);
     return vals.length ? Math.max(...vals) : 1;
@@ -89,12 +85,6 @@ const rightWidth = computed(() => {
 const cardHeight = computed(() => {
     return ((1080 - 100) - (maxRows.value - 1) * 10) / maxRows.value;
 });
-const activeCount = (dogs) => {
-    return dogs.length - dogs.filter(d => d.rest_starts_at !== null).length;
-};
-const lsActiveCount = (dogs) => {
-    return dogs.filter(d => d.size_letter === 'LS' && d.rest_starts_at === null).length;
-};
 
 const handleImageLoaded = () => {
     while (++currentLoadingIndex.value < allDogs.value.length) {
@@ -158,16 +148,10 @@ onBeforeUnmount(() => {
 <template>
     <Head title="Yardmap"/>
     <main class="w-full h-full grid" style="grid-template-rows: 1fr 100px;">
-        <!-- TOP -->
         <div
             class="w-full h-full min-w-0 overflow-x-hidden"
-            :style="{
-                display: 'grid',
-                gridTemplateColumns: groupKeys.length === 2
-                    ? `${leftWidth}px 10px ${rightWidth}px`
-                    : '1fr',
-            }"
-        >
+            :style="{display: 'grid',
+            gridTemplateColumns: groupKeys.length === 2 ? `${leftWidth}px 10px ${rightWidth}px` : '1fr',}">
 
             <div v-if="groupKeys.length >= 1" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[0]" :dogsByGroup="dogsByGroup"

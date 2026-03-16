@@ -268,12 +268,20 @@ class DataController extends Controller
         $isMidday = $hour >= 11 && $hour < 13;
 
         $dogs = $this->getDogs(false, $size);
-        $groupBy = count($preset->allowedYards($isMidday)) > 2 ? 'yard_id' : fn ($dog) => 'all';
+
+        $yardCount = count($preset->allowedYards($isMidday));
+        $groupBy = ($yardCount >= 4 || ($yardCount === 3 && $size === 'large')) ? function ($dog) use ($size) {
+            if ($dog->size_letter === 'LS') {
+                if ($size === 'large' && in_array($dog->yard_id, [1000, 1003])) return 1001;
+                if ($size !== 'large' && in_array($dog->yard_id, [1001, 1002])) return 1000;
+            }
+            return $dog->yard_id;
+        } : fn($dog) => 'all';
         $dogsByGroup = $dogs->values()->groupBy($groupBy);
 
         $assignments = EmployeeYardRotation::join('rotations', 'employee_yard_rotations.rotation_id', '=', 'rotations.id')
             ->join('yards', 'employee_yard_rotations.yard_id', '=', 'yards.id')
-            ->whereIn('yards.id', $preset->allowedYards($isMidday))
+            ->whereIn('yards.id', $preset->allowedYards(true))
             ->whereTime('rotations.start_time', '<=', $now)
             ->whereTime('rotations.end_time', '>=', $now)
             ->orderBy('yards.display_order')->with('employee', 'rotation', 'yard')->get();
