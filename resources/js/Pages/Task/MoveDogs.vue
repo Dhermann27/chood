@@ -14,7 +14,6 @@ const props = defineProps({
 const emit = defineEmits(['changed', 'submit']);
 
 const aspectRatio = 4 / 3;
-const innerWidth = 541;
 const gap = 10;
 const yardTiles = ref({});       // { [yardId]: tiles[] }
 const pendingMoves = ref({});    // { [dogId]: yardId }
@@ -30,7 +29,6 @@ const columns = computed(() => Math.ceil(Math.sqrt(aspectRatio * maxTiles.value)
 const rows = computed(() => Math.ceil(maxTiles.value / columns.value));
 const gridStyle = computed(() => getYardGridStyle(rows.value, columns.value));
 const innerHeight = computed(() => moveDogYards.value.length === 4 ? 200 : 410);
-const cardWidth = computed(() => (innerWidth - (columns.value - 1) * gap) / columns.value);
 const cardHeight = computed(() => (innerHeight.value - (rows.value - 1) * gap) / rows.value);
 const pendingCount = computed(() => Object.keys(pendingMoves.value).length);
 
@@ -41,7 +39,7 @@ function rebuildYardTiles() {
         next[y.id] = [];
     });
     props.dogs.forEach(d => {
-        const yardId = pendingMoves.value[d.id] ?? d.yard_id;
+        const yardId = pendingMoves.value[d.id] ?? d.yard_id ?? (d.size_letter?.includes('L') ? 1001 : 1000);
         if (!next[yardId]) return;
         next[yardId].push(d);
     });
@@ -59,6 +57,16 @@ function dragGroupForYard(yard) {
     if (type === 'large' || type === 'active') return {name: 'lane-large', pull: true, put: true};
     if (type === 'small' || type === 'medium') return {name: 'lane-small', pull: true, put: true};
     return {name: 'lane-other', pull: true, put: true};
+}
+
+function getMoveValidator(targetYard) {
+    return (e) => {
+        const size = e.draggedContext.element.size_letter ?? '';
+        const type = (targetYard.type ?? '').toLowerCase();
+        if (size === 'LS') return true;
+        if (size.includes('L')) return type === 'large' || type === 'active';
+        return type === 'small' || type === 'medium';
+    };
 }
 
 function handleDragPreview(e, yard) {
@@ -101,14 +109,13 @@ watch(() => [moveDogYards.value, props.dogs], rebuildYardTiles, {deep: true, imm
                     </div>
 
                     <Draggable :list="yardTiles[yard.id]" item-key="id" :group="dragGroupForYard(yard)" :sort="true"
-                               class="rounded-xl bg-gray-50 h-full" :style="gridStyle"
+                               :move="getMoveValidator(yard)" class="rounded-xl bg-gray-50 h-full" :style="gridStyle"
                                @change="e => handleDragPreview(e, yard)">>
                         <template #item="{ element }">
-                            <div class="flex items-center justify-center"
-                                 :style="{ width: cardWidth + 'px', height: cardHeight + 'px' }">
+                            <div class="flex items-center justify-center w-full"
+                                 :style="{ height: cardHeight + 'px' }">
                                 <div class="cursor-grab active:cursor-grabbing w-full h-full">
-                                    <MoveDogCard :dog="element" :photoUri="props.photoUri"
-                                                 :card-width="cardWidth" :card-height="cardHeight"/>
+                                    <MoveDogCard :dog="element" :photoUri="props.photoUri" :card-height="cardHeight"/>
                                 </div>
                             </div>
                         </template>
