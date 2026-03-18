@@ -13,10 +13,11 @@ const props = defineProps({
 const emit = defineEmits(['changed', 'submit']);
 
 const aspectRatio = 4 / 3;
-const innerWidth = 541;
 const gap = 10;
 const yardTiles = ref({});       // { [yardId]: tiles[] }
 const pendingMoves = ref({});    // { [dogId]: yardId }
+const LARGE_YARD_IDS = [1001, 1002];
+const SMALL_YARD_IDS = [1000, 1003];
 
 const openYards = computed(() => props.yards ?? []);
 const moveDogYards = computed(() => {
@@ -29,7 +30,6 @@ const columns = computed(() => Math.ceil(Math.sqrt(aspectRatio * maxTiles.value)
 const rows = computed(() => Math.ceil(maxTiles.value / columns.value));
 const gridStyle = computed(() => getYardGridStyle(rows.value, columns.value));
 const innerHeight = computed(() => moveDogYards.value.length === 4 ? 200 : 410);
-const cardWidth = computed(() => (innerWidth - (columns.value - 1) * gap) / columns.value);
 const cardHeight = computed(() => (innerHeight.value - (rows.value - 1) * gap) / rows.value);
 const pendingCount = computed(() => Object.keys(pendingMoves.value).length);
 
@@ -40,7 +40,7 @@ function rebuildYardTiles() {
         next[y.id] = [];
     });
     props.dogs.forEach(d => {
-        const yardId = pendingMoves.value[d.id] ?? d.yard_id;
+        const yardId = pendingMoves.value[d.id] ?? d.yard_id ?? (d.size_letter?.includes('L') ? 1001 : 1000);
         if (!next[yardId]) return;
         next[yardId].push(d);
     });
@@ -54,10 +54,17 @@ function rebuildYardTiles() {
 }
 
 function dragGroupForYard(yard) {
-    const type = (yard.type ?? '').toLowerCase();
-    if (type === 'large' || type === 'active') return {name: 'lane-large', pull: true, put: true};
-    if (type === 'small' || type === 'medium') return {name: 'lane-small', pull: true, put: true};
+    if (LARGE_YARD_IDS.includes(yard.id)) return {name: 'lane-large', pull: true, put: true};
+    if (SMALL_YARD_IDS.includes(yard.id)) return {name: 'lane-small', pull: true, put: true};
     return {name: 'lane-other', pull: true, put: true};
+}
+
+function validateMove(e) {
+    const size = e.draggedContext.element.size_letter ?? '';
+    if (size === 'LS') return true;
+    const targetId = parseInt(e.to.dataset.yardId);
+    if (size.includes('L')) return LARGE_YARD_IDS.includes(targetId);
+    return SMALL_YARD_IDS.includes(targetId);
 }
 
 function handleDragPreview(e, yard) {
@@ -100,13 +107,13 @@ watch(() => [moveDogYards.value, props.dogs], rebuildYardTiles, {deep: true, imm
                     </div>
 
                     <Draggable :list="yardTiles[yard.id]" item-key="id" :group="dragGroupForYard(yard)" :sort="true"
-                               class="rounded-xl bg-gray-50 h-full" :style="gridStyle"
-                               @change="e => handleDragPreview(e, yard)">>
+                               :move="validateMove" :data-yard-id="yard.id" class="rounded-xl bg-gray-50 h-full"
+                               :style="gridStyle" @change="e => handleDragPreview(e, yard)">>
                         <template #item="{ element }">
-                            <div class="flex items-center justify-center"
-                                 :style="{ width: cardWidth + 'px', height: cardHeight + 'px' }">
+                            <div class="flex items-center justify-center w-full"
+                                 :style="{ height: cardHeight + 'px' }">
                                 <div class="cursor-grab active:cursor-grabbing w-full h-full">
-                                    <MoveDogCard :dog="element"                                                  :card-width="cardWidth" :card-height="cardHeight"/>
+                                    <MoveDogCard :dog="element" :card-height="cardHeight"/>
                                 </div>
                             </div>
                         </template>

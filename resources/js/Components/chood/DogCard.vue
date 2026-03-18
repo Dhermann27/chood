@@ -45,26 +45,18 @@ const breakTimeLeft = computed(() => {
     const dog = currentDog.value;
     if (!dog?.rest_starts_at || !dog?.rest_duration_minutes) return null;
 
-    if(dog.rest_duration_minutes <= 180) {
+    if (dog.rest_duration_minutes <= 180) {
         const start = new Date(dog.rest_starts_at);
         const end = new Date(start.getTime() + dog.rest_duration_minutes * 60 * 1000);
         const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
         const percentElapsed = 1 - (minutesLeft / dog.rest_duration_minutes);
         const percentRemaining = minutesLeft / dog.rest_duration_minutes;
 
-        return {
-            minutesLeft,
-            percentElapsed,
-            percentRemaining,
-            expired: minutesLeft === 0,
-        };
+        return {minutesLeft, percentElapsed, percentRemaining, expired: minutesLeft === 0};
+    } else if (dog.rest_duration_minutes === 2000) {
+        return {minutesLeft: 'GRM', percentElapsed: 0, percentRemaining: 1, expired: false};
     } else {
-        return {
-            minutesLeft: 'EOD',
-            percentElapsed: 0,
-            percentRemaining: 1,
-            expired: false,
-        };
+        return {minutesLeft: 'EOD', percentElapsed: 0, percentRemaining: 1, expired: false};
     }
 });
 
@@ -203,7 +195,8 @@ onUnmounted(() => {
                     </mask>
                 </defs>
 
-                <rect x="0" y="0" width="1" height="1" fill="rgba(0,0,0,0.75)"
+                <rect x="0" y="0" width="1" height="1"
+                      :fill="breakTimeLeft.minutesLeft === 'GRM' ? 'rgba(147,51,234,0.75)' : 'rgba(0,0,0,0.75)'"
                       :mask="`url(#revealMask-${currentDog.id})`"/>
             </svg>
 
@@ -218,7 +211,7 @@ onUnmounted(() => {
                      class="relative flex items-center justify-center mt-2"
                      :style="{ height: props.cardHeight * .12 + 'px' }">
                     <FontAwesomeIcon :icon="$fa.fas[iconData.icon]" class="text-white icon-with-outline"
-                                       :style="{ fontSize: props.cardHeight * .12 + 'px' }"/>
+                                     :style="{ fontSize: props.cardHeight * .12 + 'px' }"/>
                     <span v-if="iconData.text"
                           class="absolute inset-0 flex items-center justify-center font-bold pointer-events-none"
                           :style="{fontSize: props.cardHeight * 0.06 + 'px', lineHeight: 1}">
@@ -232,7 +225,7 @@ onUnmounted(() => {
                      class="relative flex items-center justify-center mt-2"
                      :style="{ height: props.cardHeight * .12 + 'px' }">
                     <FontAwesomeIcon :icon="$fa.fas[iconData.icon]" class="text-white icon-with-outline"
-                                       :style="{ fontSize: props.cardHeight * .12 + 'px' }"/>
+                                     :style="{ fontSize: props.cardHeight * .12 + 'px' }"/>
                     <span v-if="iconData.text"
                           class="absolute inset-0 flex items-center justify-center font-bold pointer-events-none"
                           :style="{fontSize: props.cardHeight * 0.06 + 'px', lineHeight: 1}">

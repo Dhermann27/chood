@@ -4,7 +4,6 @@ import {getBannerStyle, getFittedFontSize} from '@/utils';
 
 const props = defineProps({
     dog: {type: Object, required: true},
-    cardWidth: {type: Number, required: true},
     cardHeight: {type: Number, required: true},
 });
 
@@ -13,7 +12,7 @@ const dogName = ref(null);
 
 const bannerStyle = computed(() => getBannerStyle(props.dog, null));
 
-watch(() => [props.cardHeight, props.cardWidth, props.dog], async ([newHeight]) => {
+watch(() => [props.cardHeight, props.dog], async ([newHeight]) => {
     await nextTick();
 
     if (dogBanner.value) dogBanner.value.style.fontSize = `${newHeight * 0.05}px`;

@@ -275,7 +275,7 @@ class DataController extends Controller
                 if ($size === 'large' && in_array($dog->yard_id, [1000, 1003])) return 1001;
                 if ($size !== 'large' && in_array($dog->yard_id, [1001, 1002])) return 1000;
             }
-            return $dog->yard_id;
+            return $dog->yard_id ?? ($size === 'large' ? 1001 : 1000);
         } : fn($dog) => 'all';
         $dogsByGroup = $dogs->values()->groupBy($groupBy);
 
