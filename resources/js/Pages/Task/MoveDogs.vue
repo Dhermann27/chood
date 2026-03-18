@@ -17,6 +17,8 @@ const aspectRatio = 4 / 3;
 const gap = 10;
 const yardTiles = ref({});       // { [yardId]: tiles[] }
 const pendingMoves = ref({});    // { [dogId]: yardId }
+const LARGE_YARD_IDS = [1001, 1002];
+const SMALL_YARD_IDS = [1000, 1003];
 
 const openYards = computed(() => props.yards ?? []);
 const moveDogYards = computed(() => {
@@ -53,20 +55,17 @@ function rebuildYardTiles() {
 }
 
 function dragGroupForYard(yard) {
-    const type = (yard.type ?? '').toLowerCase();
-    if (type === 'large' || type === 'active') return {name: 'lane-large', pull: true, put: true};
-    if (type === 'small' || type === 'medium') return {name: 'lane-small', pull: true, put: true};
+    if (LARGE_YARD_IDS.includes(yard.id)) return {name: 'lane-large', pull: true, put: true};
+    if (SMALL_YARD_IDS.includes(yard.id)) return {name: 'lane-small', pull: true, put: true};
     return {name: 'lane-other', pull: true, put: true};
 }
 
-function getMoveValidator(targetYard) {
-    return (e) => {
-        const size = e.draggedContext.element.size_letter ?? '';
-        const type = (targetYard.type ?? '').toLowerCase();
-        if (size === 'LS') return true;
-        if (size.includes('L')) return type === 'large' || type === 'active';
-        return type === 'small' || type === 'medium';
-    };
+function validateMove(e) {
+    const size = e.draggedContext.element.size_letter ?? '';
+    if (size === 'LS') return true;
+    const targetId = parseInt(e.to.dataset.yardId);
+    if (size.includes('L')) return LARGE_YARD_IDS.includes(targetId);
+    return SMALL_YARD_IDS.includes(targetId);
 }
 
 function handleDragPreview(e, yard) {
@@ -109,8 +108,8 @@ watch(() => [moveDogYards.value, props.dogs], rebuildYardTiles, {deep: true, imm
                     </div>
 
                     <Draggable :list="yardTiles[yard.id]" item-key="id" :group="dragGroupForYard(yard)" :sort="true"
-                               :move="getMoveValidator(yard)" class="rounded-xl bg-gray-50 h-full" :style="gridStyle"
-                               @change="e => handleDragPreview(e, yard)">>
+                               :move="validateMove" :data-yard-id="yard.id" class="rounded-xl bg-gray-50 h-full"
+                               :style="gridStyle" @change="e => handleDragPreview(e, yard)">>
                         <template #item="{ element }">
                             <div class="flex items-center justify-center w-full"
                                  :style="{ height: cardHeight + 'px' }">
