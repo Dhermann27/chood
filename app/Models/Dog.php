@@ -15,7 +15,7 @@ class Dog extends Model
 
     protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'gender', 'photoUri',
         'nickname', 'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout',
-        'rest_starts_at', 'rest_duration_minutes'
+        'rest_starts_at', 'rest_duration_minutes', 'food_type', 'feeding_method', 'feeding_notes',
     ];
 
     protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s'];

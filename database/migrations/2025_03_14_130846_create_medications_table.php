@@ -18,8 +18,12 @@ return new class extends Migration
             $table->foreignId('pet_id')->constrained('dogs', 'pet_id')->cascadeOnDelete();
             $table->integer('type_id')->nullable();
             $table->string('type');
+            $table->foreignId('timeslot_id')->nullable()->constrained('timeslots');
+            $table->string('quantity')->nullable();
+            $table->string('unit')->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
             $table->text('description')->nullable();
-            $table->dateTime('modified_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->timestamps();
         });
         DB::update('ALTER TABLE medications AUTO_INCREMENT = 1000');

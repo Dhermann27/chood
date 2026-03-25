@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('allergy_id')->nullable()->index();
             $table->foreignId('pet_id')->constrained('dogs', 'pet_id')->cascadeOnDelete();
-            $table->string('description');
+            $table->text('description');
             $table->timestamps();
         });
         DB::update('ALTER TABLE allergies AUTO_INCREMENT = 1000');

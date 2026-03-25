@@ -16,10 +16,11 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('feeding_id')->nullable()->index();
             $table->foreignId('pet_id')->constrained('dogs', 'pet_id')->cascadeOnDelete();
-            $table->string('type')->default('Food: ');
+            $table->foreignId('timeslot_id')->nullable()->constrained('timeslots');
+            $table->string('quantity')->nullable();
+            $table->string('unit')->nullable();
             $table->text('description')->nullable();
             $table->tinyInteger('is_task')->default(0);
-            $table->dateTime('modified_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->timestamps();
         });
         DB::update('ALTER TABLE feedings AUTO_INCREMENT = 1000');

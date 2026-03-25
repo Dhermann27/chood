@@ -46,11 +46,13 @@ return [
         'special_service_cats' => array_map('trim', explode(',', env('SPECIAL_SERVICE_CATEGORIES', ''))),
         'bath_service_cats' => array_map('trim', explode(',', env('BATH_SERVICE_CATEGORIES', ''))),
         'fsg_service_cats' => array_map('trim', explode(',', env('FSG_SERVICE_CATEGORIES', ''))),
+        'location_id' => env('GINGR_LOCATION_ID', 3),
         'uris' => [
-            'login' => env('GINGR_BASE_URL') . '/auth/login',
-            'checkedIn' => env('GINGR_BASE_URL') . '/api/v1/get_checked_in_reservations',
-            'animalData' => env('GINGR_BASE_URL') . '/api/v1/get_animal_data',
-            'ownerData' => env('GINGR_BASE_URL') . '/owners/get_form_data/id/',
+            'login'          => env('GINGR_BASE_URL') . env('GINGR_LOGIN_URI'),
+            'checkedIn'      => env('GINGR_BASE_URL') . env('GINGR_CHECKED_IN_URI'),
+            'animalData'     => env('GINGR_BASE_URL') . env('GINGR_ANIMAL_DATA_URI'),
+            'ownerData'      => env('GINGR_BASE_URL') . env('GINGR_OWNER_DATA_URI'),
+            'servicesByType' => env('GINGR_BASE_URL') . env('GINGR_SERVICES_BY_TYPE_URI'),
         ],
     ],
 

@@ -16,5 +16,6 @@ class DatabaseSeeder extends Seeder
         $this->call(CabinSeeder::class);
         $this->call(RotationSeeder::class);
         $this->call(YardSeeder::class);
+        $this->call(TimeslotSeeder::class);
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Allergy;
 use App\Models\Dog;
 use App\Models\Feeding;
 use App\Models\Medication;
+use App\Models\Timeslot;
 use App\Services\FetchDataService;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -34,6 +35,8 @@ class GoFetchOwnerDataJob implements ShouldQueue, ShouldBeUnique
         $url = config('services.gingr.uris.ownerData') . $this->ownerId;
         $output = $fetchDataService->fetchWithSession($url);
 
+        $timeslots = Timeslot::pluck('id', 'name');
+
         if (empty($output['animals'])) {
             return;
         }
@@ -51,9 +54,16 @@ class GoFetchOwnerDataJob implements ShouldQueue, ShouldBeUnique
                 },
             ]);
 
+            $feedingSchedule = $animal['feeding_schedule'] ?? null;
+            $dog->update([
+                'food_type'      => $feedingSchedule['foodType']['label'] ?? null,
+                'feeding_method' => $feedingSchedule['feedingMethod']['label'] ?? null,
+                'feeding_notes'  => trim($feedingSchedule['feedingNotes'] ?? '') ?: null,
+            ]);
+
             $this->getAllergies($petId, $animal['allergies'] ?? null);
-            $this->getMedications($petId, $animal);
-            $this->getFeedings($petId, $animal['feeding_schedule'] ?? null);
+            $this->getMedications($petId, $animal, $timeslots);
+            $this->getFeedings($petId, $feedingSchedule, $timeslots);
         }
 
         $delay = config('services.gingr.queue_delay');
@@ -70,7 +80,13 @@ class GoFetchOwnerDataJob implements ShouldQueue, ShouldBeUnique
         }
     }
 
-    private function getMedications(string $petId, array $animal): void
+    private function resolveTimeslot(string $label, $timeslots): ?int
+    {
+        $name = trim(explode(' - ', ltrim($label, '*'))[0]);
+        return $timeslots->get($name);
+    }
+
+    private function getMedications(string $petId, array $animal, $timeslots): void
     {
         Medication::where('pet_id', $petId)->delete();
 
@@ -94,65 +110,51 @@ class GoFetchOwnerDataJob implements ShouldQueue, ShouldBeUnique
             ]);
         }
 
-        // Actual medication schedule (Rx)
+        // Handling note
+        $handlingNote = trim($animal['medication_schedule']['medicationNotes'] ?? '');
+        if ($handlingNote !== '') {
+            Medication::create([
+                'pet_id'      => $petId,
+                'type'        => 'Handling',
+                'description' => $handlingNote,
+            ]);
+        }
+
+        // Individual medication schedules
         foreach ($animal['medication_schedule']['medicationSchedules'] ?? [] as $schedule) {
-            $scheduleLabel = $schedule['medicationSchedule']['label'] ?? '';
+            $timeslotId = $this->resolveTimeslot($schedule['medicationSchedule']['label'] ?? '', $timeslots);
+
             foreach ($schedule['medications'] ?? [] as $med) {
-                $amount = $med['medicationAmount']['label'] ?? '';
-                $unit   = $med['medicationUnit']['label'] ?? '';
-                $notes  = trim($med['medicationNotes'] ?? '');
-
-                $description = trim(implode(' ', array_filter([
-                    $scheduleLabel,
-                    $amount && $unit ? "$amount $unit" : null,
-                    $notes ?: null,
-                ])));
-
                 Medication::create([
                     'medication_id' => $med['id'],
                     'pet_id'        => $petId,
                     'type_id'       => $med['medicationType']['value'] ?? null,
                     'type'          => $med['medicationType']['label'] ?? '',
-                    'description'   => $description ?: null,
+                    'timeslot_id'   => $timeslotId,
+                    'quantity'      => $med['medicationAmount']['label'] ?? null,
+                    'unit'          => $med['medicationUnit']['label'] ?? null,
+                    'start_date'    => $med['start_date'] ?: null,
+                    'end_date'      => $med['end_date'] ?: null,
+                    'description'   => trim($med['medicationNotes'] ?? '') ?: null,
                 ]);
             }
         }
     }
 
-    private function getFeedings(string $petId, ?array $feedingSchedule): void
+    private function getFeedings(string $petId, ?array $feedingSchedule, $timeslots): void
     {
         Feeding::where('pet_id', $petId)->where('is_task', 0)->delete();
 
         if (!$feedingSchedule) return;
 
-        $foodType     = $feedingSchedule['foodType']['label'] ?? 'Food';
-        $feedingNotes = trim($feedingSchedule['feedingNotes'] ?? '');
-
-        if ($feedingNotes !== '') {
-            Feeding::create([
-                'pet_id'      => $petId,
-                'type'        => $foodType,
-                'description' => $feedingNotes,
-            ]);
-        }
-
         foreach ($feedingSchedule['feedingSchedules'] ?? [] as $schedule) {
-            $scheduleLabel = $schedule['feedingSchedule']['label'] ?? '';
-            $instructions  = trim($schedule['feedingInstructions'] ?? '');
-            $amount        = $schedule['feedingAmount']['label'] ?? '';
-            $unit          = $schedule['feedingUnit']['label'] ?? '';
-
-            $description = trim(implode(' ', array_filter([
-                $scheduleLabel,
-                $instructions ?: null,
-                $amount && $unit ? "($amount $unit)" : null,
-            ])));
-
             Feeding::create([
                 'feeding_id'  => $schedule['id'],
                 'pet_id'      => $petId,
-                'type'        => $foodType,
-                'description' => $description ?: null,
+                'timeslot_id' => $this->resolveTimeslot($schedule['feedingSchedule']['label'] ?? '', $timeslots),
+                'quantity'    => $schedule['feedingAmount']['label'] ?? null,
+                'unit'        => $schedule['feedingUnit']['label'] ?? null,
+                'description' => trim($schedule['feedingInstructions'] ?? '') ?: null,
             ]);
         }
     }

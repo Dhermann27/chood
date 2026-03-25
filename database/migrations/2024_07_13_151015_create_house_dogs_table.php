@@ -29,6 +29,9 @@ return new class extends Migration {
             $table->dateTime('checkout')->nullable();
             $table->timestamp('rest_starts_at')->nullable();
             $table->integer('rest_duration_minutes')->nullable();
+            $table->string('food_type')->nullable();
+            $table->string('feeding_method')->nullable();
+            $table->text('feeding_notes')->nullable();
             $table->timestamps();
         });
         DB::update('ALTER TABLE dogs AUTO_INCREMENT = 1000');
