@@ -12,11 +12,7 @@ const props = defineProps({
     photoUri: String,
 });
 
-const emit = defineEmits(['closeModal', 'submitForm', 'updateIsNewDog']);
-
-const toggleNewDog = () => {
-    emit('updateIsNewDog', !props.isNewDog);
-};
+const emit = defineEmits(['closeModal', 'submitForm']);
 
 const submitForm = () => {
     emit('submitForm', props.assignment);
@@ -46,22 +42,11 @@ const closeModal = () => {
                     </select>
                 </div>
 
-                <div class="flex items-center space-x-4">
-<!--                    <div @click="toggleNewDog" class="cursor-pointer text-3xl">-->
-<!--                        <FontAwesomeIcon-->
-<!--                            :icon="props.isNewDog ? ['fas', 'square-check'] : ['far', 'square']"-->
-<!--                            class="text-caregiver hover:text-caregiver"-->
-<!--                        />-->
-<!--                    </div>-->
-<!--                    <label class="text-lg font-medium">Check for future boarding</label>-->
-                </div>
-
-
                 <template v-if="!props.isNewDog">
                     <!-- Dog Selection -->
                     <div class="mb-4">
                         <multiselect
-                            v-model="assignment.dogs" multiple :options="dogs" label="firstname"
+                            v-model="assignment.dogs" multiple :options="dogs" label="display_name"
                             :searchable="true" :clearable="true" placeholder="Select Dog(s)">
                             <template #option="props">
                                 <div v-if="props.option.id === 'new'" class="text-sm text-caregiver">
@@ -69,8 +54,8 @@ const closeModal = () => {
                                 </div>
                                 <div v-else>
                                     <img v-if="props.option.photoUri" :src="photoUri + props.option.photoUri"
-                                         :alt="'Picture of' + props.option.firstname" class="dog-photo"/>
-                                    {{ props.option.firstname }}
+                                         :alt="'Picture of' + props.option.display_name" class="dog-photo"/>
+                                    {{ props.option.display_name }}
                                 </div>
                             </template>
                         </multiselect>
@@ -109,7 +94,8 @@ const closeModal = () => {
                     <button type="button" @click="closeModal"
                             class="px-4 py-2 bg-greyhound text-white rounded-md text-xs">Cancel
                     </button>
-                    <button type="submit" class="px-4 py-2 bg-caregiver text-white rounded-md text-xs hover:bg-caregiver">
+                    <button type="submit"
+                            class="px-4 py-2 bg-caregiver text-white rounded-md text-xs hover:bg-caregiver">
                         {{ modalType === 'add' ? 'Add Assignment' : 'Update Assignment' }}
                     </button>
                 </div>

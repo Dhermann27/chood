@@ -12,18 +12,8 @@ import MoveDogs from "@/Pages/Task/MoveDogs.vue";
 const props = defineProps({
     cabins: Array,
     photoUri: String,
+    breakTypes: Array,
 });
-
-const breakButtons = [
-    {label: '15', value: '15'},
-    {label: '30', value: '30'},
-    {label: '45', value: '45'},
-    {label: '60', value: '60'},
-    {label: '120', value: '120'},
-    {label: 'Lunch', value: '1000'},
-    {label: 'Grooming', value: '2000'},
-    {label: 'Until Marked', value: '999'},
-]
 
 const frequency = 10000;
 
@@ -40,7 +30,7 @@ const targets = ref({
     'yardsToAssign': [],
     'cabin_id': 0,
     'cabin_short_name': '',
-    'break_duration': 0,
+    'break_type_id': null,
     'lunch_notes': '1 Bag'
 });
 const step = ref(1);
@@ -69,6 +59,20 @@ const dogsByCabin = computed(() => {
     return grouped;
 });
 const moveDogEnabled = computed(() => openYards.value.length >= 3);
+const markReturnedIsWalked = computed(() => {
+    const dog = targets.value.dogsToAssign;
+    if (dog?.break_type?.behavior !== 'walks_only' || !dog?.rest_starts_at) return false;
+    const elapsed = (Date.now() - new Date(dog.rest_starts_at).getTime()) / 60000;
+    return elapsed >= dog.break_type.duration_minutes;
+});
+const breakStatus = computed(() => {
+    const bt = props.breakTypes?.find(t => t.id === targets.value.break_type_id);
+    if (!bt) return 'on break';
+    if (bt.behavior === 'lunch') return 'on lunch break';
+    if (bt.behavior === 'unlimited') return `in ${bt.label}`;
+    if (bt.behavior === 'walks_only') return 'marked as walks only';
+    return `resting for ${bt.duration_minutes} minutes`;
+});
 
 let counter = 0;
 let refreshInterval;
@@ -161,9 +165,9 @@ const handleAssignDogUpdate = () => {
     if (targets.value['dogsToAssign'].length > 0 && targets.value['cabin_id'] > 0) nextStep();
 };
 
-const handleBreakDogUpdate = (breakDuration) => {
+const handleBreakDogUpdate = (breakTypeId) => {
     counter = 0;
-    targets.value.break_duration = breakDuration;
+    targets.value.break_type_id = breakTypeId;
     if (targets.value['dogsToAssign'].length > 0) nextStep();
 };
 
@@ -220,26 +224,13 @@ const handleFinishAction = async (action) => {
         'yardsToAssign': [],
         'cabin_id': 0,
         'cabin_short_name': '',
-        'break_duration': 0,
+        'break_type_id': null,
         'lunch_notes': '1 Bag'
     };
     counter = 0;
     if (todo.value.includes('markReturned')) todo.value = 'startBreak';
     step.value = action === 'Done' ? 1 : 3;
 }
-
-const breakStatus = computed(() => {
-    switch (targets.value.break_duration) {
-        case '999':
-            return 'out until Marked';
-        case '1000':
-            return 'on lunch break';
-        case '2000':
-            return 'in the Groom Room';
-        default:
-            return `rest for ${targets.value.break_duration} minutes`;
-    }
-});
 
 onMounted(() => {
     updateData();
@@ -318,17 +309,14 @@ onUnmounted(() => {
             <template v-if="todo === 'assignCabin'">
                 <multiselect
                     class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
-                    v-model="targets.dogsToAssign" multiple
-                    :options="dogsByCabin['unassigned']"
-                    label="firstname"
-                    placeholder="Select Dog(s) (Required)"
-                    @update:modelValue="handleAssignDogUpdate">
+                    v-model="targets.dogsToAssign" multiple :options="dogsByCabin['unassigned']" label="display_name"
+                    placeholder="Select Dog(s) (Required)" @update:modelValue="handleAssignDogUpdate">
                     <template #option="{ option }">
                         <div class="dog-option-item">
                             <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
                                  :alt="'Picture of ' + option.firstname" class="dog-photo"
                                  @error="e => e.target.style.display = 'none'"/>
-                            <span class="text-3xl ml-10">{{ option.firstname }}</span>
+                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
                         </div>
                     </template>
                 </multiselect>
@@ -348,14 +336,14 @@ onUnmounted(() => {
                 <h3 class="text-xl font-subheader uppercase mb-4">Set a dog's lunch</h3>
                 <multiselect
                     class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
-                    v-model="targets.dogsToAssign" multiple :options="dogs"
-                    label="firstname" placeholder="Select Dog(s) (Required)">
+                    v-model="targets.dogsToAssign" multiple :options="dogs" label="display_name"
+                    placeholder="Select Dog(s) (Required)">
                     <template #option="{ option }">
                         <div class="dog-option-item">
                             <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
                                  :alt="'Picture of ' + option.firstname" class="dog-photo"
                                  @error="e => e.target.style.display = 'none'"/>
-                            <span class="text-3xl ml-10">{{ option.firstname }}</span>
+                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
                         </div>
                     </template>
                 </multiselect>
@@ -375,23 +363,23 @@ onUnmounted(() => {
                 <h3 class="text-xl font-subheader uppercase mb-4">Start a Break</h3>
                 <multiselect
                     class="!w-2/3 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
-                    v-model="targets.dogsToAssign" multiple :options="dogsNotOnBreak"
-                    label="firstname" placeholder="Select Dog(s) (Required)" @click="counter = 0;">
+                    v-model="targets.dogsToAssign" multiple :options="dogsNotOnBreak" label="display_name"
+                    placeholder="Select Dog(s) (Required)" @click="counter = 0;">
                     <template #option="{ option }">
                         <div class="dog-option-item">
                             <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
                                  :alt="'Picture of ' + option.firstname" class="dog-photo"
                                  @error="e => e.target.style.display = 'none'"/>
-                            <span class="text-3xl ml-10">{{ option.firstname }}</span>
+                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
                         </div>
                     </template>
                 </multiselect>
                 <div class="flex gap-2 text-white text-xl">
-                    <button v-for="btn in breakButtons" :key="btn.value"
-                            :disabled="btn.value === '1000' && is1pmOrLater"
+                    <button v-for="bt in breakTypes" :key="bt.id"
+                            :disabled="bt.behavior === 'lunch' && is1pmOrLater"
                             class="bg-caregiver py-4 px-6 rounded-2xl hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            @click="handleBreakDogUpdate(btn.value)">
-                        {{ btn.label }}
+                            @click="handleBreakDogUpdate(bt.id)">
+                        {{ bt.label }}
                     </button>
                 </div>
                 <h3 class="text-xl font-subheader uppercase my-4">Mark dog as returned to yard</h3>
@@ -415,20 +403,22 @@ onUnmounted(() => {
                 <div class="bg-white p-6 rounded-lg w-2/3">
                     <h3 class="text-2xl mb-4 text-center">
                         <template v-if="todo === 'assignCabin'">
-                            {{ targets.dogsToAssign.map(dog => dog.firstname).join(', ') }}
+                            {{ targets.dogsToAssign.map(dog => dog.display_name).join(', ') }}
                             in Cabin {{ targets.cabin_short_name }}, right?
                         </template>
                         <template v-else-if="todo === 'cleanCabin'">
                             Cabin {{ targets.cabin_short_name }} is {{ targets.is_cleaned ? 'clean' : 'dirty' }}, right?
                         </template>
                         <template v-else-if="todo === 'setLunch'">
-                            {{ targets.dogsToAssign.map(dog => dog.firstname).join(', ') }} should get a lunch, right?
+                            {{ targets.dogsToAssign.map(dog => dog.display_name).join(', ') }} should get a lunch,
+                            right?
                         </template>
                         <template v-else-if="todo === 'startBreak'">
-                            {{ targets.dogsToAssign.map(dog => dog.firstname).join(', ') }} {{ breakStatus }}, right?
+                            {{ targets.dogsToAssign.map(dog => dog.display_name).join(', ') }} {{ breakStatus }}, right?
                         </template>
                         <template v-else-if="todo.includes('markReturned')">
-                            {{ targets.dogsToAssign.firstname }} is back in yard, right?
+                            {{ targets.dogsToAssign.display_name }}
+                            {{ markReturnedIsWalked ? 'has been walked' : 'is back in yard' }}, right?
                         </template>
                         <template v-else-if="todo.includes('moveDog')">
                             Assign dogs to yards, right?

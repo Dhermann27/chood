@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BreakType;
 use App\Models\Cabin;
 use App\Models\CleaningStatus;
 use App\Models\Dog;
@@ -30,6 +31,7 @@ class TaskController extends Controller
         return Inertia::render('Task/TaskEntry', [
             'cabins' => $this->getCabins(),
             'photoUri' => config('services.dd.uris.photo'),
+            'breakTypes' => BreakType::orderBy('display_order')->get(),
         ]);
     }
 
@@ -160,17 +162,12 @@ class TaskController extends Controller
     {
         $validatedData = $request->validate([
             'dogsToAssign.*.id' => 'required|exists:dogs,id',
-            'break_duration' => 'required|numeric',
+            'break_type_id' => 'required|exists:break_types,id',
         ]);
 
-        $tz = config('app.timezone');
-        $now = Carbon::now($tz);
-        $onePmToday = Carbon::today($tz)->setTime(13, 0);
-        $minutesUntil1pm = max(0, $now->diffInMinutes($onePmToday, false));
-
-        Dog::whereIn('id', collect($validatedData['dogsToAssign']))->update([
+        Dog::whereIn('id', collect($validatedData['dogsToAssign'])->pluck('id'))->update([
             'rest_starts_at' => now(),
-            'rest_duration_minutes' => $validatedData['break_duration'] === '1000' ? $minutesUntil1pm : $validatedData['break_duration'],
+            'break_type_id' => $validatedData['break_type_id'],
         ]);
 
         $names = implode(',', collect($request->input('dogsToAssign'))->pluck('firstname')->filter()->values()->toArray());
@@ -179,12 +176,18 @@ class TaskController extends Controller
 
     public function markReturned(string $dog_id): JsonResponse
     {
-        $dog = Dog::findOrFail($dog_id);
-        $dog->update([
-            'rest_starts_at' => null,
-            'rest_duration_minutes' => null,
-        ]);
+        $dog = Dog::with('breakType')->findOrFail($dog_id);
 
+        if ($dog->breakType?->behavior === 'walks_only' && $dog->rest_starts_at) {
+            $elapsed = $dog->rest_starts_at->diffInMinutes(now());
+            if ($elapsed >= $dog->breakType->duration_minutes) {
+                // Was showing "Time for Walk" — reset the timer
+                $dog->update(['rest_starts_at' => now()]);
+                return response()->json(['message' => "Walk timer reset for {$dog->firstname}"]);
+            }
+        }
+
+        $dog->update(['rest_starts_at' => null, 'break_type_id' => null]);
         return response()->json(['message' => "Marked {$dog->firstname} as returned to yard"]);
     }
 

@@ -22,7 +22,7 @@ const SMALL_YARD_IDS = [1000, 1003];
 
 const openYards = computed(() => props.yards ?? []);
 const moveDogYards = computed(() => {
-    return openYards.value.length === 3 ? openYards.value.slice(1, 3) : openYards.value.slice(0, 4);
+    return openYards.value.length === 3 ? openYards.value.slice(0, 2) : openYards.value.slice(0, 4);
 });
 const maxTiles = computed(() =>
     Math.max(1, ...moveDogYards.value.map(y => yardTiles.value[y.id]?.length ?? 0))
@@ -47,7 +47,7 @@ function rebuildYardTiles() {
     });
     moveDogYards.value.forEach(y => {
         next[y.id].sort((a, b) =>
-            (a.firstname ?? '').localeCompare(b.firstname ?? '')
+            (a.display_name ?? '').localeCompare(b.display_name ?? '')
         );
     });
 

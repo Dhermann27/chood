@@ -38,9 +38,9 @@ watch(() => [props.cardHeight, props.dog], async ([newHeight]) => {
                  :alt="`Picture of ${dog.firstname ?? 'dog'}`" @error="e => { e.target.style.display = 'none'; }"/>
         </div>
 
-        <div v-if="dog.firstname" ref="dogName"
+        <div v-if="dog.display_name" ref="dogName"
             class="flex items-center justify-center z-20 text-white font-semibold">
-            {{ dog.firstname.slice(0, 12) }}
+            {{ dog.display_name.slice(0, 12) }}
         </div>
     </div>
 </template>

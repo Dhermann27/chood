@@ -76,10 +76,6 @@ watch(() => props.dogs, () => {
     currentLoadingIndex.value = 0;
 });
 
-const updateIsNewDog = (value) => {
-    isNewDog.value = value;
-};
-
 function openModal(type, cabin) {
     modalType.value = type;
     assignment.value.cabin_id = cabin.id;
@@ -243,5 +239,5 @@ const handleClick = (cabin) => {
     <AssignmentModal v-if="controls === ControlSchemes.MODAL && showModal"
                      :modalType="modalType" :cabins="cabins" :dogs="props.dogs['unassigned']" :assignment="assignment"
                      :errorMessages="errorMessages" :photoUri="photoUri" :is-new-dog="isNewDog"
-                     @closeModal="showModal = false" @submitForm="submitForm" @updateIsNewDog="updateIsNewDog"/>
+                     @closeModal="showModal = false" @submitForm="submitForm"/>
 </template>

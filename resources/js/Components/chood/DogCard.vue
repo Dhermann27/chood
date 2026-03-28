@@ -42,23 +42,58 @@ const getTimeColor = (iconData) => {
     return 'text-white';
 };
 
+const maskColor = computed(() => {
+    const dog = currentDog.value;
+    if (dog?.is_boarding) return 'rgba(135,179,209,0.75)';   // caregiver blue
+    if (dog?.is_daycare) return 'rgba(136,201,153,0.75)';   // meadow green
+    if (dog?.is_interview) return 'rgba(158,27,50,0.75)';    // crimson red
+    return 'rgba(0,0,0,0.75)';                               // black for GRM/TRN
+});
+
 const breakTimeLeft = computed(() => {
     const dog = currentDog.value;
-    if (!dog?.rest_starts_at || !dog?.rest_duration_minutes) return null;
+    if (!dog?.rest_starts_at || !dog?.break_type) return null;
 
-    if (dog.rest_duration_minutes <= 180) {
-        const start = new Date(dog.rest_starts_at);
-        const end = new Date(start.getTime() + dog.rest_duration_minutes * 60 * 1000);
+    const bt = dog.break_type;
+    const start = new Date(dog.rest_starts_at);
+
+    if (bt.behavior === 'countdown') {
+        const end = new Date(start.getTime() + bt.duration_minutes * 60 * 1000);
         const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
-        const percentElapsed = 1 - (minutesLeft / dog.rest_duration_minutes);
-        const percentRemaining = minutesLeft / dog.rest_duration_minutes;
-
-        return {minutesLeft, percentElapsed, percentRemaining, expired: minutesLeft === 0};
-    } else if (dog.rest_duration_minutes === 2000) {
-        return {minutesLeft: 'GRM', percentElapsed: 0, percentRemaining: 1, expired: false};
-    } else {
-        return {minutesLeft: 'EOD', percentElapsed: 0, percentRemaining: 1, expired: false};
+        return {
+            minutesLeft,
+            percentElapsed: 1 - minutesLeft / bt.duration_minutes,
+            percentRemaining: minutesLeft / bt.duration_minutes,
+            expired: minutesLeft === 0,
+        };
     }
+
+    if (bt.behavior === 'lunch') {
+        const onePm = new Date(start);
+        onePm.setHours(13, 0, 0, 0);
+        const totalMinutes = Math.max(Math.ceil((onePm.getTime() - start.getTime()) / (60 * 1000)), 1);
+        const minutesLeft = Math.max(Math.ceil((onePm.getTime() - now.value) / (60 * 1000)), 0);
+        return {
+            minutesLeft,
+            percentElapsed: 1 - minutesLeft / totalMinutes,
+            percentRemaining: minutesLeft / totalMinutes,
+            expired: minutesLeft === 0,
+        };
+    }
+
+    if (bt.behavior === 'walks_only') {
+        const elapsed = Math.floor((now.value - start.getTime()) / (60 * 1000));
+        const timeForWalk = elapsed >= bt.duration_minutes;
+        return {
+            minutesLeft: timeForWalk ? 'Walk!' : 'EOD',
+            percentElapsed: 0,
+            percentRemaining: 1,
+            expired: timeForWalk
+        };
+    }
+
+    // unlimited (GRM, TRN, etc.)
+    return {minutesLeft: bt.short_label, percentElapsed: 0, percentRemaining: 1, expired: false};
 });
 
 const preloadImage = (dog) => {
@@ -185,8 +220,7 @@ onUnmounted(() => {
 
 
         <div ref="photoContainer" class="relative bg-cover bg-center z-0 overflow-hidden" style="flex: 1 1 auto"
-             :style="{ backgroundImage: currentDog.photoUri && imageCache.has(currentDog.photoUri) ? `url(${props.photoUri}${currentDog.photoUri})` : 'none' }"
-        >
+             :style="{ backgroundImage: currentDog.photoUri && imageCache.has(currentDog.photoUri) ? `url(${props.photoUri}${currentDog.photoUri})` : 'none' }">
             <svg v-if="breakTimeLeft && !breakTimeLeft.expired" preserveAspectRatio="none"
                  class="absolute top-0 left-0 w-full h-full pointer-events-none z-10" viewBox="0 0 1 1">
                 <defs>
@@ -196,9 +230,7 @@ onUnmounted(() => {
                     </mask>
                 </defs>
 
-                <rect x="0" y="0" width="1" height="1"
-                      :fill="breakTimeLeft.minutesLeft === 'GRM' ? 'rgba(147,51,234,0.75)' : 'rgba(0,0,0,0.75)'"
-                      :mask="`url(#revealMask-${currentDog.id})`"/>
+                <rect x="0" y="0" width="1" height="1" :fill="maskColor" :mask="`url(#revealMask-${currentDog.id})`"/>
             </svg>
 
             <div class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
@@ -236,9 +268,9 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <div v-if="currentDog.firstname" ref="dogName"
+        <div v-if="currentDog.display_name" ref="dogName"
              class="flex items-center justify-center z-20 text-white font-semibold">
-            {{ currentDog.firstname.slice(0, props.maxlength) }}
+            {{ currentDog.display_name.slice(0, props.maxlength) }}
         </div>
     </div>
 

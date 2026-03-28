@@ -42,6 +42,7 @@ class MapController extends Controller
         return Inertia::render('Yardmap/Yardmap', [
             'size' => $size,
             'photoUri' => config('services.dd.uris.photo'),
+            'yardOrder' => Yard::pluck('display_order', 'id'),
         ]);
     }
 

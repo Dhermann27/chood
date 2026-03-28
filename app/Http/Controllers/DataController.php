@@ -12,6 +12,7 @@ use App\Models\Feeding;
 use App\Models\Rotation;
 use App\Models\RotationYardView;
 use App\Models\Shift;
+use App\Models\Yard;
 use App\Services\RotationSettings;
 use App\Traits\ChoodTrait;
 use Carbon\Carbon;
@@ -59,7 +60,8 @@ class DataController extends Controller
             return [$r->id => array_values(array_unique($allowed))];
         });
 
-        $headerYardIds = $openByRotation->flatten()->unique()->values();
+        $headerYardIds = Yard::whereIn('id', $openByRotation->flatten()->unique()->all())
+            ->orderBy('display_order')->pluck('id');
 
         $assignments = RotationYardView::query()->get(['rotation_id', 'yard_id', 'homebase_user_id', 'first_name'])
             ->groupBy('rotation_id')->map(fn($group) => $group->mapWithKeys(fn($row) => [
@@ -80,21 +82,6 @@ class DataController extends Controller
                     'next_second_break' => optional($shift->next_second_break ? Carbon::parse($shift->next_second_break) : null)->format('h:ia'),
                 ];
             })->sortBy('first_name')->values();
-
-//        $dogs = Dog::where(function ($query) {
-//            $query->whereHas('feedings', function ($q) {
-//                $q->where(function ($sub) {
-//                    $sub->whereRaw('DATE(feedings.modified_at) <= DATE(dogs.checkin)')
-//                        ->orWhereHas('dog.appointments.service', function ($s) {
-//                            $s->where('code', 'like', '%BRD%');
-//                        });
-//                });
-//            })->orWhereHas('medications', function ($q) {
-//                $q->whereRaw('DATE(medications.modified_at) >= DATE(dogs.checkin)');
-//            })->orWhereHas('allergies');
-//        })->with(['feedings', 'medications', 'allergies', 'cabin', 'appointments.service'])
-//            ->orderBy('cabin_id')->orderBy('firstname')->get();
-
 
         $lunchDogs = Feeding::select('id', 'pet_id', 'type', 'description')->whereHas('dog')->where(function ($query) {
             $query->where('is_task', 1)->orWhereRaw('LOWER(description) LIKE ?', ['%lunch%']);

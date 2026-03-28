@@ -18,6 +18,7 @@ return new class extends Migration {
             $table->string('account_id')->nullable();
             $table->string('firstname')->default('Dog');
             $table->string('lastname')->default('Smith');
+            $table->string('display_name')->default('Dog');
             $table->string('gender')->nullable();
             $table->integer('weight')->nullable();
             $table->foreignId('yard_id')->nullable()->constrained()->nullOnDelete()->index();
@@ -28,7 +29,7 @@ return new class extends Migration {
             $table->dateTime('checkin')->nullable();
             $table->dateTime('checkout')->nullable();
             $table->timestamp('rest_starts_at')->nullable();
-            $table->integer('rest_duration_minutes')->nullable();
+            $table->foreignId('break_type_id')->nullable()->constrained('break_types')->nullOnDelete();
             $table->timestamps();
         });
         DB::update('ALTER TABLE dogs AUTO_INCREMENT = 1000');
