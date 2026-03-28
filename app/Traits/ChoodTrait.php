@@ -52,7 +52,7 @@ trait ChoodTrait
      */
     public function getDogs(bool $filterByCabinId = false, string $size = null): Collection
     {
-        $dogs = Dog::with('appointments.service', 'cabin');
+        $dogs = Dog::with('appointments.service', 'cabin', 'breakType');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
         if ($size) {
             if ($size === 'small') {

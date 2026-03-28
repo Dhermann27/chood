@@ -13,12 +13,12 @@ class Dog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'gender', 'photoUri',
+    protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'display_name', 'gender', 'photoUri',
         'nickname', 'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout',
-        'rest_starts_at', 'rest_duration_minutes', 'food_type', 'feeding_method', 'feeding_notes',
+        'rest_starts_at', 'break_type_id', 'food_type', 'feeding_method', 'feeding_notes',
     ];
 
-    protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s'];
+    protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s', 'rest_starts_at' => 'datetime'];
 
     protected $appends = ['is_boarding', 'is_daycare', 'is_interview', 'left_icons', 'right_icons'];
 
@@ -94,6 +94,11 @@ class Dog extends Model
         return $this->belongsTo(Cabin::class, 'cabin_id');
     }
 
+    public function breakType(): BelongsTo
+    {
+        return $this->belongsTo(BreakType::class, 'break_type_id');
+    }
+
     public function feedings(): HasMany
     {
         return $this->hasMany(Feeding::class, 'pet_id', 'pet_id');
@@ -104,7 +109,6 @@ class Dog extends Model
         return $this->hasMany(Medication::class, 'pet_id', 'pet_id');
     }
 
-    /** A dog has many appointments */
     public function appointments()
     {
         return $this->hasMany(Appointment::class, 'pet_id', 'pet_id');

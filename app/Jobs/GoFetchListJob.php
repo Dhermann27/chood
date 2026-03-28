@@ -3,10 +3,13 @@
 namespace App\Jobs;
 
 use App\Enums\HousingServiceCodes;
+use App\Enums\ServiceSyncStatus;
+use App\Models\Appointment;
 use App\Models\Cabin;
 use App\Models\Dog;
 use App\Services\FetchDataService;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -62,10 +65,44 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             }
         }
 
-        Dog::whereNotIn('pet_id', $activePetIds)->delete();
+        $this->resolveDisplayNames($activePetIds);
+
+        $inactivePetIds = Dog::whereNotIn('pet_id', $activePetIds)->pluck('pet_id');
+        Appointment::whereIn('pet_id', $inactivePetIds)->update(['sync_status' => ServiceSyncStatus::Archived]);
+        Dog::whereIn('pet_id', $inactivePetIds)->delete();
 
         $delay = config('services.gingr.queue_delay');
         usleep(mt_rand($delay, $delay + 1000) * 1000);
+    }
+
+    private function resolveDisplayNames(array $activePetIds): void
+    {
+        $dogs = Dog::whereIn('pet_id', $activePetIds)->get(['id', 'firstname', 'lastname']);
+
+        foreach ($dogs->groupBy('firstname') as $firstname => $group) {
+            if ($group->count() === 1) {
+                $group->first()->update(['display_name' => $firstname]);
+                continue;
+            }
+
+            $maxLen = $group->max(fn($d) => strlen($d->lastname ?? ''));
+            $resolved = false;
+
+            for ($i = 1; $i <= $maxLen; $i++) {
+                $names = $group->map(fn($d) => $firstname . ' ' . ucfirst(strtolower(substr($d->lastname ?? '', 0, $i))));
+                if ($names->unique()->count() === $group->count()) {
+                    $group->each(fn($d) => $d->update([
+                        'display_name' => $firstname . ' ' . ucfirst(strtolower(substr($d->lastname ?? '', 0, $i))),
+                    ]));
+                    $resolved = true;
+                    break;
+                }
+            }
+
+            if (!$resolved) {
+                $group->each(fn($d) => $d->update(['display_name' => trim("$firstname {$d->lastname}")]));
+            }
+        }
     }
 
     private function getUpdateValues(array $row, $cabins): array

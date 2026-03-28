@@ -17,6 +17,8 @@ return new class extends Migration {
             $table->unsignedBigInteger('pet_id')->unique();
             $table->string('account_id')->nullable();
             $table->string('firstname')->default('Dog');
+            $table->string('lastname')->default('Smith');
+            $table->string('display_name')->default('Dog');
             $table->string('gender')->nullable();
             $table->unsignedBigInteger('order_id')->nullable();
             $table->integer('weight')->nullable();
@@ -28,7 +30,7 @@ return new class extends Migration {
             $table->dateTime('checkin')->nullable();
             $table->dateTime('checkout')->nullable();
             $table->timestamp('rest_starts_at')->nullable();
-            $table->integer('rest_duration_minutes')->nullable();
+            $table->foreignId('break_type_id')->nullable()->constrained('break_types')->nullOnDelete();
             $table->string('food_type')->nullable();
             $table->string('feeding_method')->nullable();
             $table->text('feeding_notes')->nullable();

@@ -17,5 +17,6 @@ class DatabaseSeeder extends Seeder
         $this->call(RotationSeeder::class);
         $this->call(YardSeeder::class);
         $this->call(TimeslotSeeder::class);
+        $this->call(BreakTypeSeeder::class);
     }
 }
