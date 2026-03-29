@@ -49,6 +49,8 @@ return [
         'location_id' => env('GINGR_LOCATION_ID', 3),
         'uris' => [
             'login'          => env('GINGR_BASE_URL') . env('GINGR_LOGIN_URI'),
+            'dashboard'      => env('GINGR_BASE_URL') . '/dashboard',
+            'icons'          => env('GINGR_BASE_URL') . '/dashboard/get_icons',
             'checkedIn'      => env('GINGR_BASE_URL') . env('GINGR_CHECKED_IN_URI'),
             'animalData'     => env('GINGR_BASE_URL') . env('GINGR_ANIMAL_DATA_URI'),
             'ownerData'      => env('GINGR_BASE_URL') . env('GINGR_OWNER_DATA_URI'),

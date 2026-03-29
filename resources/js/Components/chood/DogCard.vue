@@ -7,10 +7,9 @@ const props = defineProps({
     dogs: Array,
     maxlength: Number,
     cardHeight: Number,
-    shouldLoad: Boolean,
 });
 const currentDogIndex = ref(0);
-const imageCache = new Map();
+const imageCache = ref(new Set());
 const dogBanner = ref(null);
 const dogName = ref(null);
 const breakMinutesRemaining = ref(null);
@@ -22,24 +21,24 @@ const currentDog = computed(() => {
 });
 const now = ref(Date.now())
 const iconRefs = ref({});
-const setIconRef = (index, dir) => (el) => {
-    if (el) iconRefs.value[`chood${dir}Icon${index}`] = el;
-};
+function setIconRef(index, dir) {
+    return (el) => {
+        if (el) iconRefs.value[`chood${dir}Icon${index}`] = el;
+    };
+}
 const intervals = [null, null]; // [rotationInterval, timerInterval]
-
-const emit = defineEmits(['imageLoaded']);
 
 const bannerStyle = computed(() =>
     getBannerStyle(currentDog.value, breakTimeLeft.value)
 );
 
-const getTimeColor = (iconData) => {
+function getTimeColor(iconData) {
     const now = new Date();
     if (iconData.completed) return 'text-meadow';
     else if (new Date(iconData.checkout) - now <= 3600000) return 'text-alerted'; // within 1 hour
     else if (new Date(iconData.start) < now) return 'text-sunshine';
     return 'text-white';
-};
+}
 
 const maskColor = computed(() => {
     const dog = currentDog.value;
@@ -95,35 +94,17 @@ const breakTimeLeft = computed(() => {
     return {minutesLeft: bt.short_label, percentElapsed: 0, percentRemaining: 1, expired: false};
 });
 
-const preloadImage = (dog) => {
-    return new Promise((resolve) => {
-        if (dog.photoUri && !imageCache.has(dog.photoUri)) {
-            const img = new Image();
-            img.src = dog.photoUri;
-
-            const timer = setTimeout(() => {
-                console.warn('Timeout loading image:', dog.photoUri);
-                resolve(); // still resolve even if it times out
-            }, 10000);
-
-            img.onload = () => {
-                clearTimeout(timer);
-                imageCache.set(dog.photoUri, img);
-                resolve();
-            };
-
-            img.onerror = () => {
-                clearTimeout(timer);
-                console.warn('Failed to load image:', dog.photoUri);
-                resolve();
-            };
-        } else {
-            resolve();
-        }
-    });
-};
+function preloadImage(dog) {
+    if (dog.photoUri && !imageCache.value.has(dog.photoUri)) {
+        const img = new Image();
+        img.onload = () => imageCache.value.add(dog.photoUri);
+        img.onerror = () => console.warn('Failed to load image:', dog.photoUri);
+        img.src = dog.photoUri;
+    }
+}
 
 watch(() => props.dogs, (newDogs) => {
+    newDogs.forEach(dog => preloadImage(dog));
     intervals.forEach((i, index) => {
         if (i) {
             clearInterval(i);
@@ -191,17 +172,6 @@ watch([() => props.cardHeight, currentDog], async ([newHeight]) => {
                 iconSpan.style.fontSize = `${Math.floor(size * 0.6)}px`;
             }
         });
-    }
-}, {immediate: true});
-
-watch(() => props.shouldLoad, async (newVal) => {
-    if (newVal) {
-        const imagePromises = props.dogs.map(dog => preloadImage(dog));
-        await Promise.all(imagePromises);
-
-        setTimeout(() => {
-            emit('imageLoaded');
-        }, 500);
     }
 }, {immediate: true});
 

@@ -1,5 +1,5 @@
 <script setup>
-import {computed, ref, watch} from "vue";
+import {ref} from "vue";
 import axios from 'axios';
 
 import DogCard from "@/Components/chood/DogCard.vue";
@@ -16,6 +16,8 @@ const props = defineProps({
     cardHeight: Number,
 });
 
+const emit = defineEmits(['cabinClicked']);
+
 const assignment = ref({
     id: null,
     firstname: '',
@@ -29,51 +31,6 @@ const showModal = ref(false);
 const modalType = ref('add'); // 'add' or 'edit'
 const isNewDog = ref(false);
 const hoveredCabinId = ref(null);
-const currentLoadingIndex = ref(0);
-
-const emit = defineEmits(['cabinClicked']);
-
-const cabinKeys = computed(() => {
-    return Object.keys(props.dogs).filter(cabinId => cabinId !== 'unassigned' && props.dogs[cabinId].length > 0);
-});
-const getCurrentCabinKey = () => {
-    if (cabinKeys.value && currentLoadingIndex.value <= cabinKeys.value.length) {
-        return parseInt(cabinKeys.value[currentLoadingIndex.value]);
-    } else {
-        if (!cabinKeys.value) {
-            console.warn('cabinKeys.value false');
-        } else {
-            console.warn('Index out of range', cabinKeys.value.length, currentLoadingIndex.value);
-        }
-        return null;
-    }
-};
-
-const handleImageLoaded = () => {
-    currentLoadingIndex.value++;
-    for (; currentLoadingIndex.value < cabinKeys.value.length; currentLoadingIndex.value++) {
-        if (props.dogs[cabinKeys.value[currentLoadingIndex.value]]?.some(dog => dog.photoUri)) {
-            break;
-        }
-    }
-}
-
-const isCheckingOutTodayOrEarlier = (dogs) => {
-    if (!dogs) return false;
-    const today = new Date().toLocaleDateString('en-CA'); // "YYYY-MM-DD"
-
-    return dogs.some(dog => {
-        const checkoutDate = dog.checkout?.slice(0, 10);
-        const isCheckoutTodayOrEarlier = checkoutDate && checkoutDate <= today;
-        return isCheckoutTodayOrEarlier && dog.is_boarding;
-    });
-};
-
-
-
-watch(() => props.dogs, () => {
-    currentLoadingIndex.value = 0;
-});
 
 function openModal(type, cabin) {
     modalType.value = type;
@@ -159,7 +116,16 @@ async function handleDelete(dogs) {
     }
 }
 
-const cabinStyle = (cabin) => {
+function isCheckingOutTodayOrEarlier(dogs) {
+    if (!dogs) return false;
+    const today = new Date().toLocaleDateString('en-CA'); // "YYYY-MM-DD"
+    return dogs.some(dog => {
+        const checkoutDate = dog.checkout?.slice(0, 10);
+        return checkoutDate && checkoutDate <= today && dog.is_boarding;
+    });
+}
+
+function cabinStyle(cabin) {
     const isHovered = hoveredCabinId.value === cabin.id && props.statuses[cabin.id];
     const dogsInCabin = props.dogs?.[cabin.id] || [];
 
@@ -169,13 +135,11 @@ const cabinStyle = (cabin) => {
             : '#f4df7a' // Yellow
         : '#373a36';   // Default
 
-    const isDashed = isCheckingOutTodayOrEarlier(dogsInCabin);
-
     return {
         gridRow: `${cabin.rho} / span ${cabin.rowspan}`,
         gridColumn: cabin.kappa,
         borderColor,
-        borderStyle: isDashed ? 'dashed' : 'solid',
+        borderStyle: isCheckingOutTodayOrEarlier(dogsInCabin) ? 'dashed' : 'solid',
         color: isHovered ? '#fff' : '#373a36',
         backgroundColor: isHovered ? borderColor : '#fff',
         width: props.cardWidth + 'px',
@@ -183,22 +147,21 @@ const cabinStyle = (cabin) => {
         transition: 'background-color 0.3s ease',
         cursor: props.controls !== ControlSchemes.NONE ? 'pointer' : 'auto',
     };
-};
+}
 
-
-const handleHover = (cabinId) => {
+function handleHover(cabinId) {
     if (props.statuses?.[cabinId]) {
         hoveredCabinId.value = cabinId;
     }
-};
+}
 
-const handleHoverLeave = () => {
+function handleHoverLeave() {
     hoveredCabinId.value = null;
-};
+}
 
-const handleClick = (cabin) => {
+function handleClick(cabin) {
     emit('cabinClicked', cabin);
-};
+}
 
 </script>
 <template>
@@ -208,9 +171,7 @@ const handleClick = (cabin) => {
         @mouseover="handleHover(cabin.id)" @mouseleave="handleHoverLeave" @click="handleClick(cabin)"
     >
         <div v-if="props.dogs[cabin.id] && props.dogs[cabin.id].length > 0" class="h-full w-full relative">
-            <DogCard :dogs="props.dogs[cabin.id]" :maxlength="maxlength" :card-height="cardHeight"
-                     :shouldLoad="cabin.id === getCurrentCabinKey()"
-                     @imageLoaded="handleImageLoaded"/>
+            <DogCard :dogs="props.dogs[cabin.id]" :maxlength="maxlength" :card-height="cardHeight"/>
             <div v-if="controls === ControlSchemes.MODAL && !props.dogs[cabin.id][0].is_boarding"
                  class="absolute inset-y-0 left-0 flex flex-col justify-center">
                 <button

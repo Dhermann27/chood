@@ -18,6 +18,28 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
+const maxWidthClass = computed(() => {
+    return {
+        sm: 'sm:max-w-sm',
+        md: 'sm:max-w-md',
+        lg: 'sm:max-w-lg',
+        xl: 'sm:max-w-xl',
+        '2xl': 'sm:max-w-2xl',
+    }[props.maxWidth];
+});
+
+function close() {
+    if (props.closeable) {
+        emit('close');
+    }
+}
+
+function closeOnEscape(e) {
+    if (e.key === 'Escape' && props.show) {
+        close();
+    }
+}
+
 watch(
     () => props.show,
     () => {
@@ -29,33 +51,11 @@ watch(
     }
 );
 
-const close = () => {
-    if (props.closeable) {
-        emit('close');
-    }
-};
-
-const closeOnEscape = (e) => {
-    if (e.key === 'Escape' && props.show) {
-        close();
-    }
-};
-
 onMounted(() => document.addEventListener('keydown', closeOnEscape));
 
 onUnmounted(() => {
     document.removeEventListener('keydown', closeOnEscape);
     document.body.style.overflow = null;
-});
-
-const maxWidthClass = computed(() => {
-    return {
-        sm: 'sm:max-w-sm',
-        md: 'sm:max-w-md',
-        lg: 'sm:max-w-lg',
-        xl: 'sm:max-w-xl',
-        '2xl': 'sm:max-w-2xl',
-    }[props.maxWidth];
 });
 </script>
 

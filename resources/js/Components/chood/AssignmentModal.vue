@@ -13,13 +13,13 @@ const props = defineProps({
 
 const emit = defineEmits(['closeModal', 'submitForm']);
 
-const submitForm = () => {
+function submitForm() {
     emit('submitForm', props.assignment);
-};
+}
 
-const closeModal = () => {
+function closeModal() {
     emit('closeModal');
-};
+}
 </script>
 
 <template>

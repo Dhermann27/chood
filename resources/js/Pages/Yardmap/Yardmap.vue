@@ -18,10 +18,10 @@ const nextLunch = ref(null);
 const currentGif = ref('/images/doggifs/dog1.webp');
 const randomPosition = ref({top: 0, left: 0});
 const localChecksum = ref('');
-let refreshIntervals = [];
-const currentLoadingIndex = ref(0);
 const chyron = ref(null);
 const chyronFontSize = ref('60px');
+let refreshIntervals = [];
+
 const chyronStyle = computed(() => ({
     height: '100px',
     textAlign: 'center',
@@ -36,13 +36,6 @@ const chyronStyle = computed(() => ({
 
 const allDogs = computed(() => {
     return Object.values(dogsByGroup.value ?? {}).flat();
-});
-const dogIndexById = computed(() => {
-    const map = {};
-    allDogs.value.forEach((dog, i) => {
-        if (dog?.id != null) map[dog.id] = i;
-    });
-    return map;
 });
 const groupKeys = computed(() => Object.keys(dogsByGroup.value ?? {}).sort((a, b) =>
     (props.yardOrder[a] ?? 99) - (props.yardOrder[b] ?? 99)
@@ -89,14 +82,6 @@ const cardHeight = computed(() => {
     return ((1080 - 100) - (maxRows.value - 1) * 10) / maxRows.value;
 });
 
-const handleImageLoaded = () => {
-    while (++currentLoadingIndex.value < allDogs.value.length) {
-        if (allDogs.value[currentLoadingIndex.value]?.photoUri) {
-            break;
-        }
-    }
-};
-
 function getNewGifAndPosition() {
     return {
         newGif: '/images/doggifs/dog' + (Math.floor(Math.random() * 11) + 1) + '.webp',
@@ -117,7 +102,6 @@ async function updateData() {
             nextLunch.value = response.data.nextLunch;
             localChecksum.value = response.data.checksum;
 
-            currentLoadingIndex.value = 0;
             if (chyron.value) {
                 await nextTick();
                 chyronFontSize.value = getFittedFontSize(chyron.value, 1920);
@@ -159,8 +143,7 @@ onBeforeUnmount(() => {
             <div v-if="groupKeys.length >= 1" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[0]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
-                           :cardHeight="cardHeight" :dogIndexById="dogIndexById"
-                           :currentLoadingIndex="currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
+                           :cardHeight="cardHeight"/>
             </div>
 
             <div v-if="groupKeys.length === 2" class="bg-crimson h-full" :style="{width: DIVIDER_W + 'px'}"></div>
@@ -168,8 +151,7 @@ onBeforeUnmount(() => {
             <div v-if="groupKeys.length === 2" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[1]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
-                           :cardHeight="cardHeight" :dogIndexById="dogIndexById"
-                           :currentLoadingIndex="currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
+                           :cardHeight="cardHeight"/>
             </div>
 
         </div>

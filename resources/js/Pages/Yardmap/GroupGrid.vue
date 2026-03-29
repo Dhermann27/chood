@@ -10,11 +10,7 @@ const props = defineProps({
     cardWidth: {type: Number, required: true},
     cardHeight: {type: Number, required: true},
 
-    dogIndexById: {type: Object, required: true},
-    currentLoadingIndex: {type: Number, required: true},
 });
-
-const emit = defineEmits(['imageLoaded']);
 
 const dogs = computed(() => props.dogsByGroup?.[props.groupKey] ?? []);
 const activeCount = computed(() => {
@@ -44,9 +40,7 @@ const gridStyle = computed(() => {
     <div class="h-full overflow-y-auto overflow-x-hidden min-w-0">
         <div class="p-1 w-full h-full overflow-x-hidden min-w-0" :style="gridStyle">
             <div v-for="(dog, dogIndex) in dogs" :key="dog.id ?? `${groupKey}-${dogIndex}`" class="w-full h-full">
-                <DogCard :dogs="[dog]" :card-width="cardWidth" :card-height="cardHeight"
-                         :shouldLoad="dogIndexById?.[dog.id] === currentLoadingIndex"
-                         @imageLoaded="emit('imageLoaded')"/>
+                <DogCard :dogs="[dog]" :card-width="cardWidth" :card-height="cardHeight"/>
             </div>
 
             <div class="w-full h-full flex relative items-center justify-center bg-crimson text-white font-bold">

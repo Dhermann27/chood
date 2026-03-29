@@ -16,14 +16,7 @@ const props = defineProps({
     },
 });
 
-const closeOnEscape = (e) => {
-    if (open.value && e.key === 'Escape') {
-        open.value = false;
-    }
-};
-
-onMounted(() => document.addEventListener('keydown', closeOnEscape));
-onUnmounted(() => document.removeEventListener('keydown', closeOnEscape));
+const open = ref(false);
 
 const widthClass = computed(() => {
     return {
@@ -41,7 +34,14 @@ const alignmentClasses = computed(() => {
     }
 });
 
-const open = ref(false);
+function closeOnEscape(e) {
+    if (open.value && e.key === 'Escape') {
+        open.value = false;
+    }
+}
+
+onMounted(() => document.addEventListener('keydown', closeOnEscape));
+onUnmounted(() => document.removeEventListener('keydown', closeOnEscape));
 </script>
 
 <template>

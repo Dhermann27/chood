@@ -3,7 +3,8 @@
 namespace App\Jobs;
 
 use App\Enums\HousingServiceCodes;
-use App\Enums\ServiceSyncStatus;
+use App\Jobs\GoFetchAnimalDataJob;
+use App\Jobs\GoFetchIconsJob;
 use App\Models\Appointment;
 use App\Models\Cabin;
 use App\Models\Dog;
@@ -50,6 +51,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             ->map(fn($c) => $c->id);
 
         $activePetIds = [];
+        $activeOwnerIds = [];
         $dispatchedOwnerIds = [];
 
         foreach ($output['data'] as $row) {
@@ -58,17 +60,19 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
                 $this->getUpdateValues($row, $cabins)
             );
             $activePetIds[] = $dog->pet_id;
+            $activeOwnerIds[] = $row['o_id'];
 
             if (!in_array($row['o_id'], $dispatchedOwnerIds)) {
-                GoFetchOwnerDataJob::dispatch($row['o_id']);
+                GoFetchAnimalDataJob::dispatch($row['o_id']);
                 $dispatchedOwnerIds[] = $row['o_id'];
             }
         }
 
         $this->resolveDisplayNames($activePetIds);
+        GoFetchIconsJob::dispatch($activePetIds, $activeOwnerIds);
 
         $inactivePetIds = Dog::whereNotIn('pet_id', $activePetIds)->pluck('pet_id');
-        Appointment::whereIn('pet_id', $inactivePetIds)->update(['sync_status' => ServiceSyncStatus::Archived]);
+        Appointment::whereIn('pet_id', $inactivePetIds)->delete();
         Dog::whereIn('pet_id', $inactivePetIds)->delete();
 
         $delay = config('services.gingr.queue_delay');
@@ -111,6 +115,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             'order_id'     => $row['id'],
             'account_id'   => $row['o_id'],
             'firstname'    => $row['a_first'] ?: null,
+            'lastname'     => $row['o_last'] ?: null,
             'weight'       => $row['weight'] ? (int) $row['weight'] : null,
             'cabin_id'     => $cabins->get($this->normCabinName($row['run_name'] ?? ''), null),
             'housing_code' => $this->housingCodeFromTypeId($row['type_id']),

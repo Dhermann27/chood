@@ -9,10 +9,13 @@ class TimeslotSeeder extends Seeder
 {
     public function run(): void
     {
-        $slots = ['AM', 'Lunch', 'PM', 'As Needed'];
+        $slots = [
+            ['name' => 'AM',    'display_order' => 0],
+            ['name' => 'Lunch', 'display_order' => 1],
+            ['name' => 'PM',    'display_order' => 2],
+            ['name' => 'PRN',   'display_order' => 3],
+        ];
 
-        foreach ($slots as $display_order => $name) {
-            Timeslot::firstOrCreate(['name' => $name], ['display_order' => $display_order]);
-        }
+        collect($slots)->each(fn($slot) => Timeslot::create($slot));
     }
 }

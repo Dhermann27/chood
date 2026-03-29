@@ -10,13 +10,15 @@ use App\Models\Timeslot;
 use App\Services\FetchDataService;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Foundation\Bus\Dispatchable;
 
-class GoFetchOwnerDataJob implements ShouldQueue, ShouldBeUnique
+class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -24,7 +26,7 @@ class GoFetchOwnerDataJob implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'owner' . $this->ownerId;
+        return 'animal_owner' . $this->ownerId;
     }
 
     /**
@@ -33,7 +35,17 @@ class GoFetchOwnerDataJob implements ShouldQueue, ShouldBeUnique
     public function handle(FetchDataService $fetchDataService): void
     {
         $url = config('services.gingr.uris.ownerData') . $this->ownerId;
-        $output = $fetchDataService->fetchWithSession($url);
+
+        try {
+            $output = $fetchDataService->fetchWithSession($url);
+        } catch (Exception $e) {
+            if (in_array($e->getCode(), [404, 500])) {
+                Log::warning("GoFetchAnimalDataJob skipping owner {$this->ownerId}: {$e->getMessage()}");
+                return;
+            }
+            Cache::forget('gingr_session_cookies');
+            throw $e;
+        }
 
         $timeslots = Timeslot::pluck('id', 'name');
 

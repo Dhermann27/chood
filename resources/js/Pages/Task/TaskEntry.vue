@@ -15,7 +15,7 @@ const props = defineProps({
     breakTypes: Array,
 });
 
-const frequency = 10000;
+const FREQUENCY = 10000;
 
 const dogs = ref(null);
 const employees = ref(null);
@@ -36,7 +36,6 @@ const targets = ref({
 const step = ref(1);
 const localChecksum = ref('');
 const is1pmOrLater = ref(false);
-const imageCache = new Set();
 
 const restColumns = computed(() => Math.ceil(Math.sqrt((16 / 9) * (dogsOnBreak.value.length + 1))));
 const restRows = computed(() => Math.ceil((dogsOnBreak.value.length + 1) / restColumns.value));
@@ -77,23 +76,13 @@ const breakStatus = computed(() => {
 let counter = 0;
 let refreshInterval;
 
-async function preloadDogPhotos(dogs) {
+function preloadDogPhotos(dogs) {
     if (!dogs) return;
-    for (const dog of dogs) {
-        if (!dog?.photoUri) continue;
-        if (imageCache.has(dog.photoUri)) continue;
-
-        imageCache.add(dog.photoUri);
-
-        await new Promise(resolve => {
-            const img = new Image();
-            img.src = dog.photoUri;
-            img.onload = resolve;
-            img.onerror = resolve;
-        });
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    dogs.forEach(dog => {
+        if (!dog?.photoUri) return;
+        const img = new Image();
+        img.src = dog.photoUri;
+    });
 }
 
 async function updateData() {
@@ -115,33 +104,33 @@ async function updateData() {
         counter = 0;
     }
     clearInterval(refreshInterval);
-    refreshInterval = setInterval(updateData, frequency);
+    refreshInterval = setInterval(updateData, FREQUENCY);
 }
 
-const prevStep = () => {
+function prevStep() {
     statusMessage.value = null;
     counter = 0;
-    if (step.value > 1) step.value--
+    if (step.value > 1) step.value--;
 }
 
-const nextStep = () => {
+function nextStep() {
     statusMessage.value = null;
     counter = 0;
-    if (step.value < 4) step.value++
+    if (step.value < 4) step.value++;
 }
 
-const handleEmployeeClick = (employee) => {
+function handleEmployeeClick(employee) {
     homebaseId.value = employee.homebase_user_id;
     nextStep();
 }
 
-const handleTaskClick = (thisTodo) => {
+function handleTaskClick(thisTodo) {
     is1pmOrLater.value = new Date().getHours() >= 13;
     todo.value = thisTodo;
     nextStep();
 }
 
-const handleTargetClick = (cabin) => {
+function handleTargetClick(cabin) {
     if (todo.value === 'assignCabin') {
         targets.value = {
             ...targets.value, // Preserve existing properties
@@ -158,26 +147,26 @@ const handleTargetClick = (cabin) => {
         };
         nextStep();
     }
-};
+}
 
-const handleAssignDogUpdate = () => {
+function handleAssignDogUpdate() {
     counter = 0;
     if (targets.value['dogsToAssign'].length > 0 && targets.value['cabin_id'] > 0) nextStep();
-};
+}
 
-const handleBreakDogUpdate = (breakTypeId) => {
+function handleBreakDogUpdate(breakTypeId) {
     counter = 0;
     targets.value.break_type_id = breakTypeId;
     if (targets.value['dogsToAssign'].length > 0) nextStep();
-};
+}
 
-const handleBreakDogDelete = (dog) => {
+function handleBreakDogDelete(dog) {
     targets.value['dogsToAssign'] = dog;
     todo.value = `markReturned/${dog.id}`;
     nextStep();
-};
+}
 
-const handleYardChange = (pendingMoves) => {
+function handleYardChange(pendingMoves) {
     const payload = Object.entries(pendingMoves).map(([dog_id, yard_id]) => ({
         dog_id: Number(dog_id),
         yard_id: Number(yard_id),
@@ -185,9 +174,9 @@ const handleYardChange = (pendingMoves) => {
     if (!payload.length) return;
     targets.value['yardsToAssign'] = payload;
     nextStep();
-};
+}
 
-const handleFinishAction = async (action) => {
+async function handleFinishAction(action) {
     if (action === 'Done' || action === 'More') {
         axios({
             method: 'POST',
@@ -200,7 +189,7 @@ const handleFinishAction = async (action) => {
             localChecksum.value = '';
             clearInterval(refreshInterval);
             updateData();
-            refreshInterval = setInterval(updateData, frequency);
+            refreshInterval = setInterval(updateData, FREQUENCY);
 
             statusMessage.value = response.data?.message;
             statusClass.value = 'text-meadow';
@@ -234,7 +223,7 @@ const handleFinishAction = async (action) => {
 
 onMounted(() => {
     updateData();
-    refreshInterval = setInterval(updateData, frequency);
+    refreshInterval = setInterval(updateData, FREQUENCY);
 });
 
 onUnmounted(() => {
@@ -387,12 +376,12 @@ onUnmounted(() => {
                     <div v-for="(dog, index) in dogsOnBreak" :id="index"
                          :style="{height: restCardHeight + 'px', width: restCardWidth + 'px'}">
                         <DogCard :dogs="[dog]" @click="handleBreakDogDelete(dog)"
-                                 :card-width="restCardWidth" :card-height="restCardHeight" :shouldLoad="true"/>
+                                 :card-width="restCardWidth" :card-height="restCardHeight"/>
                     </div>
                 </div>
             </template>
             <template v-else-if="todo === 'moveDog'">
-                <MoveDogs :dogs="dogs" :yards="openYards" :imageCache="imageCache"
+                <MoveDogs :dogs="dogs" :yards="openYards"
                           @changed="counter = 0;" @submit="handleYardChange" style="height: 650px;"/>
             </template>
 

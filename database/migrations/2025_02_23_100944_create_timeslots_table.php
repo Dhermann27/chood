@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->unsignedTinyInteger('display_order')->default(0);
         });
-        DB::update('ALTER TABLE reports AUTO_INCREMENT = 1000');
+        DB::update('ALTER TABLE timeslots AUTO_INCREMENT = 1000');
     }
 
     public function down(): void

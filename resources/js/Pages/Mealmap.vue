@@ -18,6 +18,9 @@ const props = defineProps({
 });
 
 const controls = ref(ControlSchemes.NONE);
+const showOverwriteModal = ref(false);
+const pendingYardPreset = ref(null);
+const isSavingPreset = ref(false);
 const inputRefs = ref({});
 const breaks = ref([]);
 const lunchDogs = ref([]);
@@ -32,8 +35,6 @@ const openYardIdsByRotation = ref({});
 const uiAssignments = ref({});
 const localChecksum = ref('');
 let refreshInterval;
-// const currentViewIndex = ref(0);
-const currentLoadingIndex = ref(0);
 
 const cardHeight = computed(() => Math.min(300, 800 / (lunchDogs.value.length + medicatedDogs.value.length)));
 const allDogs = computed(() => [...lunchDogs.value, ...medicatedDogs.value]);
@@ -56,15 +57,6 @@ function setInputRef(key, el) {
     inputRefs.value[key] = el;
 }
 
-const handleImageLoaded = () => {
-    const list = allDogs.value;
-    while (++currentLoadingIndex.value < list.value?.length) {
-        if (list.value[currentLoadingIndex.value].photoUri) {
-            break;
-        }
-    }
-};
-
 async function updateData() {
     try {
         const response = await axios.get(`/api/mealmap/${localChecksum.value}`);
@@ -80,7 +72,6 @@ async function updateData() {
             headerYardIds.value = response.data.headerYards;
             openYardIdsByRotation.value = response.data.openYardsByRotation;
             localChecksum.value = response.data.checksum;
-            currentLoadingIndex.value = 0;
             // } else if (dogs.value.length > props.dogsPerPage) {
             //     const maxChunks = Math.ceil(dogs.value.length / props.dogsPerPage);
             //     currentViewIndex.value = (currentViewIndex.value + 1) % maxChunks;
@@ -91,10 +82,6 @@ async function updateData() {
         console.error('Error fetching data:', error);
     }
 }
-
-const showOverwriteModal = ref(false);
-const pendingYardPreset = ref(null);
-const isSavingPreset = ref(false);
 
 function onYardPresetChange(e) {
     pendingYardPreset.value = e.target.value;
@@ -201,7 +188,7 @@ watchEffect(() => {
     if (employees.value && Object.keys(assignments.value).length) matchByHour();
 });
 
-const handleYardChange = async (rotationId, yardId) => {
+async function handleYardChange(rotationId, yardId) {
     const select = inputRefs.value[`multiselect-${rotationId}-${yardId}`];
     const r = String(rotationId);
     const y = String(yardId);
@@ -231,9 +218,9 @@ const handleYardChange = async (rotationId, yardId) => {
     setTimeout(() => {
         if (select) select.style.backgroundColor = '';
     }, 5000);
-};
+}
 
-const handleBreakChange = async (eventData, homebase_user_id, break_name) => {
+async function handleBreakChange(eventData, homebase_user_id, break_name) {
     const select = inputRefs.value[`timepick-${homebase_user_id}-${break_name}`];
     const redClasses = Array.from({length: 9}, (_, i) => `bg-red-${(i + 1) * 100}`);
 
@@ -252,7 +239,7 @@ const handleBreakChange = async (eventData, homebase_user_id, break_name) => {
     setTimeout(() => {
         select.style.backgroundColor = '';
     }, 5000);
-};
+}
 
 
 onMounted(() => {
@@ -279,8 +266,7 @@ onBeforeUnmount(() => {
                 <div class="grid grid-cols-1 w-full">
                     <div v-for="(dog, index) in medicatedDogs" :key="index" class="flex border-b-2 even:bg-gray-200">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: cardHeight + 'px'}">
-                            <DogCard :dogs="[dog]" :maxlength="20" :card-height="cardHeight"
-                                     :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
+                            <DogCard :dogs="[dog]" :maxlength="20" :card-height="cardHeight"/>
                         </div>
 
                         <div class="flex-grow flex flex-col items-start justify-center p-1 text-xl">
@@ -305,9 +291,7 @@ onBeforeUnmount(() => {
                 <div class="grid grid-cols-1 w-full">
                     <div v-for="(dog, index) in lunchDogs" :key="index" class="flex border-b-2 even:bg-gray-200">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: cardHeight + 'px'}">
-                            <DogCard :dogs="[dog]" :maxlength="20" :card-height="cardHeight"
-                                     :shouldLoad="index + medicatedDogs.length === currentLoadingIndex"
-                                     @imageLoaded="handleImageLoaded"/>
+                            <DogCard :dogs="[dog]" :maxlength="20" :card-height="cardHeight"/>
                         </div>
 
                         <div class="flex-grow flex items-center gap-3 p-1 text-xl min-w-0">

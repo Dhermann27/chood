@@ -56,10 +56,38 @@ class FetchDataService
             'Cookie' => $cookieHeader,
             'X-Requested-With' => 'XMLHttpRequest',
             'Accept' => 'application/json, text/javascript, */*; q=0.01',
+            'User-Agent' => self::USER_AGENT,
+            'Referer' => config('services.gingr.uris.dashboard'),
         ])->get(config('services.gingr.uris.' . $path, $path));
 
         if (!$response->successful()) {
-            throw new Exception("Gingr session request failed [{$response->status()}]: $path");
+            throw new Exception("Gingr session request failed [{$response->status()}]: $path", $response->status());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * POST to a Gingr session-authenticated endpoint with API key in the body.
+     *
+     * @throws Exception
+     */
+    public function postWithSession(string $url, array $params = []): array
+    {
+        $cookies = Cache::get('gingr_session_cookies') ?? $this->authenticate();
+        $cookieHeader = collect($cookies)->map(fn($value, $name) => "$name=$value")->implode('; ');
+        $params['key'] = config('services.gingr.api_key');
+
+        $response = Http::withHeaders([
+            'Cookie'            => $cookieHeader,
+            'X-Requested-With'  => 'XMLHttpRequest',
+            'Accept'            => 'application/json, text/javascript, */*; q=0.01',
+            'User-Agent'        => self::USER_AGENT,
+            'Referer'           => config('services.gingr.uris.dashboard'),
+        ])->asForm()->post($url, $params);
+
+        if (!$response->successful()) {
+            throw new Exception("Gingr POST request failed [{$response->status()}]: $url", $response->status());
         }
 
         return $response->json();

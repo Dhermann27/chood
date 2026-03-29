@@ -314,22 +314,24 @@ class GoFetchShiftsJob implements ShouldQueue
         $openYardCodes = RotationSettings::get();
         $allowed = $openYardCodes->allowedYards(false);
 
+        $allDogs = Dog::with('icons')->orderBy('id')->get();
+
+        $largeDogs = $allDogs->filter(fn($d) => str_contains($d->size_letter, 'L'))->pluck('id');
         if (in_array(1002, $allowed, true)) {
-            $dogs = Dog::whereIn('size_letter', ['L', 'LS'])->orderBy('id')->pluck('id');
-            $half = intdiv($dogs->count(), 2);
-            Dog::whereIn('id', $dogs->slice(0, $half))->update(['yard_id' => 1001]);
-            Dog::whereIn('id', $dogs->slice($half))->update(['yard_id' => 1002]);
+            $half = intdiv($largeDogs->count(), 2);
+            Dog::whereIn('id', $largeDogs->slice(0, $half))->update(['yard_id' => 1001]);
+            Dog::whereIn('id', $largeDogs->slice($half))->update(['yard_id' => 1002]);
         } else {
-            Dog::whereIn('size_letter', ['L', 'LS'])->update(['yard_id' => 1001]);
+            Dog::whereIn('id', $largeDogs)->update(['yard_id' => 1001]);
         }
 
+        $smallDogs = $allDogs->filter(fn($d) => str_contains($d->size_letter, 'S') || str_contains($d->size_letter, 'T'))->pluck('id');
         if (in_array(1003, $allowed, true)) {
-            $dogs = Dog::where('size_letter', 'S')->orderBy('id')->pluck('id');
-            $half = intdiv($dogs->count(), 2);
-            Dog::whereIn('id', $dogs->slice(0, $half))->update(['yard_id' => 1000]);
-            Dog::whereIn('id', $dogs->slice($half))->update(['yard_id' => 1003]);
+            $half = intdiv($smallDogs->count(), 2);
+            Dog::whereIn('id', $smallDogs->slice(0, $half))->update(['yard_id' => 1000]);
+            Dog::whereIn('id', $smallDogs->slice($half))->update(['yard_id' => 1003]);
         } else {
-            Dog::where('size_letter', 'S')->update(['yard_id' => 1000]);
+            Dog::whereIn('id', $smallDogs)->update(['yard_id' => 1000]);
         }
 
         $rotations = Rotation::query()->when(Carbon::now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))->get();

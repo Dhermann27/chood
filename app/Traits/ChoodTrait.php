@@ -52,21 +52,20 @@ trait ChoodTrait
      */
     public function getDogs(bool $filterByCabinId = false, string $size = null): Collection
     {
-        $dogs = Dog::with('appointments.service', 'cabin', 'breakType');
+        $dogs = Dog::with('appointments.service', 'cabin', 'breakType', 'icons');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
-        if ($size) {
-            if ($size === 'small') {
-                $dogs->where(function ($query) {
-                    $query->where('size_letter', 'LIKE', '%S%')
-                        ->orWhere('size_letter', 'LIKE', '%T%');
-                });
-            } else {
-                $dogs->where('size_letter', 'LIKE', '%L%');
-            }
-            $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());
+        if ($size) $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());
+
+        $result = $dogs->orderBy('firstname')->get();
+
+        if ($size === 'small') {
+            return $result->filter(fn($dog) => str_contains($dog->size_letter, 'S') || str_contains($dog->size_letter, 'T'))->values();
+        }
+        if ($size === 'large') {
+            return $result->filter(fn($dog) => str_contains($dog->size_letter, 'L'))->values();
         }
 
-        return $dogs->orderBy('firstname')->get();
+        return $result;
     }
 
     /**

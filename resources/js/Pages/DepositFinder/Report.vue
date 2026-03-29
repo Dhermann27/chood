@@ -41,8 +41,7 @@ function formatCurrency(value) {
     }).format(value);
 }
 
-// Function to handle login and fetch cookies
-const handleLogin = async () => {
+async function handleLogin() {
     started.value = true;
     results.value = [];
     errorMessage.value = null;
@@ -104,16 +103,16 @@ function pollResults(reportId) {
     }
 }
 
-const copyToClipboard = async (text) => {
+async function copyToClipboard(text) {
     try {
         await navigator.clipboard.writeText(text);
         console.log('Text copied to clipboard: ' + text);
     } catch (err) {
         console.error('Failed to copy text: ', err);
     }
-};
+}
 
-const copyFullReport = async (e) => {
+async function copyFullReport(e) {
     const node = document.getElementById('report-table-wrapper');
     if (!node) return;
 

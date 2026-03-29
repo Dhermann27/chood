@@ -4,16 +4,15 @@ import Draggable from 'vuedraggable';
 import {getYardGridStyle} from '@/utils.js';
 import MoveDogCard from "./MoveDogCard.vue";
 
+const ASPECT_RATIO = 4 / 3;
+const GAP = 10;
+
 const props = defineProps({
     dogs: {type: Array, required: true},
     yards: {type: Array, required: true},
-    imageCache: {type: Set, required: true},
 });
 
 const emit = defineEmits(['changed', 'submit']);
-
-const aspectRatio = 4 / 3;
-const gap = 10;
 const yardTiles = ref({});       // { [yardId]: tiles[] }
 const pendingMoves = ref({});    // { [dogId]: yardId }
 const LARGE_YARD_IDS = [1001, 1002];
@@ -26,11 +25,11 @@ const moveDogYards = computed(() => {
 const maxTiles = computed(() =>
     Math.max(1, ...moveDogYards.value.map(y => yardTiles.value[y.id]?.length ?? 0))
 );
-const columns = computed(() => Math.ceil(Math.sqrt(aspectRatio * maxTiles.value)));
+const columns = computed(() => Math.ceil(Math.sqrt(ASPECT_RATIO * maxTiles.value)));
 const rows = computed(() => Math.ceil(maxTiles.value / columns.value));
 const gridStyle = computed(() => getYardGridStyle(rows.value, columns.value));
 const innerHeight = computed(() => moveDogYards.value.length === 4 ? 200 : 410);
-const cardHeight = computed(() => (innerHeight.value - (rows.value - 1) * gap) / rows.value);
+const cardHeight = computed(() => (innerHeight.value - (rows.value - 1) * GAP) / rows.value);
 const pendingCount = computed(() => Object.keys(pendingMoves.value).length);
 
 function rebuildYardTiles() {
