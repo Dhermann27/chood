@@ -178,11 +178,11 @@ function handleClick(cabin) {
                     @click="openModal( 'edit', cabin)"
                     class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md"
                 >
-                    <FontAwesomeIcon :icon="$fa.fas['edit']"/>
+                    <FontAwesomeIcon :icon="['fas', 'edit']"/>
                 </button>
                 <button @click="handleDelete(props.dogs[cabin.id])"
                         class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md">
-                    <FontAwesomeIcon :icon="$fa.fas['trash']"/>
+                    <FontAwesomeIcon :icon="['fas', 'trash']"/>
                 </button>
             </div>
         </div>
@@ -190,7 +190,7 @@ function handleClick(cabin) {
             {{ cabin.short_name }}
             <div v-if="controls === ControlSchemes.MODAL" @click="openModal( 'add', cabin) " class="cabin-icon">
                 <button class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md">
-                    <FontAwesomeIcon :icon="$fa.fas['add']"/>
+                    <FontAwesomeIcon :icon="['fas', 'add']"/>
                 </button>
             </div>
         </div>

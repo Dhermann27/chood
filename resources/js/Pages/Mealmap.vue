@@ -257,8 +257,8 @@ onBeforeUnmount(() => {
                             <div v-for="medication in dog.medications" :key="medication.id"
                                  class="flex-col justify-center">
                                 <FontAwesomeIcon v-if="medication.medication_id"
-                                                 :icon="$fa.fas['prescription-bottle-pill']" class="me-1"/>
-                                <FontAwesomeIcon v-else :icon="$fa.fas['stethoscope']" class="me-1"/>
+                                                 :icon="['fas', 'prescription-bottle-pill']" class="me-1"/>
+                                <FontAwesomeIcon v-else :icon="['fas', 'stethoscope']" class="me-1"/>
                                 {{ medication.timeslot?.name }}
                                 {{ medication.type?.trim() }}
                                 <span v-if="medication.quantity || medication.unit">
@@ -269,7 +269,7 @@ onBeforeUnmount(() => {
                             </div>
                             <div v-for="allergy in dog.allergies" :key="allergy.id"
                                  class="flex-col justify-center text-crimson">
-                                <FontAwesomeIcon :icon="$fa.fas['hand-dots']" class="me-1"/>
+                                <FontAwesomeIcon :icon="['fas', 'hand-dots']" class="me-1"/>
                                 ALLERGY: {{ allergy.description?.trim() }}
                             </div>
                         </div>
@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="flex-grow flex items-center gap-3 p-1 text-xl min-w-0">
-                            <FontAwesomeIcon :icon="$fa.fas['turkey']" class="flex-shrink-0 me-1"/>
+                            <FontAwesomeIcon :icon="['fas', 'turkey']" class="flex-shrink-0 me-1"/>
                             {{ dog.lunch_notes }}
                         </div>
                     </div>
@@ -415,7 +415,7 @@ onBeforeUnmount(() => {
 
         <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-700" @click="cancelOverwrite">
-                <FontAwesomeIcon :icon="$fa.fas['xmark']" class="text-xl"/>
+                <FontAwesomeIcon :icon="['fas', 'xmark']" class="text-xl"/>
             </button>
             <div class="text-lg font-semibold mb-2">Recalculate?</div>
             <div class="text-sm text-gray-600 mb-6">

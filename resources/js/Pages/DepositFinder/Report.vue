@@ -246,7 +246,7 @@ async function copyFullReport(e) {
                     <template v-if="!('deposits' in results)">
                         <tr>
                             <td colspan="5" class="text-center py-4">
-                                <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
+                                <FontAwesomeIcon :icon="['fas', 'spinner-third']" spin
                                                  class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
@@ -258,7 +258,7 @@ async function copyFullReport(e) {
                                 <td class="text-center">{{ result.qty }}</td>
                                 <td class="text-right">
                                     {{ formatCurrency(result.total) }}
-                                    <FontAwesomeIcon :icon="$fa.fas['clipboard']"
+                                    <FontAwesomeIcon :icon="['fas', 'clipboard']"
                                                      class="ml-2 text-caregiver cursor-pointer inline-block"
                                                      @click="() => copyToClipboard(result.total)"/>
                                 </td>
@@ -272,7 +272,7 @@ async function copyFullReport(e) {
                                         {{ formatCurrency(results.accrual_total.total) }}
                                     </td>
                                     <td v-else colspan="2" class="text-center">
-                                        <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
+                                        <FontAwesomeIcon :icon="['fas', 'spinner-third']" spin
                                                          class="text-xl text-greyhound py-2"/>
                                     </td>
                                 </template>
@@ -307,7 +307,7 @@ async function copyFullReport(e) {
                     <template v-if="!('packages' in results)">
                         <tr>
                             <td colspan="5" class="text-center">
-                                <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
+                                <FontAwesomeIcon :icon="['fas', 'spinner-third']" spin
                                                  class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
@@ -321,7 +321,7 @@ async function copyFullReport(e) {
                             <td class="text-right">
                                 {{ formatCurrency(row.sold_total) }}
                                 <FontAwesomeIcon
-                                    :icon="$fa.fas['clipboard']"
+                                    :icon="['fas', 'clipboard']"
                                     class="ml-2 text-caregiver cursor-pointer inline-block"
                                     @click="() => copyToClipboard(row.sold_total)"
                                 />
@@ -333,7 +333,7 @@ async function copyFullReport(e) {
                             </template>
                             <template v-else>
                                 <td colspan="2" class="text-center">
-                                    <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
+                                    <FontAwesomeIcon :icon="['fas', 'spinner-third']" spin
                                                      class="text-xl text-greyhound py-2"/>
                                 </td>
                             </template>
@@ -351,7 +351,7 @@ async function copyFullReport(e) {
                     <template v-if="!('services' in results)">
                         <tr>
                             <td colspan="5" class="text-center">
-                                <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
+                                <FontAwesomeIcon :icon="['fas', 'spinner-third']" spin
                                                  class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
@@ -366,7 +366,7 @@ async function copyFullReport(e) {
                             <td class="text-right">
                                 {{ formatCurrency(row.sold_total) }}
                                 <FontAwesomeIcon
-                                    :icon="$fa.fas['clipboard']"
+                                    :icon="['fas', 'clipboard']"
                                     class="ml-2 text-caregiver cursor-pointer inline-block"
                                     @click="() => copyToClipboard(row.sold_total)"
                                 />
@@ -374,7 +374,7 @@ async function copyFullReport(e) {
                                     w/Packages:
                                     {{ formatCurrency((row.sold_total || 0) + daycarePackageTotal) }}
                                     <FontAwesomeIcon
-                                        :icon="$fa.fas['clipboard']"
+                                        :icon="['fas', 'clipboard']"
                                         class="ml-2 text-caregiver cursor-pointer inline-block"
                                         @click="() => copyToClipboard((row.sold_total || 0) + daycarePackageTotal)"
                                     />
@@ -387,7 +387,7 @@ async function copyFullReport(e) {
                             </template>
                             <template v-else>
                                 <td colspan="2" class="text-center">
-                                    <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
+                                    <FontAwesomeIcon :icon="['fas', 'spinner-third']" spin
                                                      class="text-xl text-greyhound"/>
                                 </td>
                             </template>
@@ -400,7 +400,7 @@ async function copyFullReport(e) {
                     <template v-if="!('tips' in results)">
                         <tr>
                             <td colspan="5" class="text-center">
-                                <FontAwesomeIcon :icon="$fa.fas['spinner-third']" spin
+                                <FontAwesomeIcon :icon="['fas', 'spinner-third']" spin
                                                  class="text-6xl text-greyhound py-5"/>
                             </td>
                         </tr>
@@ -410,7 +410,7 @@ async function copyFullReport(e) {
                             <td>Tips Payable</td>
                             <td class="text-center">{{ results.tips.qty }}</td>
                             <td class="text-right">{{ formatCurrency(results.tips.total) }}
-                                <FontAwesomeIcon :icon="$fa.fas['clipboard']"
+                                <FontAwesomeIcon :icon="['fas', 'clipboard']"
                                                  class="ml-2 text-caregiver cursor-pointer inline-block"
                                                  @click="() => copyToClipboard(results.tips.total)"
                                 />
@@ -422,7 +422,7 @@ async function copyFullReport(e) {
                             <td>Retail Products</td>
                             <td class="text-center">{{ results.product.qty }}</td>
                             <td class="text-right">{{ formatCurrency(results.product.total) }}
-                                <FontAwesomeIcon :icon="$fa.fas['clipboard']"
+                                <FontAwesomeIcon :icon="['fas', 'clipboard']"
                                                  class="ml-2 text-caregiver cursor-pointer inline-block"
                                                  @click="() => copyToClipboard(results.product.total)"
                                 />
@@ -434,7 +434,7 @@ async function copyFullReport(e) {
                             <td>Sales Tax to Pay</td>
                             <td>&nbsp;</td>
                             <td class="text-right">{{ formatCurrency(results.tax.total) }}
-                                <FontAwesomeIcon :icon="$fa.fas['clipboard']"
+                                <FontAwesomeIcon :icon="['fas', 'clipboard']"
                                                  class="ml-2 text-caregiver cursor-pointer inline-block"
                                                  @click="() => copyToClipboard(results.tax.total)"
                                 />

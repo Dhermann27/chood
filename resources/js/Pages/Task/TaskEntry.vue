@@ -259,32 +259,32 @@ onUnmounted(() => {
                 <button
                     class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
                     @click="handleTaskClick('assignCabin')">
-                    <FontAwesomeIcon :icon="$fa.fas['house-circle-check']" class="me-5"/>
+                    <FontAwesomeIcon :icon="['fas', 'house-circle-check']" class="me-5"/>
                     Assigning a Cabin
                 </button>
                 <button
                     class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
                     @click="handleTaskClick('cleanCabin')">
-                    <FontAwesomeIcon :icon="$fa.fas['broom']" class="me-5"/>
+                    <FontAwesomeIcon :icon="['fas', 'broom']" class="me-5"/>
                     Cleaned a Cabin
                 </button>
                 <button
                     class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
                     @click="handleTaskClick('setLunch')">
-                    <FontAwesomeIcon :icon="$fa.fas['turkey']" class="me-5"/>
+                    <FontAwesomeIcon :icon="['fas', 'turkey']" class="me-5"/>
                     Set Lunch
                 </button>
                 <button
                     class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
                     @click="handleTaskClick('startBreak')">
-                    <FontAwesomeIcon :icon="$fa.fas['alarm-clock']" class="me-5"/>
+                    <FontAwesomeIcon :icon="['fas', 'alarm-clock']" class="me-5"/>
                     Rest Break
                 </button>
                 <button class="text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition
                 bg-caregiver text-white hover:bg-blue-500 disabled:bg-gray-400 disabled:text-gray-200
                 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
                         :disabled="!moveDogEnabled" @click="handleTaskClick('moveDog')">
-                    <FontAwesomeIcon :icon="$fa.fas['arrows-up-down-left-right']" class="me-5"/>
+                    <FontAwesomeIcon :icon="['fas', 'arrows-up-down-left-right']" class="me-5"/>
                     <span v-if="moveDogEnabled">Move Dogs between Yards</span>
                     <span v-else>Only 2 yards open</span>
                 </button>
@@ -419,17 +419,17 @@ onUnmounted(() => {
                     <div class="flex justify-between mb-4 text-3xl">
                         <button @click="handleFinishAction('Done')"
                                 class="px-6 py-10 bg-meadow text-white rounded-md flex items-center space-x-2">
-                            <FontAwesomeIcon :icon="$fa.fas['badge-check']"/>
+                            <FontAwesomeIcon :icon="['fas', 'badge-check']"/>
                             <span>Done</span>
                         </button>
                         <button @click="handleFinishAction('Undo')"
                                 class="px-6 py-10 bg-gray-500 text-white rounded-md flex items-center space-x-2">
-                            <FontAwesomeIcon :icon="$fa.fas['rotate-left']"/>
+                            <FontAwesomeIcon :icon="['fas', 'rotate-left']"/>
                             <span>Undo</span>
                         </button>
                         <button @click="handleFinishAction('More')"
                                 class="px-6 py-10 bg-caregiver text-white rounded-md flex items-center space-x-2">
-                            <FontAwesomeIcon :icon="$fa.fas['cowbell-circle-plus']"/>
+                            <FontAwesomeIcon :icon="['fas', 'cowbell-circle-plus']"/>
                             <span>More</span>
                         </button>
                     </div>
