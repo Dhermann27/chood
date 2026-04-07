@@ -7,5 +7,5 @@ use Illuminate\Database\Eloquent\Model;
 class Timeslot extends Model
 {
     public $timestamps = false;
-    protected $fillable = ['name', 'display_order'];
+    protected $fillable = ['name', 'gingr_label', 'display_order'];
 }

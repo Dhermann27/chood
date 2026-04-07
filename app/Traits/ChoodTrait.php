@@ -6,8 +6,8 @@ use App\Enums\HousingServiceCodes;
 use App\Http\Controllers\MapController;
 use App\Models\Cabin;
 use App\Models\Dog;
-use App\Models\Service;
-use Carbon\Carbon;
+// use App\Models\Service; // TODO: restore when Gingr service sync is verified in prod
+// use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 
@@ -52,7 +52,8 @@ trait ChoodTrait
      */
     public function getDogs(bool $filterByCabinId = false, string $size = null): Collection
     {
-        $dogs = Dog::with('appointments.service', 'cabin', 'breakType', 'icons');
+        // TODO: re-add appointments.service once Gingr service sync is verified in prod
+        $dogs = Dog::with(/*'appointments.service',*/ 'cabin', 'breakType', 'icons');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
         if ($size) $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());
 
@@ -73,17 +74,20 @@ trait ChoodTrait
      */
     public function getGroomingDogsToday(): Collection
     {
-        $specialServiceIds = Service::whereIn('category', config('services.gingr.special_service_cats'))->pluck('id');
-        $today = Carbon::today();
+        // TODO: rewrite for Gingr once service sync is verified in prod
+        return new Collection();
 
-        return Dog::select('dogs.*')->distinct()->join('appointments', 'appointments.pet_id', '=', 'dogs.pet_id')
-            ->whereIn('appointments.service_id', $specialServiceIds)
-            ->whereDate('appointments.scheduled_start', config('services.gingr.sandbox_service_condition'), $today)
-            ->with(['appointments.service'])->get()->sortBy(fn($dog) => optional(
-                $dog->appointments->firstWhere(fn($ds) => in_array($ds->service_id, $specialServiceIds->all(), true)
-                    && Carbon::parse($ds->scheduled_start)->isSameDay($today)
-                )
-            )?->scheduled_start)->values();
+//        $specialServiceIds = Service::whereIn('category', config('services.gingr.special_service_cats'))->pluck('id');
+//        $today = Carbon::today();
+//
+//        return Dog::select('dogs.*')->distinct()->join('appointments', 'appointments.pet_id', '=', 'dogs.pet_id')
+//            ->whereIn('appointments.service_id', $specialServiceIds)
+//            ->whereDate('appointments.scheduled_start', config('services.gingr.sandbox_service_condition'), $today)
+//            ->with(['appointments.service'])->get()->sortBy(fn($dog) => optional(
+//                $dog->appointments->firstWhere(fn($ds) => in_array($ds->service_id, $specialServiceIds->all(), true)
+//                    && Carbon::parse($ds->scheduled_start)->isSameDay($today)
+//                )
+//            )?->scheduled_start)->values();
     }
 
 }

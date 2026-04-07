@@ -72,9 +72,6 @@ async function updateData() {
             headerYardIds.value = response.data.headerYards;
             openYardIdsByRotation.value = response.data.openYardsByRotation;
             localChecksum.value = response.data.checksum;
-            // } else if (dogs.value.length > props.dogsPerPage) {
-            //     const maxChunks = Math.ceil(dogs.value.length / props.dogsPerPage);
-            //     currentViewIndex.value = (currentViewIndex.value + 1) % maxChunks;
 
             hydrateUiAssignments();
         }
@@ -143,19 +140,6 @@ function isYardOpen(rotationId, yardId) {
 function slot(rotationId, yardId) {
     return assignments.value?.[String(rotationId)]?.[String(yardId)] ?? null;
 }
-
-// const isVisible = (index) => {
-//     const start = currentViewIndex.value * props.dogsPerPage;
-//     const end = start + props.dogsPerPage;
-//     return index >= start && index < end;
-// };
-
-// const progressBarStyle = computed(() => ({
-//     left: ((currentViewIndex.value * props.dogsPerPage) / dogs.value.length) * 100 + '%',
-//     width: (Math.min(props.dogsPerPage, dogs.value.length - currentViewIndex.value * props.dogsPerPage)
-//         / dogs.value.length) * 100 + '%',
-//     color: 'white',
-// }));
 
 // const getFairnessColor = (score) => {
 //     if (!score || score <= 0) return '';
@@ -272,17 +256,21 @@ onBeforeUnmount(() => {
                         <div class="flex-grow flex flex-col items-start justify-center p-1 text-xl">
                             <div v-for="medication in dog.medications" :key="medication.id"
                                  class="flex-col justify-center">
-                                <FontAwesomeIcon v-if="medication.type_id !== 15"
+                                <FontAwesomeIcon v-if="medication.medication_id"
                                                  :icon="$fa.fas['prescription-bottle-pill']" class="me-1"/>
-                                <FontAwesomeIcon v-else :icon="$fa.fas['note-medical']" class="me-1"/>
-                                {{ medication.type.trim() }}
+                                <FontAwesomeIcon v-else :icon="$fa.fas['stethoscope']" class="me-1"/>
+                                {{ medication.timeslot?.name }}
+                                {{ medication.type?.trim() }}
+                                <span v-if="medication.quantity || medication.unit">
+                                    — {{ medication.quantity }} {{ medication.unit }}
+                                </span>
                                 <span v-if="medication.type && medication.description">:&nbsp;</span>
-                                {{ medication.description.trim() }}
+                                {{ medication.description?.trim() }}
                             </div>
                             <div v-for="allergy in dog.allergies" :key="allergy.id"
                                  class="flex-col justify-center text-crimson">
                                 <FontAwesomeIcon :icon="$fa.fas['hand-dots']" class="me-1"/>
-                                ALLERGY: {{ allergy.description.trim() }}
+                                ALLERGY: {{ allergy.description?.trim() }}
                             </div>
                         </div>
                     </div>

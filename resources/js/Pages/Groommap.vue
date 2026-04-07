@@ -97,21 +97,9 @@ onBeforeUnmount(() => {
                      :style="{ width: cardWidth + 'px'}">
                     <DogCard :dogs="[dog]" :card-width="cardWidth" :card-height="cardHeight"/>
                 </div>
-                <div
-                    class="bg-yellow-100 text-3xl rounded-tr-2xl rounded-br-2xl shadow-inner p-4 h-full">
+                <!-- appointments panel commented out; see ChoodTrait::getGroomingDogsToday() -->
+                <div class="bg-yellow-100 text-3xl rounded-tr-2xl rounded-br-2xl shadow-inner p-4 h-full">
                     <div>Checkout: {{ formatTime(dog.checkout) }}</div>
-                    <div v-for="appointment in dog.appointments" :key="appointment.id" class="my-5 overflow-y-hidden">
-                        <div class="font-bold text-caregiver">{{ appointment.service.name }}</div>
-                        <div class="text-gray-600">Start: {{ formatTime(appointment.scheduled_start) }}</div>
-
-                        <ol v-if="appointment.service.category === 'Bath'" class="mt-3 list-none text-gray-800">
-                            <li v-for="step in getBathServiceSteps(appointment)" :key="step.text"
-                                class="flex items-center gap-2">
-                                <FontAwesomeIcon :icon="$fa.fas[step.icon]" class="text-2xl" fixed-width/>
-                                <span>{{ step.text }}</span>
-                            </li>
-                        </ol>
-                    </div>
                 </div>
             </template>
             <template v-if="dogs.length > 8">

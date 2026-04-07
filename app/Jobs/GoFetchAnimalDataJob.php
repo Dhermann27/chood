@@ -47,7 +47,7 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
             throw $e;
         }
 
-        $timeslots = Timeslot::pluck('id', 'name');
+        $timeslots = Timeslot::pluck('id', 'gingr_label');
 
         if (empty($output['animals'])) {
             return;

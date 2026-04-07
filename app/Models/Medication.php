@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Timeslot;
 
 class Medication extends Model
 {
@@ -11,5 +12,10 @@ class Medication extends Model
     public function dog(): BelongsTo
     {
         return $this->belongsTo(Dog::class, 'pet_id', 'pet_id');
+    }
+
+    public function timeslot(): BelongsTo
+    {
+        return $this->belongsTo(Timeslot::class);
     }
 }

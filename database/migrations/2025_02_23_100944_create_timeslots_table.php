@@ -12,6 +12,7 @@ return new class extends Migration
         Schema::create('timeslots', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
+            $table->string('gingr_label')->nullable()->unique();
             $table->unsignedTinyInteger('display_order')->default(0);
         });
         DB::update('ALTER TABLE timeslots AUTO_INCREMENT = 1000');
