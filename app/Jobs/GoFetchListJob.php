@@ -3,14 +3,12 @@
 namespace App\Jobs;
 
 use App\Enums\HousingServiceCodes;
-use App\Jobs\GoFetchAnimalDataJob;
-use App\Jobs\GoFetchIconsJob;
 use App\Models\Appointment;
 use App\Models\Cabin;
 use App\Models\Dog;
+use App\Models\Service;
 use App\Services\FetchDataService;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -112,28 +110,23 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
     private function getUpdateValues(array $row, $cabins): array
     {
         return array_filter([
-            'order_id'     => $row['id'],
-            'account_id'   => $row['o_id'],
-            'firstname'    => $row['a_first'] ?: null,
-            'lastname'     => $row['o_last'] ?: null,
-            'weight'       => $row['weight'] ? (int) $row['weight'] : null,
-            'cabin_id'     => $cabins->get($this->normCabinName($row['run_name'] ?? ''), null),
-            'housing_code' => $this->housingCodeFromTypeId($row['type_id']),
-            'photoUri'     => $row['image'] ?: null,
-            'checkin'      => $row['check_in_stamp'] ? Carbon::createFromTimestamp($row['check_in_stamp']) : null,
-            'checkout'     => $row['end_date'] ? Carbon::createFromTimestamp($row['end_date']) : null,
+            'order_id' => $row['id'],
+            'account_id' => $row['o_id'],
+            'firstname' => $row['a_first'] ?: null,
+            'lastname' => $row['o_last'] ?: null,
+            'weight' => $row['weight'] ? (int)$row['weight'] : null,
+            'cabin_id' => $cabins->get($this->normCabinName($row['run_name'] ?? ''), null),
+            'housing_code' => $this->housingCodeFromTypeId($row['type_id'] ?? ''),
+            'photoUri' => $row['image'] ?: null,
+            'checkin' => $row['check_in_stamp'] ? Carbon::createFromTimestamp($row['check_in_stamp']) : null,
+            'checkout' => $row['end_date'] ? Carbon::createFromTimestamp($row['end_date']) : null,
         ], fn($v) => !is_null($v));
     }
 
     private function housingCodeFromTypeId(string $typeId): string
     {
-        return match($typeId) {
-            '1' => HousingServiceCodes::BRDC->value,
-            '2' => HousingServiceCodes::BRDL->value,
-            '3' => HousingServiceCodes::DCFD->value,
-            '4' => HousingServiceCodes::DCHD->value,
-            default => HousingServiceCodes::UNKNOWN->value,
-        };
+        return Service::where('gingr_id', (int)$typeId)->first()?->housing_code?->value
+            ?? HousingServiceCodes::UNKNOWN->value;
     }
 
     private function normCabinName(string $key): string

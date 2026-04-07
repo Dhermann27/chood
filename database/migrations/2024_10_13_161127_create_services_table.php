@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('category')->index()->nullable();
             $table->string('code')->nullable();
+            $table->string('housing_code')->nullable();
             $table->integer('duration')->default(45000); // Full day
             $table->tinyInteger('is_active')->default(true);
         });
