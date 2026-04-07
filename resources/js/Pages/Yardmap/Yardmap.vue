@@ -62,21 +62,21 @@ const maxRows = computed(() => {
     return vals.length ? Math.max(...vals) : 1;
 });
 const cardWidth = computed(() => {
-    const cols = Object.values(colsByGroup.value ?? {});
+    const cols = groupKeys.value.map(k => colsByGroup.value[k] ?? 1);
     const totalCols = Math.max(1, cols.reduce((sum, c) => sum + (c ?? 0), 0));
-    const internalGapsPx = (cols.length === 2 ? ((cols[0] ?? 1) - 1) + ((cols[1] ?? 1) - 1) : ((cols[0] ?? 1) - 1)) * 10;
-    return Math.floor((1920 - (cols.length === 2 ? DIVIDER_W : 0) - Math.max(0, internalGapsPx)) / totalCols);
+    const internalGapsPx = (groupKeys.value.length >= 2 ? ((cols[0] ?? 1) - 1) + ((cols[1] ?? 1) - 1) : ((cols[0] ?? 1) - 1)) * 10;
+    return Math.floor((1920 - (groupKeys.value.length >= 2 ? DIVIDER_W : 0) - Math.max(0, internalGapsPx)) / totalCols);
 });
 
 const leftWidth = computed(() => {
-    const cols = Object.values(colsByGroup.value ?? {});
+    const cols = groupKeys.value.map(k => colsByGroup.value[k] ?? 1);
     const leftCols = cols[0] ?? 1;
     return (leftCols * cardWidth.value) + (Math.max(0, leftCols - 1) * 10);
 });
 const rightWidth = computed(() => {
-    const cols = Object.values(colsByGroup.value ?? {});
+    const cols = groupKeys.value.map(k => colsByGroup.value[k] ?? 1);
     const rightCols = cols[1] ?? 0;
-    return cols.length === 2 ? (rightCols * cardWidth.value) + (Math.max(0, rightCols - 1) * 10) : 0;
+    return groupKeys.value.length >= 2 ? (rightCols * cardWidth.value) + (Math.max(0, rightCols - 1) * 10) : 0;
 });
 const cardHeight = computed(() => {
     return ((1080 - 100) - (maxRows.value - 1) * 10) / maxRows.value;
@@ -138,7 +138,7 @@ onBeforeUnmount(() => {
         <div
             class="w-full h-full min-w-0 overflow-x-hidden"
             :style="{display: 'grid',
-            gridTemplateColumns: groupKeys.length === 2 ? `${leftWidth}px ${DIVIDER_W}px ${rightWidth}px` : '1fr',}">
+            gridTemplateColumns: groupKeys.length >= 2 ? `${leftWidth}px ${DIVIDER_W}px ${rightWidth}px` : '1fr',}">
 
             <div v-if="groupKeys.length >= 1" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[0]" :dogsByGroup="dogsByGroup"
@@ -146,9 +146,9 @@ onBeforeUnmount(() => {
                            :cardHeight="cardHeight"/>
             </div>
 
-            <div v-if="groupKeys.length === 2" class="bg-crimson h-full" :style="{width: DIVIDER_W + 'px'}"></div>
+            <div v-if="groupKeys.length >= 2" class="bg-crimson h-full" :style="{width: DIVIDER_W + 'px'}"></div>
 
-            <div v-if="groupKeys.length === 2" class="min-w-0 overflow-hidden">
+            <div v-if="groupKeys.length >= 2" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[1]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
                            :cardHeight="cardHeight"/>

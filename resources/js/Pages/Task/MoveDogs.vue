@@ -20,7 +20,12 @@ const SMALL_YARD_IDS = [1000, 1003];
 
 const openYards = computed(() => props.yards ?? []);
 const moveDogYards = computed(() => {
-    return openYards.value.length === 3 ? openYards.value.slice(0, 2) : openYards.value.slice(0, 4);
+    const hasMultipleLarge = openYards.value.filter(y => LARGE_YARD_IDS.includes(y.id)).length >= 2;
+    const hasMultipleSmall = openYards.value.filter(y => SMALL_YARD_IDS.includes(y.id)).length >= 2;
+    return openYards.value.filter(y =>
+        (LARGE_YARD_IDS.includes(y.id) && hasMultipleLarge) ||
+        (SMALL_YARD_IDS.includes(y.id) && hasMultipleSmall)
+    );
 });
 const maxTiles = computed(() =>
     Math.max(1, ...moveDogYards.value.map(y => yardTiles.value[y.id]?.length ?? 0))
@@ -39,7 +44,14 @@ function rebuildYardTiles() {
         next[y.id] = [];
     });
     props.dogs.forEach(d => {
-        const yardId = pendingMoves.value[d.id] ?? d.yard_id ?? (d.size_letter?.includes('L') ? 1001 : 1000);
+        let yardId = pendingMoves.value[d.id] ?? d.yard_id;
+        if (!yardId || !next[yardId]) {
+            const isLarge = d.size_letter?.includes('L');
+            const preferredIds = isLarge ? LARGE_YARD_IDS : SMALL_YARD_IDS;
+            const fallback = [...moveDogYards.value].reverse().find(y => preferredIds.includes(y.id));
+            if (!fallback) return;
+            yardId = fallback.id;
+        }
         if (!next[yardId]) return;
         next[yardId].push(d);
     });

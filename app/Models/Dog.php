@@ -22,7 +22,7 @@ class Dog extends Model
 
     protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s', 'rest_starts_at' => 'datetime'];
 
-    protected $appends = ['is_boarding', 'is_daycare', 'is_interview', 'left_icons', 'right_icons'];
+    protected $appends = ['is_boarding', 'is_daycare', 'is_interview', 'size_letter', 'left_icons', 'right_icons'];
 
     public function getSizeLetterAttribute(): string
     {

@@ -172,7 +172,7 @@ function handleClick(cabin) {
     >
         <div v-if="props.dogs[cabin.id] && props.dogs[cabin.id].length > 0" class="h-full w-full relative">
             <DogCard :dogs="props.dogs[cabin.id]" :maxlength="maxlength" :card-height="cardHeight"/>
-            <div v-if="controls === ControlSchemes.MODAL && !props.dogs[cabin.id][0].is_boarding"
+            <div v-if="controls === ControlSchemes.MODAL && props.dogs[cabin.id].every(d => !d.is_boarding)"
                  class="absolute inset-y-0 left-0 flex flex-col justify-center">
                 <button
                     @click="openModal( 'edit', cabin)"
@@ -197,7 +197,7 @@ function handleClick(cabin) {
     </div>
 
     <AssignmentModal v-if="controls === ControlSchemes.MODAL && showModal"
-                     :modalType="modalType" :cabins="cabins" :dogs="props.dogs['unassigned']" :assignment="assignment"
+                     :modalType="modalType" :cabins="cabins" :dogs="(props.dogs['unassigned'] ?? []).filter(d => !d.is_boarding)" :assignment="assignment"
                      :errorMessages="errorMessages" :is-new-dog="isNewDog"
                      @closeModal="showModal = false" @submitForm="submitForm"/>
 </template>

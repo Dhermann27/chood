@@ -29,6 +29,7 @@ class DataController extends Controller
     const array BREAK_COLUMNS = ['next_first_break', 'next_lunch_break', 'next_second_break'];
     use ChoodTrait;
 
+    // TODO: add a dedicated endpoint to fetch unassigned non-boarding dogs fresh when the assignment modal opens
     function fullmap(string $checksum = null): JsonResponse
     {
         $dogs = $this->getDogsByCabin();
@@ -83,8 +84,8 @@ class DataController extends Controller
                 ];
             })->sortBy('first_name')->values();
 
-        $lunchDogs = Feeding::select('id', 'pet_id', 'type', 'description')->whereHas('dog')->where(function ($query) {
-            $query->where('is_task', 1)->orWhereRaw('LOWER(description) LIKE ?', ['%lunch%']);
+        $lunchDogs = Feeding::select('id', 'pet_id', 'description')->whereHas('dog')->where(function ($query) {
+            $query->where('is_task', 1)->orWhere('timeslot_id', 1001);
         })->with('dog')->get()->unique('pet_id')->map(function ($feeding) {
             $dog = $feeding->dog;
             if (!$dog) return null; // safety
@@ -94,7 +95,7 @@ class DataController extends Controller
 
         $medicatedDogs = Dog::where(function ($query) {
             $query->whereHas('medications')->orWhereHas('allergies');
-        })->with('medications', 'allergies')->orderBy('cabin_id')->get();
+        })->with('medications.timeslot', 'allergies')->orderBy('cabin_id')->get();
 
         $groupedEmployees = Employee::with('shifts')->orderBy('first_name')->get()
             ->groupBy(function ($employee) {

@@ -147,7 +147,7 @@ class TaskController extends Controller
             foreach ($petIds as $petId) {
                 Feeding::updateOrCreate(
                     ['pet_id' => $petId, 'is_task' => 1],
-                    ['description' => $lunchNotes]
+                    ['timeslot_id' => 1001, 'description' => $lunchNotes]
                 );
             }
         } else {
@@ -166,7 +166,7 @@ class TaskController extends Controller
         ]);
 
         Dog::whereIn('id', collect($validatedData['dogsToAssign'])->pluck('id'))->update([
-            'rest_starts_at' => now(),
+            'rest_starts_at' => now()->startOfMinute(),
             'break_type_id' => $validatedData['break_type_id'],
         ]);
 
@@ -182,7 +182,7 @@ class TaskController extends Controller
             $elapsed = $dog->rest_starts_at->diffInMinutes(now());
             if ($elapsed >= $dog->breakType->duration_minutes) {
                 // Was showing "Time for Walk" — reset the timer
-                $dog->update(['rest_starts_at' => now()]);
+                $dog->update(['rest_starts_at' => now()->startOfMinute()]);
                 return response()->json(['message' => "Walk timer reset for {$dog->firstname}"]);
             }
         }

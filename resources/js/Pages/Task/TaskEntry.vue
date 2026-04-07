@@ -298,13 +298,14 @@ onUnmounted(() => {
             <template v-if="todo === 'assignCabin'">
                 <multiselect
                     class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
-                    v-model="targets.dogsToAssign" multiple :options="dogsByCabin['unassigned']" label="display_name"
+                    v-model="targets.dogsToAssign" multiple :options="(dogsByCabin['unassigned'] ?? []).filter(d => !d.is_boarding)" label="display_name"
                     placeholder="Select Dog(s) (Required)" @update:modelValue="handleAssignDogUpdate">
                     <template #option="{ option }">
                         <div class="dog-option-item">
-                            <img v-if="option.photoUri" :src="option.photoUri"
-                                 :alt="'Picture of ' + option.firstname" class="dog-photo"
-                                 @error="e => e.target.style.display = 'none'"/>
+                            <div v-if="option.photoUri" class="dog-photo-wrap">
+                                <img :src="option.photoUri" :alt="option.display_name"
+                                     @error="e => e.target.parentElement.style.display = 'none'"/>
+                            </div>
                             <span class="text-3xl ml-10">{{ option.display_name }}</span>
                         </div>
                     </template>
@@ -329,9 +330,10 @@ onUnmounted(() => {
                     placeholder="Select Dog(s) (Required)">
                     <template #option="{ option }">
                         <div class="dog-option-item">
-                            <img v-if="option.photoUri" :src="option.photoUri"
-                                 :alt="'Picture of ' + option.firstname" class="dog-photo"
-                                 @error="e => e.target.style.display = 'none'"/>
+                            <div v-if="option.photoUri" class="dog-photo-wrap">
+                                <img :src="option.photoUri" :alt="option.display_name"
+                                     @error="e => e.target.parentElement.style.display = 'none'"/>
+                            </div>
                             <span class="text-3xl ml-10">{{ option.display_name }}</span>
                         </div>
                     </template>
@@ -356,9 +358,10 @@ onUnmounted(() => {
                     placeholder="Select Dog(s) (Required)" @click="counter = 0;">
                     <template #option="{ option }">
                         <div class="dog-option-item">
-                            <img v-if="option.photoUri" :src="option.photoUri"
-                                 :alt="'Picture of ' + option.firstname" class="dog-photo"
-                                 @error="e => e.target.style.display = 'none'"/>
+                            <div v-if="option.photoUri" class="dog-photo-wrap">
+                                <img :src="option.photoUri" :alt="option.display_name"
+                                     @error="e => e.target.parentElement.style.display = 'none'"/>
+                            </div>
                             <span class="text-3xl ml-10">{{ option.display_name }}</span>
                         </div>
                     </template>
@@ -381,7 +384,7 @@ onUnmounted(() => {
                 </div>
             </template>
             <template v-else-if="todo === 'moveDog'">
-                <MoveDogs :dogs="dogs" :yards="openYards"
+                <MoveDogs :dogs="dogs.filter(d => d.is_daycare || d.is_boarding || d.is_interview)" :yards="openYards"
                           @changed="counter = 0;" @submit="handleYardChange" style="height: 650px;"/>
             </template>
 
@@ -458,19 +461,22 @@ onUnmounted(() => {
 }
 </style>
 <style scoped>
-.dog-photo {
-    width: 250px;
-    height: 100px;
-    max-width: 250px; /* Prevent image from exceeding 200px width */
-    max-height: 100px; /* Prevent image from exceeding 50px height */
-    object-fit: cover;
+.dog-photo-wrap {
+    width: 75px;
+    height: 75px;
+    flex-shrink: 0;
     border-radius: 8px;
-    margin-bottom: 5px;
-    flex-shrink: 0; /* Prevent the image from shrinking */
+    overflow: hidden;
+}
+
+.dog-photo-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .dog-option-item {
     display: flex;
-    align-items: center; /* Vertically align text with image */
+    align-items: center;
 }
 </style>

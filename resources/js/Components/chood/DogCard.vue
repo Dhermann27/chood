@@ -19,14 +19,13 @@ const currentDog = computed(() => {
 
     return dogs.length ? dogs[index] : null;
 });
-const now = ref(Date.now())
 const iconRefs = ref({});
 function setIconRef(index, dir) {
     return (el) => {
         if (el) iconRefs.value[`chood${dir}Icon${index}`] = el;
     };
 }
-const intervals = [null, null]; // [rotationInterval, timerInterval]
+const intervals = [null]; // [rotationInterval]
 
 const bannerStyle = computed(() =>
     getBannerStyle(currentDog.value, breakTimeLeft.value)
@@ -57,7 +56,7 @@ const breakTimeLeft = computed(() => {
 
     if (bt.behavior === 'countdown') {
         const end = new Date(start.getTime() + bt.duration_minutes * 60 * 1000);
-        const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
+        const minutesLeft = Math.max(Math.ceil((end.getTime() - Date.now()) / (60 * 1000)), 0);
         return {
             minutesLeft,
             percentElapsed: 1 - minutesLeft / bt.duration_minutes,
@@ -70,7 +69,7 @@ const breakTimeLeft = computed(() => {
         const onePm = new Date(start);
         onePm.setHours(13, 0, 0, 0);
         const totalMinutes = Math.max(Math.ceil((onePm.getTime() - start.getTime()) / (60 * 1000)), 1);
-        const minutesLeft = Math.max(Math.ceil((onePm.getTime() - now.value) / (60 * 1000)), 0);
+        const minutesLeft = Math.max(Math.ceil((onePm.getTime() - Date.now()) / (60 * 1000)), 0);
         return {
             minutesLeft,
             percentElapsed: 1 - minutesLeft / totalMinutes,
@@ -80,7 +79,7 @@ const breakTimeLeft = computed(() => {
     }
 
     if (bt.behavior === 'walks_only') {
-        const elapsed = Math.floor((now.value - start.getTime()) / (60 * 1000));
+        const elapsed = Math.floor((Date.now() - start.getTime()) / (60 * 1000));
         const timeForWalk = elapsed >= bt.duration_minutes;
         return {
             minutesLeft: timeForWalk ? 'Walk!' : 'EOD',
@@ -114,10 +113,6 @@ watch(() => props.dogs, (newDogs) => {
 
     if (newDogs.length > 0) {
         currentDogIndex.value = 0;
-
-        intervals[1] = setInterval(() => {
-            now.value = Date.now();
-        }, 8000);
 
         if (newDogs.length > 1) {
             intervals[0] = setInterval(() => {

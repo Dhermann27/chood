@@ -51,10 +51,12 @@ function closeModal() {
                                 <div v-if="props.option.id === 'new'" class="text-sm text-caregiver">
                                     Enter a new dog
                                 </div>
-                                <div v-else>
-                                    <img v-if="props.option.photoUri" :src="props.option.photoUri"
-                                         :alt="'Picture of' + props.option.display_name" class="dog-photo"/>
-                                    {{ props.option.display_name }}
+                                <div v-else class="flex items-center gap-2">
+                                    <div v-if="props.option.photoUri" class="dog-photo-wrap">
+                                        <img :src="props.option.photoUri" :alt="props.option.display_name"
+                                             @error="e => e.target.parentElement.style.display = 'none'"/>
+                                    </div>
+                                    <span class="text-base font-medium">{{ props.option.display_name }}</span>
                                 </div>
                             </template>
                         </multiselect>
@@ -104,11 +106,18 @@ function closeModal() {
 </template>
 
 <style scoped>
-.dog-photo {
-    width: 30px;
-    height: 30px;
-    margin: 0 5px 5px 0;
+:deep(.dog-photo-wrap) {
+    width: 75px;
+    height: 75px;
+    flex-shrink: 0;
     border-radius: 10%;
+    overflow: hidden;
+}
+
+:deep(.dog-photo-wrap) img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 </style>
 
