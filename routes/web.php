@@ -6,13 +6,10 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TaskController;
-use App\Jobs\GoFetchServiceListJob;
-use App\Jobs\Homebase\GoFetchEmployeesJob;
-use App\Jobs\Homebase\GoFetchShiftsJob;
+use App\Jobs\GoFetchListJob;
 use App\Jobs\MarkCabinsForCleaningJob;
 use App\Models\Cabin;
 use App\Models\CleaningStatus;
-use App\Services\FetchDataService;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -96,11 +93,11 @@ if (app()->environment('local')) {
         MarkCabinsForCleaningJob::dispatchSync();
         return 'Cleaning jobbed';
     });
-    Route::get('/fetch', function () {
-        GoFetchServiceListJob::dispatchSync(new FetchDataService());
-        GoFetchEmployeesJob::dispatchSync();
-        GoFetchShiftsJob::dispatchSync();
-        return 'Jobs fetched';
+    Route::get('/sync', function () {
+        GoFetchListJob::dispatchSync();
+        $ownerId = App\Models\Dog::where('firstname', 'Fraud')->value('account_id');
+        App\Jobs\GoFetchOwnerDataJob::dispatchSync((string) $ownerId);
+        return 'Sync complete';
     });
 }
 

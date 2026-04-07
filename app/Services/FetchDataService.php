@@ -2,184 +2,134 @@
 
 namespace App\Services;
 
-use App\Models\Report;
-use Carbon\Carbon;
 use Exception;
-use Illuminate\Http\JsonResponse;
+use GuzzleHttp\Cookie\CookieJar;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 class FetchDataService
 {
+    const string USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
     /**
+     * Fetch from a Gingr /api/v1/* endpoint using the API key.
+     *
      * @throws Exception
      */
-    public function fetchData(string $url, array $payload): JsonResponse
+    public function fetchApi(string $endpoint, array $params = []): array
     {
-        if (Cache::has($payload['username'] . '_cookie') && Cache::has($payload['username'] . '_franchiseId')) {
-            $franchiseId = Cache::get($payload['username'] . '_franchiseId');
-            $cookies = Cache::get($payload['username'] . '_cookie');
-        } else {
-            $franchiseId = $this->authenticate($payload['username'], $payload['password']);
-            $cookies = Cache::get($payload['username'] . '_cookie');
+        $url = config('services.gingr.uris.' . $endpoint, $endpoint);
+        $params['key'] = config('services.gingr.api_key');
+
+        $cookies = Cache::get('gingr_session_cookies') ?? $this->authenticate();
+        $cookieHeader = collect($cookies)->map(fn($value, $name) => "$name=$value")->implode('; ');
+
+        $response = Http::withHeaders([
+            'Cookie' => $cookieHeader,
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json, text/javascript, */*; q=0.01',
+            'User-Agent' => self::USER_AGENT,
+            'Referer' => config('services.gingr.uris.dashboard'),
+        ])->get($url, $params);
+
+        if (!$response->successful()) {
+            throw new Exception("Gingr API request failed [{$response->status()}]: $url");
         }
+
+        return $response->json();
+    }
+
+    /**
+     * Fetch from a Gingr session-authenticated endpoint (e.g. /owners/get_form_data).
+     *
+     * @throws Exception
+     */
+    public function fetchWithSession(string $path): array
+    {
+        $cookies = Cache::get('gingr_session_cookies') ?? $this->authenticate();
+
         $cookieHeader = collect($cookies)
-            ->map(fn($cookie) => "{$cookie['name']}={$cookie['value']}")
+            ->map(fn($value, $name) => "$name=$value")
             ->implode('; ');
 
-        if (!empty($payload['dataToPost'])) {
-            $response = Http::withHeaders([
-                'Cookie' => $cookieHeader
-            ])->post(preg_replace('/FRANCHISE_ID/', $franchiseId, $url), $payload['dataToPost']);
-        } else {
-            $response = Http::withHeaders([
-                'Cookie' => $cookieHeader
-            ])->get(preg_replace('/FRANCHISE_ID/', $franchiseId, $url));
+        $response = Http::withHeaders([
+            'Cookie' => $cookieHeader,
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json, text/javascript, */*; q=0.01',
+            'User-Agent' => self::USER_AGENT,
+            'Referer' => config('services.gingr.uris.dashboard'),
+        ])->get(config('services.gingr.uris.' . $path, $path));
+
+        if (!$response->successful()) {
+            throw new Exception("Gingr session request failed [{$response->status()}]: $path", $response->status());
         }
 
-        if ($response->successful()) {
-            return response()->json($response->json(), $response->status());
-        } else {
-            return response()->json([
-                'error' => 'Fetching failed',
-                'message' => $response->json('message', 'Unknown error'),
-                'output' => $response->json()
-            ], $response->status());
+        return $response->json();
+    }
+
+    /**
+     * POST to a Gingr session-authenticated endpoint with API key in the body.
+     *
+     * @throws Exception
+     */
+    public function postWithSession(string $url, array $params = []): array
+    {
+        $cookies = Cache::get('gingr_session_cookies') ?? $this->authenticate();
+        $cookieHeader = collect($cookies)->map(fn($value, $name) => "$name=$value")->implode('; ');
+        $params['key'] = config('services.gingr.api_key');
+
+        $response = Http::withHeaders([
+            'Cookie'            => $cookieHeader,
+            'X-Requested-With'  => 'XMLHttpRequest',
+            'Accept'            => 'application/json, text/javascript, */*; q=0.01',
+            'User-Agent'        => self::USER_AGENT,
+            'Referer'           => config('services.gingr.uris.dashboard'),
+        ])->asForm()->post($url, $params);
+
+        if (!$response->successful()) {
+            throw new Exception("Gingr POST request failed [{$response->status()}]: $url", $response->status());
         }
+
+        return $response->json();
     }
 
     /**
      * @throws Exception
      */
-    private function authenticate(string $ddUser, string $ddPass)
+    private function authenticate(): array
     {
-        $baseUri = config('services.dd.uris.auth');
+        $jar = new CookieJar();
+        $headers = ['User-Agent' => self::USER_AGENT];
 
-        $payload = [
-            'timestamp' => microtime(true),
-            'data' => [['username' => $ddUser, 'password' => $ddPass]]
-        ];
-        $response = Http::post($baseUri, $payload);
+        // GET login page to receive CSRF token
+        $loginPage = Http::withOptions(['cookies' => $jar])
+            ->withHeaders($headers)
+            ->get(config('services.gingr.uris.login'));
 
-        if ($response->successful()) {
-            $error = $response->json('error');
-            if ($error) {
-                throw new Exception('Authentication failed: ' . $error['details']);
-            }
+        preg_match('/<input[^>]+name=["\']gingr_csrf_token["\'][^>]+value=["\']([^"\']+)["\']/', $loginPage->body(), $m);
+        $csrfToken = $m[1] ?? null;
 
-            $cookies = preg_split('/,\s*(?=\S+=)/', $response->header('set-cookie'));
-            $cookieArray = [];
-            foreach ($cookies as $cookie) {
-                if (preg_match('/([^=]+)=([^;]+)(?:.*?expires=([^;]+))?(?:.*?domain=([^;]+))?/', $cookie, $matches)) {
-                    $cookieArray[] = [
-                        'name' => $matches[1],
-                        'value' => $matches[2],
-                        'expires' => $matches[3],
-                        'domain' => $matches[4],
-                    ];
-                }
-            }
-            $this->storeCookie($cookieArray, $ddUser);
-            $franchiseId = $response->json('data.franchises.0.id');
-            Cache::put($ddUser . '_franchiseId', $franchiseId);
-            return $franchiseId;
+        $response = Http::withOptions(['cookies' => $jar])
+            ->withHeaders($headers)
+            ->asForm()
+            ->post(config('services.gingr.uris.login'), [
+                'identity' => config('services.gingr.username'),
+                'password' => config('services.gingr.password'),
+                'gingr_csrf_token' => $csrfToken,
+            ]);
+
+        $cookies = [];
+        foreach ($jar as $cookie) {
+            $cookies[$cookie->getName()] = $cookie->getValue();
         }
 
-        throw new Exception('Request failed: ' . $response->status());
-    }
-
-    private function storeCookie(array $cookies, string $ddUser): void
-    {
-        $expiresAt = Carbon::now()->addMinutes(119); // Initial expiration set to 1 hour 59 minutes from now
-
-        foreach ($cookies as $cookie) {
-            $expires = $cookie['expires'];
-            // Check if the cookie has a valid expiration time (ignore -1)
-            if (!empty($expires) && $expires !== '-1') {
-                $cookieExpiration = Carbon::parse($expires);
-
-                // Find the earliest expiration date
-                $expiresAt = $cookieExpiration->lt($expiresAt) ? $cookieExpiration : $expiresAt;
-            }
-
+        if (empty($cookies['gingr_ci_session'])) {
+            throw new Exception('Gingr authentication failed: no session cookie. CSRF token found: ' . ($csrfToken ? 'yes' : 'no'));
         }
-        Cache::put($ddUser . '_cookie', $cookies, $expiresAt);
 
+        // Cache just under 3 days — CSRF cookie is shortest-lived at 3 days
+        Cache::put('gingr_session_cookies', $cookies, now()->addMinutes(4318));
+
+        return $cookies;
     }
-
-    /**
-     * @param Report $report
-     * @return array
-     */
-    public function createPayload(Report $report): array
-    {
-        return [
-            "username" => $report->username,
-            "dataToPost" => [
-                "timestamp" => time(),
-                "data" => [
-                    [
-                        "limit" => 50,
-                        "order" => [],
-                        "criteria" => [
-                            [
-                                "key" => "dateFrom",
-                                "operator" => "gte",
-                                "value" => $report->report_date
-                            ],
-                            [
-                                "key" => "dateTo",
-                                "operator" => "lte",
-                                "value" => $report->report_date
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ];
-    }
-
-
-    /**
-     * ...don't ask
-     * @param Report $report
-     * @param string $key
-     * @param string $operator
-     * @param string $value
-     * @return array
-     */
-    public function createConstrainedPayload(Report $report, string $key, string $operator, string $value): array
-    {
-        return [
-            "username" => $report->username,
-            "dataToPost" => [
-                "timestamp" => time(),
-                "data" => [
-                    [
-                        "limit" => 50,
-                        "order" => [],
-                        "criteria" => [
-                            [
-                                "key" => "dateFrom",
-                                "operator" => "gte",
-                                "value" => $report->report_date
-                            ],
-                            [
-                                "key" => "dateTo",
-                                "operator" => "lte",
-                                "value" => $report->report_date
-                            ],
-                            [
-                                "key" => $key,
-                                "operator" => $operator,
-                                "value" => $value
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ];
-    }
-
 }

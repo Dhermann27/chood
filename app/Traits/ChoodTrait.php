@@ -6,8 +6,8 @@ use App\Enums\HousingServiceCodes;
 use App\Http\Controllers\MapController;
 use App\Models\Cabin;
 use App\Models\Dog;
-use App\Models\Service;
-use Carbon\Carbon;
+// use App\Models\Service; // TODO: restore when Gingr service sync is verified in prod
+// use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 
@@ -52,21 +52,21 @@ trait ChoodTrait
      */
     public function getDogs(bool $filterByCabinId = false, string $size = null): Collection
     {
-        $dogs = Dog::with('appointments.service', 'cabin', 'breakType');
+        // TODO: re-add appointments.service once Gingr service sync is verified in prod
+        $dogs = Dog::with(/*'appointments.service',*/ 'cabin', 'breakType', 'icons');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
-        if ($size) {
-            if ($size === 'small') {
-                $dogs->where(function ($query) {
-                    $query->where('size_letter', 'LIKE', '%S%')
-                        ->orWhere('size_letter', 'LIKE', '%T%');
-                });
-            } else {
-                $dogs->where('size_letter', 'LIKE', '%L%');
-            }
-            $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());
+        if ($size) $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());
+
+        $result = $dogs->orderBy('firstname')->get();
+
+        if ($size === 'small') {
+            return $result->filter(fn($dog) => str_contains($dog->size_letter, 'S') || str_contains($dog->size_letter, 'T'))->values();
+        }
+        if ($size === 'large') {
+            return $result->filter(fn($dog) => str_contains($dog->size_letter, 'L'))->values();
         }
 
-        return $dogs->orderBy('firstname')->get();
+        return $result;
     }
 
     /**
@@ -74,17 +74,20 @@ trait ChoodTrait
      */
     public function getGroomingDogsToday(): Collection
     {
-        $specialServiceIds = Service::whereIn('category', config('services.dd.special_service_cats'))->pluck('id');
-        $today = Carbon::today();
+        // TODO: rewrite for Gingr once service sync is verified in prod
+        return new Collection();
 
-        return Dog::select('dogs.*')->distinct()->join('appointments', 'appointments.pet_id', '=', 'dogs.pet_id')
-            ->whereIn('appointments.service_id', $specialServiceIds)
-            ->whereDate('appointments.scheduled_start', config('services.dd.sandbox_service_condition'), $today)
-            ->with(['appointments.service'])->get()->sortBy(fn($dog) => optional(
-                $dog->appointments->firstWhere(fn($ds) => in_array($ds->service_id, $specialServiceIds->all(), true)
-                    && Carbon::parse($ds->scheduled_start)->isSameDay($today)
-                )
-            )?->scheduled_start)->values();
+//        $specialServiceIds = Service::whereIn('category', config('services.gingr.special_service_cats'))->pluck('id');
+//        $today = Carbon::today();
+//
+//        return Dog::select('dogs.*')->distinct()->join('appointments', 'appointments.pet_id', '=', 'dogs.pet_id')
+//            ->whereIn('appointments.service_id', $specialServiceIds)
+//            ->whereDate('appointments.scheduled_start', config('services.gingr.sandbox_service_condition'), $today)
+//            ->with(['appointments.service'])->get()->sortBy(fn($dog) => optional(
+//                $dog->appointments->firstWhere(fn($ds) => in_array($ds->service_id, $specialServiceIds->all(), true)
+//                    && Carbon::parse($ds->scheduled_start)->isSameDay($today)
+//                )
+//            )?->scheduled_start)->values();
     }
 
 }

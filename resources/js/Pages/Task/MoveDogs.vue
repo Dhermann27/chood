@@ -4,17 +4,15 @@ import Draggable from 'vuedraggable';
 import {getYardGridStyle} from '@/utils.js';
 import MoveDogCard from "./MoveDogCard.vue";
 
+const ASPECT_RATIO = 4 / 3;
+const GAP = 10;
+
 const props = defineProps({
     dogs: {type: Array, required: true},
     yards: {type: Array, required: true},
-    photoUri: {type: String, required: true},
-    imageCache: {type: Set, required: true},
 });
 
 const emit = defineEmits(['changed', 'submit']);
-
-const aspectRatio = 4 / 3;
-const gap = 10;
 const yardTiles = ref({});       // { [yardId]: tiles[] }
 const pendingMoves = ref({});    // { [dogId]: yardId }
 const LARGE_YARD_IDS = [1001, 1002];
@@ -22,16 +20,21 @@ const SMALL_YARD_IDS = [1000, 1003];
 
 const openYards = computed(() => props.yards ?? []);
 const moveDogYards = computed(() => {
-    return openYards.value.length === 3 ? openYards.value.slice(0, 2) : openYards.value.slice(0, 4);
+    const hasMultipleLarge = openYards.value.filter(y => LARGE_YARD_IDS.includes(y.id)).length >= 2;
+    const hasMultipleSmall = openYards.value.filter(y => SMALL_YARD_IDS.includes(y.id)).length >= 2;
+    return openYards.value.filter(y =>
+        (LARGE_YARD_IDS.includes(y.id) && hasMultipleLarge) ||
+        (SMALL_YARD_IDS.includes(y.id) && hasMultipleSmall)
+    );
 });
 const maxTiles = computed(() =>
     Math.max(1, ...moveDogYards.value.map(y => yardTiles.value[y.id]?.length ?? 0))
 );
-const columns = computed(() => Math.ceil(Math.sqrt(aspectRatio * maxTiles.value)));
+const columns = computed(() => Math.ceil(Math.sqrt(ASPECT_RATIO * maxTiles.value)));
 const rows = computed(() => Math.ceil(maxTiles.value / columns.value));
 const gridStyle = computed(() => getYardGridStyle(rows.value, columns.value));
 const innerHeight = computed(() => moveDogYards.value.length === 4 ? 200 : 410);
-const cardHeight = computed(() => (innerHeight.value - (rows.value - 1) * gap) / rows.value);
+const cardHeight = computed(() => (innerHeight.value - (rows.value - 1) * GAP) / rows.value);
 const pendingCount = computed(() => Object.keys(pendingMoves.value).length);
 
 function rebuildYardTiles() {
@@ -41,7 +44,14 @@ function rebuildYardTiles() {
         next[y.id] = [];
     });
     props.dogs.forEach(d => {
-        const yardId = pendingMoves.value[d.id] ?? d.yard_id ?? (d.size_letter?.includes('L') ? 1001 : 1000);
+        let yardId = pendingMoves.value[d.id] ?? d.yard_id;
+        if (!yardId || !next[yardId]) {
+            const isLarge = d.size_letter?.includes('L');
+            const preferredIds = isLarge ? LARGE_YARD_IDS : SMALL_YARD_IDS;
+            const fallback = [...moveDogYards.value].reverse().find(y => preferredIds.includes(y.id));
+            if (!fallback) return;
+            yardId = fallback.id;
+        }
         if (!next[yardId]) return;
         next[yardId].push(d);
     });
@@ -114,7 +124,7 @@ watch(() => [moveDogYards.value, props.dogs], rebuildYardTiles, {deep: true, imm
                             <div class="flex items-center justify-center w-full"
                                  :style="{ height: cardHeight + 'px' }">
                                 <div class="cursor-grab active:cursor-grabbing w-full h-full">
-                                    <MoveDogCard :dog="element" :photoUri="props.photoUri" :card-height="cardHeight"/>
+                                    <MoveDogCard :dog="element" :card-height="cardHeight"/>
                                 </div>
                             </div>
                         </template>

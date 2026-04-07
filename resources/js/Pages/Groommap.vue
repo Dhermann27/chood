@@ -4,15 +4,12 @@ import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
 import {getYardGridStyle} from "@/utils.js";
 
-const props = defineProps({
-    photoUri: String
-});
+const props = defineProps({});
 const dogs = ref([]);
 const currentGif = ref('/images/doggifs/dog1.webp');
 const randomPosition = ref({top: 0, left: 0});
 const localChecksum = ref('');
 let refreshInterval = null;
-const currentLoadingIndex = ref(0);
 const columns = computed(() => {
     const count = displayDogs.value.length;
     return Math.min(4, Math.ceil((count <= 3 ? count : count / 2))) * 2;
@@ -21,14 +18,6 @@ const rows = computed(() => displayDogs.value.length > 3 ? 2 : 1);
 const yardGridStyle = computed(() => getYardGridStyle(rows.value, columns.value));
 const cardWidth = computed(() => (1178 - (columns.value - 1) * 10) / columns.value);
 const cardHeight = computed(() => (668 - (rows.value - 1) * 10) / rows.value);
-
-const handleImageLoaded = () => {
-    while (++currentLoadingIndex.value < dogs.value?.length) {
-        if (dogs.value[currentLoadingIndex.value].photoUri) {
-            break;
-        }
-    }
-};
 
 const displayDogs = computed(() =>
     dogs.value.length > 8 ? dogs.value.slice(0, 7) : dogs.value
@@ -43,7 +32,7 @@ function getNewGifAndPosition() {
 }
 
 
-const getBathServiceSteps = (appointment) => {
+function getBathServiceSteps(appointment) {
     const steps = [
         {text: 'Shampoo', icon: 'soap'}
     ];
@@ -66,7 +55,7 @@ const getBathServiceSteps = (appointment) => {
     }
 
     return steps;
-};
+}
 
 async function updateData() {
     try {
@@ -75,8 +64,6 @@ async function updateData() {
         if (response.data && localChecksum.value !== response.data?.checksum) {
             dogs.value = response.data.dogs;
             localChecksum.value = response.data.checksum;
-
-            currentLoadingIndex.value = 0;
         }
 
     } catch (error) {
@@ -108,24 +95,11 @@ onBeforeUnmount(() => {
             <template v-for="(dog, index) in displayDogs" :id="dog.id">
                 <div class="rounded-tl-2xl rounded-bl-2xl shadow-xl py-4 h-full"
                      :style="{ width: cardWidth + 'px'}">
-                    <DogCard :dogs="[dog]" :photoUri="props.photoUri" :card-width="cardWidth" :card-height="cardHeight"
-                             :shouldLoad="index === currentLoadingIndex" @imageLoaded="handleImageLoaded"/>
+                    <DogCard :dogs="[dog]" :card-width="cardWidth" :card-height="cardHeight"/>
                 </div>
-                <div
-                    class="bg-yellow-100 text-3xl rounded-tr-2xl rounded-br-2xl shadow-inner p-4 h-full">
+                <!-- appointments panel commented out; see ChoodTrait::getGroomingDogsToday() -->
+                <div class="bg-yellow-100 text-3xl rounded-tr-2xl rounded-br-2xl shadow-inner p-4 h-full">
                     <div>Checkout: {{ formatTime(dog.checkout) }}</div>
-                    <div v-for="appointment in dog.appointments" :key="appointment.id" class="my-5 overflow-y-hidden">
-                        <div class="font-bold text-caregiver">{{ appointment.service.name }}</div>
-                        <div class="text-gray-600">Start: {{ formatTime(appointment.scheduled_start) }}</div>
-
-                        <ol v-if="appointment.service.category === 'Bath'" class="mt-3 list-none text-gray-800">
-                            <li v-for="step in getBathServiceSteps(appointment)" :key="step.text"
-                                class="flex items-center gap-2">
-                                <FontAwesomeIcon :icon="$fa.fas[step.icon]" class="text-2xl" fixed-width/>
-                                <span>{{ step.text }}</span>
-                            </li>
-                        </ol>
-                    </div>
                 </div>
             </template>
             <template v-if="dogs.length > 8">

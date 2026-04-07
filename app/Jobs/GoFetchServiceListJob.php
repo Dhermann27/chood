@@ -11,72 +11,55 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-/**
- *
- */
 class GoFetchServiceListJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected FetchDataService $fetchDataService;
+    // Gingr reservation type_ids to fetch services for
+    private const TYPE_IDS = [1, 2, 3, 4, 5];
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct(FetchDataService $fetchDataService)
-    {
-        $this->fetchDataService = $fetchDataService;
-    }
+    public function __construct() {}
 
     /**
      * @throws Exception
      */
-    public function handle(): void
+    public function handle(FetchDataService $fetchDataService): void
     {
-        $payload = [
-            "username" => config('services.dd.username'),
-            "password" => config('services.dd.password'),
-        ];
-        $output = $this->fetchDataService->fetchData(config('services.dd.uris.servicelist'), $payload)
-            ->getData(true);
-        if (!isset($output['data']) || !is_array($output['data']) || count($output['data']) == 0) {
-            throw new Exception("No data found: " . $output);
+        $location = config('services.gingr.location_id');
+        $seen = [];
+
+        foreach (self::TYPE_IDS as $typeId) {
+            try {
+                $output = $fetchDataService->fetchApi('servicesByType', [
+                    'type_id' => $typeId,
+                    'location' => $location,
+                    'include_precheck_services' => 'false',
+                    'precheck_id' => '',
+                ]);
+            } catch (Exception $e) {
+                Log::warning("GoFetchServiceListJob: type_id {$typeId} failed: " . $e->getMessage());
+                continue;
+            }
+
+            foreach ($output['allowable_services'] ?? [] as $svc) {
+                $gingrId = (int) $svc['id'];
+                if (isset($seen[$gingrId])) continue;
+                $seen[$gingrId] = true;
+
+                Service::updateOrCreate(
+                    ['gingr_id' => $gingrId],
+                    [
+                        'name'      => $svc['name'],
+                        'category'  => $svc['booking_category_id'],
+                        'duration'  => (int) $svc['duration'],
+                        'is_active' => $svc['is_deleted'] === '0' && $svc['status'] === '1',
+                    ]
+                );
+            }
         }
 
-        DB::transaction(function () use ($output) {
-            $data = $output['data'][0];
-            $columns = collect($data['columns'])->pluck('index', 'filterKey');
-
-            // Build rows for upsert (active only)
-            $rows = [];
-            foreach ($data['rows'] as $row) {
-                if (!empty($row[$columns['active']])) {
-                    $rows[] = [
-                        'dd_id' => trim($row[$columns['id']]),
-                        'name' => trim($row[$columns['label']]),
-                        'category' => trim($row[$columns['category']]),
-                        'code' => trim($row[$columns['code']]),
-                        'duration' => (int)trim($row[$columns['duration']]),
-                    ];
-                }
-            }
-
-            if (!empty($rows)) {
-                Service::upsert($rows, ['dd_id'], ['name', 'category', 'code', 'duration']);
-            }
-
-            $activeDdIds = array_column($rows, 'dd_id');
-            if (!empty($activeDdIds)) {
-                Service::whereNotIn('dd_id', $activeDdIds)->update(['is_active' => 0]);
-            }
-
-            // Refresh cache used by your sync job
-            Cache::put('serviceMapByDDID', Service::pluck('id', 'dd_id'), now()->addDay());
-        });
-
+        Log::info('GoFetchServiceListJob: synced ' . count($seen) . ' services.');
     }
-
 }

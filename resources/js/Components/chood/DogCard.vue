@@ -4,14 +4,12 @@ import {getBannerStyle, getFittedFontSize} from "@/utils.js";
 import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
 
 const props = defineProps({
-    photoUri: String,
     dogs: Array,
     maxlength: Number,
     cardHeight: Number,
-    shouldLoad: Boolean,
 });
 const currentDogIndex = ref(0);
-const imageCache = new Map();
+const imageCache = ref(new Set());
 const dogBanner = ref(null);
 const dogName = ref(null);
 const breakMinutesRemaining = ref(null);
@@ -21,26 +19,25 @@ const currentDog = computed(() => {
 
     return dogs.length ? dogs[index] : null;
 });
-const now = ref(Date.now())
 const iconRefs = ref({});
-const setIconRef = (index, dir) => (el) => {
-    if (el) iconRefs.value[`chood${dir}Icon${index}`] = el;
-};
-const intervals = [null, null]; // [rotationInterval, timerInterval]
-
-const emit = defineEmits(['imageLoaded']);
+function setIconRef(index, dir) {
+    return (el) => {
+        if (el) iconRefs.value[`chood${dir}Icon${index}`] = el;
+    };
+}
+const intervals = [null]; // [rotationInterval]
 
 const bannerStyle = computed(() =>
     getBannerStyle(currentDog.value, breakTimeLeft.value)
 );
 
-const getTimeColor = (iconData) => {
+function getTimeColor(iconData) {
     const now = new Date();
     if (iconData.completed) return 'text-meadow';
     else if (new Date(iconData.checkout) - now <= 3600000) return 'text-alerted'; // within 1 hour
     else if (new Date(iconData.start) < now) return 'text-sunshine';
     return 'text-white';
-};
+}
 
 const maskColor = computed(() => {
     const dog = currentDog.value;
@@ -59,7 +56,7 @@ const breakTimeLeft = computed(() => {
 
     if (bt.behavior === 'countdown') {
         const end = new Date(start.getTime() + bt.duration_minutes * 60 * 1000);
-        const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
+        const minutesLeft = Math.max(Math.ceil((end.getTime() - Date.now()) / (60 * 1000)), 0);
         return {
             minutesLeft,
             percentElapsed: 1 - minutesLeft / bt.duration_minutes,
@@ -72,7 +69,7 @@ const breakTimeLeft = computed(() => {
         const onePm = new Date(start);
         onePm.setHours(13, 0, 0, 0);
         const totalMinutes = Math.max(Math.ceil((onePm.getTime() - start.getTime()) / (60 * 1000)), 1);
-        const minutesLeft = Math.max(Math.ceil((onePm.getTime() - now.value) / (60 * 1000)), 0);
+        const minutesLeft = Math.max(Math.ceil((onePm.getTime() - Date.now()) / (60 * 1000)), 0);
         return {
             minutesLeft,
             percentElapsed: 1 - minutesLeft / totalMinutes,
@@ -82,7 +79,7 @@ const breakTimeLeft = computed(() => {
     }
 
     if (bt.behavior === 'walks_only') {
-        const elapsed = Math.floor((now.value - start.getTime()) / (60 * 1000));
+        const elapsed = Math.floor((Date.now() - start.getTime()) / (60 * 1000));
         const timeForWalk = elapsed >= bt.duration_minutes;
         return {
             minutesLeft: timeForWalk ? 'Walk!' : 'EOD',
@@ -96,35 +93,17 @@ const breakTimeLeft = computed(() => {
     return {minutesLeft: bt.short_label, percentElapsed: 0, percentRemaining: 1, expired: false};
 });
 
-const preloadImage = (dog) => {
-    return new Promise((resolve) => {
-        if (dog.photoUri && !imageCache.has(dog.photoUri)) {
-            const img = new Image();
-            img.src = `${props.photoUri}${dog.photoUri}`;
-
-            const timer = setTimeout(() => {
-                console.warn('Timeout loading image:', dog.photoUri);
-                resolve(); // still resolve even if it times out
-            }, 10000);
-
-            img.onload = () => {
-                clearTimeout(timer);
-                imageCache.set(dog.photoUri, img);
-                resolve();
-            };
-
-            img.onerror = () => {
-                clearTimeout(timer);
-                console.warn('Failed to load image:', dog.photoUri);
-                resolve();
-            };
-        } else {
-            resolve();
-        }
-    });
-};
+function preloadImage(dog) {
+    if (dog.photoUri && !imageCache.value.has(dog.photoUri)) {
+        const img = new Image();
+        img.onload = () => imageCache.value.add(dog.photoUri);
+        img.onerror = () => console.warn('Failed to load image:', dog.photoUri);
+        img.src = dog.photoUri;
+    }
+}
 
 watch(() => props.dogs, (newDogs) => {
+    newDogs.forEach(dog => preloadImage(dog));
     intervals.forEach((i, index) => {
         if (i) {
             clearInterval(i);
@@ -134,10 +113,6 @@ watch(() => props.dogs, (newDogs) => {
 
     if (newDogs.length > 0) {
         currentDogIndex.value = 0;
-
-        intervals[1] = setInterval(() => {
-            now.value = Date.now();
-        }, 8000);
 
         if (newDogs.length > 1) {
             intervals[0] = setInterval(() => {
@@ -195,17 +170,6 @@ watch([() => props.cardHeight, currentDog], async ([newHeight]) => {
     }
 }, {immediate: true});
 
-watch(() => props.shouldLoad, async (newVal) => {
-    if (newVal) {
-        const imagePromises = props.dogs.map(dog => preloadImage(dog));
-        await Promise.all(imagePromises);
-
-        setTimeout(() => {
-            emit('imageLoaded');
-        }, 500);
-    }
-}, {immediate: true});
-
 onUnmounted(() => {
     intervals.forEach((i) => i && clearInterval(i));
 });
@@ -220,7 +184,8 @@ onUnmounted(() => {
 
 
         <div ref="photoContainer" class="relative bg-cover bg-center z-0 overflow-hidden" style="flex: 1 1 auto"
-             :style="{ backgroundImage: currentDog.photoUri && imageCache.has(currentDog.photoUri) ? `url(${props.photoUri}${currentDog.photoUri})` : 'none' }">
+             :style="{ backgroundImage: currentDog.photoUri && imageCache.has(currentDog.photoUri) ? `url(${currentDog.photoUri})` : 'none' }">
+
             <svg v-if="breakTimeLeft && !breakTimeLeft.expired" preserveAspectRatio="none"
                  class="absolute top-0 left-0 w-full h-full pointer-events-none z-10" viewBox="0 0 1 1">
                 <defs>

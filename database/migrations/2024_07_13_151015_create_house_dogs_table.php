@@ -20,34 +20,22 @@ return new class extends Migration {
             $table->string('lastname')->default('Smith');
             $table->string('display_name')->default('Dog');
             $table->string('gender')->nullable();
+            $table->unsignedBigInteger('order_id')->nullable();
             $table->integer('weight')->nullable();
             $table->foreignId('yard_id')->nullable()->constrained()->nullOnDelete()->index();
             $table->string('photoUri')->nullable();
-            $table->string('nickname')->nullable();
             $table->foreignId('cabin_id')->nullable()->constrained()->nullOnDelete();
             $table->string('housing_code')->default(HousingServiceCodes::BRDC->value);
             $table->dateTime('checkin')->nullable();
             $table->dateTime('checkout')->nullable();
             $table->timestamp('rest_starts_at')->nullable();
             $table->foreignId('break_type_id')->nullable()->constrained('break_types')->nullOnDelete();
+            $table->string('food_type')->nullable();
+            $table->string('feeding_method')->nullable();
+            $table->text('feeding_notes')->nullable();
             $table->timestamps();
         });
         DB::update('ALTER TABLE dogs AUTO_INCREMENT = 1000');
-        Schema::table('dogs', function (Blueprint $table) {
-            $table->string('size_letter', 2)->virtualAs("
-              CASE
-                  WHEN weight >= 30 AND LOWER(nickname) LIKE '%large%' THEN 'L'
-                  WHEN weight >= 10 AND LOWER(nickname) LIKE '%small%' THEN 'S'
-                  WHEN weight <= 15 AND LOWER(nickname) LIKE '%teacup%' THEN 'T'
-                  WHEN weight >= 40 THEN 'L'
-                  WHEN weight >= 30 THEN 'LS'
-                  WHEN weight >= 15 THEN 'S'
-                  WHEN weight >= 10 THEN 'ST'
-                  ELSE 'T'
-              END
-          ");
-            $table->index('size_letter');
-        });
     }
 
     /**

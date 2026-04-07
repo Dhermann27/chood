@@ -15,7 +15,7 @@ const props = defineProps({
     breakTypes: Array,
 });
 
-const frequency = 10000;
+const FREQUENCY = 10000;
 
 const dogs = ref(null);
 const employees = ref(null);
@@ -36,7 +36,6 @@ const targets = ref({
 const step = ref(1);
 const localChecksum = ref('');
 const is1pmOrLater = ref(false);
-const imageCache = new Set();
 
 const restColumns = computed(() => Math.ceil(Math.sqrt((16 / 9) * (dogsOnBreak.value.length + 1))));
 const restRows = computed(() => Math.ceil((dogsOnBreak.value.length + 1) / restColumns.value));
@@ -77,23 +76,13 @@ const breakStatus = computed(() => {
 let counter = 0;
 let refreshInterval;
 
-async function preloadDogPhotos(dogs) {
+function preloadDogPhotos(dogs) {
     if (!dogs) return;
-    for (const dog of dogs) {
-        if (!dog?.photoUri) continue;
-        if (imageCache.has(dog.photoUri)) continue;
-
-        imageCache.add(dog.photoUri);
-
-        await new Promise(resolve => {
-            const img = new Image();
-            img.src = `${props.photoUri}${dog.photoUri}`;
-            img.onload = resolve;
-            img.onerror = resolve;
-        });
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    dogs.forEach(dog => {
+        if (!dog?.photoUri) return;
+        const img = new Image();
+        img.src = dog.photoUri;
+    });
 }
 
 async function updateData() {
@@ -115,33 +104,33 @@ async function updateData() {
         counter = 0;
     }
     clearInterval(refreshInterval);
-    refreshInterval = setInterval(updateData, frequency);
+    refreshInterval = setInterval(updateData, FREQUENCY);
 }
 
-const prevStep = () => {
+function prevStep() {
     statusMessage.value = null;
     counter = 0;
-    if (step.value > 1) step.value--
+    if (step.value > 1) step.value--;
 }
 
-const nextStep = () => {
+function nextStep() {
     statusMessage.value = null;
     counter = 0;
-    if (step.value < 4) step.value++
+    if (step.value < 4) step.value++;
 }
 
-const handleEmployeeClick = (employee) => {
+function handleEmployeeClick(employee) {
     homebaseId.value = employee.homebase_user_id;
     nextStep();
 }
 
-const handleTaskClick = (thisTodo) => {
+function handleTaskClick(thisTodo) {
     is1pmOrLater.value = new Date().getHours() >= 13;
     todo.value = thisTodo;
     nextStep();
 }
 
-const handleTargetClick = (cabin) => {
+function handleTargetClick(cabin) {
     if (todo.value === 'assignCabin') {
         targets.value = {
             ...targets.value, // Preserve existing properties
@@ -158,26 +147,26 @@ const handleTargetClick = (cabin) => {
         };
         nextStep();
     }
-};
+}
 
-const handleAssignDogUpdate = () => {
+function handleAssignDogUpdate() {
     counter = 0;
     if (targets.value['dogsToAssign'].length > 0 && targets.value['cabin_id'] > 0) nextStep();
-};
+}
 
-const handleBreakDogUpdate = (breakTypeId) => {
+function handleBreakDogUpdate(breakTypeId) {
     counter = 0;
     targets.value.break_type_id = breakTypeId;
     if (targets.value['dogsToAssign'].length > 0) nextStep();
-};
+}
 
-const handleBreakDogDelete = (dog) => {
+function handleBreakDogDelete(dog) {
     targets.value['dogsToAssign'] = dog;
     todo.value = `markReturned/${dog.id}`;
     nextStep();
-};
+}
 
-const handleYardChange = (pendingMoves) => {
+function handleYardChange(pendingMoves) {
     const payload = Object.entries(pendingMoves).map(([dog_id, yard_id]) => ({
         dog_id: Number(dog_id),
         yard_id: Number(yard_id),
@@ -185,9 +174,9 @@ const handleYardChange = (pendingMoves) => {
     if (!payload.length) return;
     targets.value['yardsToAssign'] = payload;
     nextStep();
-};
+}
 
-const handleFinishAction = async (action) => {
+async function handleFinishAction(action) {
     if (action === 'Done' || action === 'More') {
         axios({
             method: 'POST',
@@ -200,7 +189,7 @@ const handleFinishAction = async (action) => {
             localChecksum.value = '';
             clearInterval(refreshInterval);
             updateData();
-            refreshInterval = setInterval(updateData, frequency);
+            refreshInterval = setInterval(updateData, FREQUENCY);
 
             statusMessage.value = response.data?.message;
             statusClass.value = 'text-meadow';
@@ -234,7 +223,7 @@ const handleFinishAction = async (action) => {
 
 onMounted(() => {
     updateData();
-    refreshInterval = setInterval(updateData, frequency);
+    refreshInterval = setInterval(updateData, FREQUENCY);
 });
 
 onUnmounted(() => {
@@ -309,13 +298,14 @@ onUnmounted(() => {
             <template v-if="todo === 'assignCabin'">
                 <multiselect
                     class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
-                    v-model="targets.dogsToAssign" multiple :options="dogsByCabin['unassigned']" label="display_name"
+                    v-model="targets.dogsToAssign" multiple :options="(dogsByCabin['unassigned'] ?? []).filter(d => !d.is_boarding)" label="display_name"
                     placeholder="Select Dog(s) (Required)" @update:modelValue="handleAssignDogUpdate">
                     <template #option="{ option }">
                         <div class="dog-option-item">
-                            <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
-                                 :alt="'Picture of ' + option.firstname" class="dog-photo"
-                                 @error="e => e.target.style.display = 'none'"/>
+                            <div v-if="option.photoUri" class="dog-photo-wrap">
+                                <img :src="option.photoUri" :alt="option.display_name"
+                                     @error="e => e.target.parentElement.style.display = 'none'"/>
+                            </div>
                             <span class="text-3xl ml-10">{{ option.display_name }}</span>
                         </div>
                     </template>
@@ -323,7 +313,7 @@ onUnmounted(() => {
                 <div class="choodmap items-center justify-center p-1">
                     <Map :cabins="cabins" :statuses="statuses" :dogs="dogsByCabin"
                          :controls="ControlSchemes.SELECT_CABIN" :maxlength="6"
-                         :card-width="46" :card-height="55" :photoUri="photoUri" @cabinClicked="handleTargetClick"/>
+                         :card-width="46" :card-height="55" @cabinClicked="handleTargetClick"/>
                 </div>
             </template>
             <template v-else-if="todo === 'cleanCabin'">
@@ -340,9 +330,10 @@ onUnmounted(() => {
                     placeholder="Select Dog(s) (Required)">
                     <template #option="{ option }">
                         <div class="dog-option-item">
-                            <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
-                                 :alt="'Picture of ' + option.firstname" class="dog-photo"
-                                 @error="e => e.target.style.display = 'none'"/>
+                            <div v-if="option.photoUri" class="dog-photo-wrap">
+                                <img :src="option.photoUri" :alt="option.display_name"
+                                     @error="e => e.target.parentElement.style.display = 'none'"/>
+                            </div>
                             <span class="text-3xl ml-10">{{ option.display_name }}</span>
                         </div>
                     </template>
@@ -367,9 +358,10 @@ onUnmounted(() => {
                     placeholder="Select Dog(s) (Required)" @click="counter = 0;">
                     <template #option="{ option }">
                         <div class="dog-option-item">
-                            <img v-if="option.photoUri" :src="props.photoUri + option.photoUri"
-                                 :alt="'Picture of ' + option.firstname" class="dog-photo"
-                                 @error="e => e.target.style.display = 'none'"/>
+                            <div v-if="option.photoUri" class="dog-photo-wrap">
+                                <img :src="option.photoUri" :alt="option.display_name"
+                                     @error="e => e.target.parentElement.style.display = 'none'"/>
+                            </div>
                             <span class="text-3xl ml-10">{{ option.display_name }}</span>
                         </div>
                     </template>
@@ -386,13 +378,13 @@ onUnmounted(() => {
                 <div class="items-center justify-center p-1" :style="restGridStyle">
                     <div v-for="(dog, index) in dogsOnBreak" :id="index"
                          :style="{height: restCardHeight + 'px', width: restCardWidth + 'px'}">
-                        <DogCard :dogs="[dog]" :photoUri="props.photoUri" @click="handleBreakDogDelete(dog)"
-                                 :card-width="restCardWidth" :card-height="restCardHeight" :shouldLoad="true"/>
+                        <DogCard :dogs="[dog]" @click="handleBreakDogDelete(dog)"
+                                 :card-width="restCardWidth" :card-height="restCardHeight"/>
                     </div>
                 </div>
             </template>
             <template v-else-if="todo === 'moveDog'">
-                <MoveDogs :dogs="dogs" :yards="openYards" :photoUri="props.photoUri" :imageCache="imageCache"
+                <MoveDogs :dogs="dogs.filter(d => d.is_daycare || d.is_boarding || d.is_interview)" :yards="openYards"
                           @changed="counter = 0;" @submit="handleYardChange" style="height: 650px;"/>
             </template>
 
@@ -469,19 +461,22 @@ onUnmounted(() => {
 }
 </style>
 <style scoped>
-.dog-photo {
-    width: 250px;
-    height: 100px;
-    max-width: 250px; /* Prevent image from exceeding 200px width */
-    max-height: 100px; /* Prevent image from exceeding 50px height */
-    object-fit: cover;
+.dog-photo-wrap {
+    width: 75px;
+    height: 75px;
+    flex-shrink: 0;
     border-radius: 8px;
-    margin-bottom: 5px;
-    flex-shrink: 0; /* Prevent the image from shrinking */
+    overflow: hidden;
+}
+
+.dog-photo-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .dog-option-item {
     display: flex;
-    align-items: center; /* Vertically align text with image */
+    align-items: center;
 }
 </style>

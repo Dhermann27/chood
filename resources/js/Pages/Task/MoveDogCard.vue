@@ -4,7 +4,6 @@ import {getBannerStyle, getFittedFontSize} from '@/utils';
 
 const props = defineProps({
     dog: {type: Object, required: true},
-    photoUri: {type: String, required: true},
     cardHeight: {type: Number, required: true},
 });
 
@@ -33,7 +32,7 @@ watch(() => [props.cardHeight, props.dog], async ([newHeight]) => {
         </div>
 
         <div class="relative z-0 overflow-hidden flex-1">
-            <img v-if="dog.photoUri" :src="`${photoUri}${dog.photoUri}`" draggable="false"
+            <img v-if="dog.photoUri" :src="dog.photoUri" draggable="false"
                  class="absolute inset-0 w-full h-full object-cover object-center" loading="eager" decoding="async"
                  :alt="`Picture of ${dog.firstname ?? 'dog'}`" @error="e => { e.target.style.display = 'none'; }"/>
         </div>

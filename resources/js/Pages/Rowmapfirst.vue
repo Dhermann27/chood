@@ -5,7 +5,6 @@ import Map from "@/Components/chood/Map.vue";
 import {fetchMapData} from "@/utils.js";
 
 const props = defineProps({
-    photoUri: String,
     cabins: Array,
     dogs: Object,
     checksum: String
@@ -41,7 +40,7 @@ onBeforeUnmount(() => {
     <Head title="Rowmap Firstrow"/>
     <main class="w-full h-full">
         <div class="choodmap items-center justify-center p-1">
-            <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :photoUri="photoUri" :maxlength="12"
+            <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :maxlength="12"
                  :card-width="230" :card-height="216"/>
         </div>
     </main>
