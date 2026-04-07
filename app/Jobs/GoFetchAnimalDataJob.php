@@ -87,7 +87,7 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
         Allergy::where('pet_id', $petId)->delete();
 
         $text = $allergiesHtml ? trim(strip_tags($allergiesHtml)) : '';
-        if ($text !== '') {
+        if ($text !== '' && !$this->isBoilerplate($text)) {
             Allergy::create(['pet_id' => $petId, 'description' => $text]);
         }
     }
@@ -104,7 +104,7 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
 
         // Predefined medical condition
         $condition = trim($animal['medical_condition'] ?? '');
-        if ($condition !== '') {
+        if ($condition !== '' && !$this->isBoilerplate($condition)) {
             Medication::create([
                 'pet_id'      => $petId,
                 'type'        => 'Medical Condition',
@@ -114,7 +114,7 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
 
         // Free-text other condition
         $otherCondition = trim($animal['medical_conditions_please_explain'] ?? '');
-        if ($otherCondition !== '') {
+        if ($otherCondition !== '' && !$this->isBoilerplate($otherCondition)) {
             Medication::create([
                 'pet_id'      => $petId,
                 'type'        => 'Medical Condition',
@@ -124,7 +124,7 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
 
         // Handling note
         $handlingNote = trim($animal['medication_schedule']['medicationNotes'] ?? '');
-        if ($handlingNote !== '') {
+        if ($handlingNote !== '' && !$this->isBoilerplate($handlingNote)) {
             Medication::create([
                 'pet_id'      => $petId,
                 'type'        => 'Handling',
@@ -151,6 +151,11 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
                 ]);
             }
         }
+    }
+
+    private function isBoilerplate(string $text): bool
+    {
+        return (bool) preg_match('/^(none|no \w+ needed|none no \w+ needed)$/i', $text);
     }
 
     private function getFeedings(string $petId, ?array $feedingSchedule, $timeslots): void
