@@ -13,8 +13,8 @@ class Cabin extends Model
 
     public function getShortNameAttribute()
     {
-        $patterns = ['/Luxury Suite /', '/\dx\d\s?- Cabin /', '/Teacup Condo /'];
-        $replacements = ['L', '', 'T'];
+        $patterns = ['/Luxury Suite /', '/^Cabin 0*(\d+) - \d+x\d+$/', '/Teacup Condo /'];
+        $replacements = ['L', '$1', 'T'];
         return preg_replace($patterns, $replacements, $this->cabinName);
     }
 
