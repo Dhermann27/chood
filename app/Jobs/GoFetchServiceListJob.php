@@ -56,7 +56,7 @@ class GoFetchServiceListJob implements ShouldQueue, ShouldBeUnique
                     [
                         'name' => $svc['name'],
                         'category' => $svc['booking_category_id'],
-                        'housing_code' => $this->housingCodeFromName($svc['name']),
+                        'housing_code' => HousingServiceCodes::fromServiceName($svc['name']),
                         'duration' => (int)$svc['duration'],
                         'is_active' => $svc['is_deleted'] === '0' && $svc['status'] === '1',
                     ]
@@ -67,13 +67,4 @@ class GoFetchServiceListJob implements ShouldQueue, ShouldBeUnique
         Log::info('GoFetchServiceListJob: synced ' . count($seen) . ' services.');
     }
 
-    private function housingCodeFromName(string $name): ?HousingServiceCodes
-    {
-        $name = strtolower($name);
-        if (str_contains($name, 'boarding') && str_contains($name, 'luxury')) return HousingServiceCodes::BRDL;
-        if (str_contains($name, 'boarding')) return HousingServiceCodes::BRDC;
-        if (str_contains($name, 'day camp') && str_contains($name, 'half')) return HousingServiceCodes::DCHD;
-        if (str_contains($name, 'day camp')) return HousingServiceCodes::DCFD;
-        return null;
-    }
 }

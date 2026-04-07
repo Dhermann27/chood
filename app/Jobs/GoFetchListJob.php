@@ -51,8 +51,16 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         $activePetIds = [];
         $activeOwnerIds = [];
         $dispatchedOwnerIds = [];
+        $seenTypeIds = [];
 
         foreach ($output['data'] as $row) {
+            if (!empty($row['type_id']) && !isset($seenTypeIds[$row['type_id']])) {
+                $seenTypeIds[$row['type_id']] = true;
+                Service::updateOrCreate(
+                    ['gingr_id' => (int) $row['type_id']],
+                    ['name' => $row['type'], 'housing_code' => HousingServiceCodes::fromServiceName($row['type'] ?? '')]
+                );
+            }
             $dog = Dog::updateOrCreate(
                 ['pet_id' => $row['a_id']],
                 $this->getUpdateValues($row, $cabins)

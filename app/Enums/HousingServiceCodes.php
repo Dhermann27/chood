@@ -8,7 +8,7 @@ enum HousingServiceCodes: string
     case BRDC = 'BRDC';
     case BRDL = 'BRDL';
     case DCFD = 'DCFD';
-    case DCHD = 'DCHD'; // Testing: DCH in Test
+    case DCHD = 'DCHD';
     case INTV = 'INTV';
     case UNKNOWN = 'GTO';
 
@@ -31,5 +31,16 @@ enum HousingServiceCodes: string
     {
         return $code !== '' && $code !== self::BRDC->value && $code !== self::BRDL->value
             && $code !== self::DCFD->value && $code !== self::DCHD->value;
+    }
+
+    public static function fromServiceName(string $name): ?self
+    {
+        $name = strtolower($name);
+        if (str_contains($name, 'boarding') && str_contains($name, 'luxury')) return self::BRDL;
+        if (str_contains($name, 'boarding')) return self::BRDC;
+        if (str_contains($name, 'day camp') && str_contains($name, 'half')) return self::DCHD;
+        if (str_contains($name, 'day camp')) return self::DCFD;
+        if (str_contains($name, 'interview')) return self::INTV;
+        return null;
     }
 }
