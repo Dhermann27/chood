@@ -35,6 +35,24 @@ return [
         ],
     ],
 
+    'dd' => [
+        'sandbox_username' => env('SB_USERNAME'),
+        'sandbox_password' => env('SB_PASSWORD'),
+        'card_types' => array_map('trim', explode(',', env('CARD_TYPES_LIST', ''))),
+        'uris' => [
+            'auth' => env('BASE_URI') . env('AUTH_URI'),
+            'reports' => [
+                'overall'          => env('BASE_URI') . env('REPORT_URI') . env('OVERALL_SUFFIX'),
+                'deposits'         => env('BASE_URI') . env('REPORT_URI') . env('DEPOSITS_SUFFIX'),
+                'depositDetails'   => env('BASE_URI') . env('REPORT_URI') . env('DEPOSITS_DETAILS_SUFFIX'),
+                'packages'         => env('BASE_URI') . env('REPORT_URI') . env('PACKAGES_SUFFIX'),
+                'accrual_packages' => env('BASE_URI') . env('REPORT_URI') . env('ACC_PACKAGES_SUFFIX'),
+                'services'         => env('BASE_URI') . env('REPORT_URI') . env('SERVICES_SUFFIX'),
+                'accrual_services' => env('BASE_URI') . env('REPORT_URI') . env('ACC_SERVICES_SUFFIX'),
+            ],
+        ],
+    ],
+
     'gingr' => [
         'api_key' => env('GINGR_API_KEY'),
         'username' => env('GINGR_USERNAME'),

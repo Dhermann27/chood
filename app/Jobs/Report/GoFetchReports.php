@@ -160,7 +160,7 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
         $report->updated_at = now();
         $report->save();
 
-        usleep(mt_rand(config('services.dd.queue_delay'), config('services.dd.queue_delay') + 1000) * 1000);
+        usleep(mt_rand(config('services.gingr.queue_delay'), config('services.gingr.queue_delay') + 1000) * 1000);
     }
 
 
