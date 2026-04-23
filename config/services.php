@@ -36,8 +36,6 @@ return [
     ],
 
     'dd' => [
-        'sandbox_username' => env('SB_USERNAME'),
-        'sandbox_password' => env('SB_PASSWORD'),
         'card_types' => array_map('trim', explode(',', env('CARD_TYPES_LIST', ''))),
         'uris' => [
             'auth' => env('BASE_URI') . env('AUTH_URI'),
@@ -54,9 +52,11 @@ return [
     ],
 
     'gingr' => [
-        'api_key' => env('GINGR_API_KEY'),
-        'username' => env('GINGR_USERNAME'),
-        'password' => env('GINGR_PASSWORD'),
+        'api_key'          => env('GINGR_API_KEY'),
+        'username'         => env('GINGR_USERNAME'),
+        'password'         => env('GINGR_PASSWORD'),
+        'sandbox_username' => env('GINGR_SB_USERNAME'),
+        'sandbox_password' => env('GINGR_SB_PASSWORD'),
         'queue_delay' => env('QUEUE_DELAY'),
         'mealmap_dpp' => env('MEALMAP_DOGS_PER_PAGE'),
         'yards_to_open' => env('YARDS_TO_OPEN'),
@@ -66,13 +66,16 @@ return [
         'fsg_service_cats' => array_map('trim', explode(',', env('FSG_SERVICE_CATEGORIES', ''))),
         'location_id' => env('GINGR_LOCATION_ID', 3),
         'uris' => [
-            'login'          => env('GINGR_BASE_URL') . env('GINGR_LOGIN_URI'),
-            'dashboard'      => env('GINGR_BASE_URL') . '/dashboard',
-            'icons'          => env('GINGR_BASE_URL') . '/dashboard/get_icons',
-            'checkedIn'      => env('GINGR_BASE_URL') . env('GINGR_CHECKED_IN_URI'),
-            'animalData'     => env('GINGR_BASE_URL') . env('GINGR_ANIMAL_DATA_URI'),
-            'ownerData'      => env('GINGR_BASE_URL') . env('GINGR_OWNER_DATA_URI'),
-            'servicesByType' => env('GINGR_BASE_URL') . env('GINGR_SERVICES_BY_TYPE_URI'),
+            'login'                => env('GINGR_BASE_URL') . env('GINGR_LOGIN_URI'),
+            'dashboard'            => env('GINGR_BASE_URL') . '/dashboard',
+            'icons'                => env('GINGR_BASE_URL') . '/dashboard/get_icons',
+            'checkedIn'            => env('GINGR_BASE_URL') . env('GINGR_CHECKED_IN_URI'),
+            'animalData'           => env('GINGR_BASE_URL') . env('GINGR_ANIMAL_DATA_URI'),
+            'ownerData'            => env('GINGR_BASE_URL') . env('GINGR_OWNER_DATA_URI'),
+            'servicesByType'       => env('GINGR_BASE_URL') . env('GINGR_SERVICES_BY_TYPE_URI'),
+            'charges_raw'          => env('GINGR_BASE_URL') . '/reports/charges_raw',
+            'payments_refunds_raw' => env('GINGR_BASE_URL') . '/reports/payments_refunds_raw',
+            'lodging_occupancy'    => env('GINGR_BASE_URL') . '/reports/lodging_occupancy',
         ],
     ],
 

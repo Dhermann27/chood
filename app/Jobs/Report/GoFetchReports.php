@@ -3,7 +3,6 @@
 namespace App\Jobs\Report;
 
 use App\Models\Report;
-use App\Services\FetchDataService;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,157 +10,31 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class GoFetchReports implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public readonly string $reportId, public readonly string $username)
+    public function __construct(public readonly string $reportId, public readonly array $cookies)
     {
         $this->onQueue('high');
     }
 
-
     public function uniqueId(): string
     {
-        return $this->username;
+        return $this->reportId;
     }
 
     /**
      * @throws Exception
      */
-    public function handle(FetchDataService $fetchDataService): void
+    public function handle(): void
     {
-        $report = Report::findOrFail($this->reportId);
-        $payload = $fetchDataService->createPayload($report);
-        $reportData = $report->data ?? [];
+        // Ensure the report exists before dispatching sub-jobs
+        Report::findOrFail($this->reportId);
 
-        $this->processGroup($fetchDataService, $payload, $reportData, 'deposits', ['paymentType', 'qty', 'total']);
-        $reportData['cash'] = $this->processCashDeposits($fetchDataService, $payload);
-        $this->saveAndSleep($report, $reportData);
-
-        // Step 2: Service/package groups
-        $this->processGroup($fetchDataService, $payload, $reportData, 'packages', ['packageName', 'count', 'total']);
-        $this->processGroup($fetchDataService, $payload, $reportData, 'accrual_packages', ['packageName', 'count', 'rtTotal']);
-        $this->processGroup($fetchDataService, $payload, $reportData, 'services', ['category', 'count', 'total']);
-
-        $payload = $fetchDataService->createConstrainedPayload($report, 'packages', 'eq', '1');
-        $this->processGroup($fetchDataService, $payload, $reportData, 'accrual_services', ['categoryName', 'count', 'rtTotal']);
-
-        $reportData['accrual_total'] = $this->computeAccrualTotal($reportData);
-        $this->saveAndSleep($report, $reportData);
+        FetchChargesJob::dispatch($this->reportId, $this->cookies);
+        FetchPaymentsJob::dispatch($this->reportId, $this->cookies);
+        FetchBoardingJob::dispatch($this->reportId, $this->cookies);
     }
-
-
-    /**
-     * @throws Exception
-     */
-    private function processGroup(FetchDataService $service, array $payload, array &$reportData, string $uriKey, array $columns): void
-    {
-        $output = $service->fetchData(config("services.dd.uris.reports.$uriKey"), $payload)->getData(true);
-        $result = $this->sumByKeys($output, $columns);
-        $reportData[$uriKey] = $result;
-    }
-
-
-    private function sumByKeys(array $output, array $keys): array
-    {
-        [$typeKey, $qtyKey, $totalKey] = $keys;
-        if (!isset($output['data'][0]['columns']) || !is_array($output['data'][0]['columns'])) {
-            Log::warning("Missing or malformed 'data' in report output", ['output' => $output]);
-            return [];
-        }
-
-        $columns = array_flip(array_column($output['data'][0]['columns'], 'filterKey'));
-
-        $typeIndex = $columns[$typeKey] ?? null;
-        $qtyIndex = $columns[$qtyKey] ?? null;
-        $totalIndex = $columns[$totalKey] ?? null;
-
-        $groomingLabels = ['Bath', 'Basic Grooming', 'Full Service Grooming'];
-        $result = [];
-        if ($typeIndex === null || $qtyIndex === null || $totalIndex === null) {
-            return [];
-        }
-        foreach ($output['data'][0]['rows'] ?? [] as $row) {
-            if (isset($row[$typeIndex], $row[$qtyIndex], $row[$totalIndex])) {
-
-                $rawKey = $row[$typeIndex];
-                $key = in_array($rawKey, $groomingLabels) ? 'Grooming' : $rawKey;
-
-                if (!isset($result[$key])) $result[$key] = ['qty' => 0, 'total' => 0];
-                $result[$key]['qty'] += $row[$qtyIndex];
-                $result[$key]['total'] += $row[$totalIndex];
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param FetchDataService $service
-     * @param array $payload
-     * @return array
-     * @throws Exception
-     */
-    private function processCashDeposits(FetchDataService $service, array $payload): array
-    {
-        $data = [];
-
-        $output = $service->fetchData(config('services.dd.uris.reports.depositDetails'), $payload)->getData(true);
-
-        $columns = array_flip(array_column($output['data'][0]['columns'], 'filterKey'));
-        $rows = $output['data'][0]['rows'] ?? [];
-
-        foreach ($rows as $row) {
-            $orderId = $row[$columns['orderId']] ?? null;
-            if (!$orderId) continue;
-
-            if (!in_array($row[$columns['paymentType']] ?? null, config('services.dd.card_types'))) {
-                $data[$orderId] = [
-                    'date' => substr($row[$columns['paymentDate']] ?? '', 0, 10),
-                    'paymentType' => $row[$columns['paymentType']] ?? null,
-                    'firstName' => $row[$columns['firstName']] ?? null,
-                    'lastName' => $row[$columns['lastName']] ?? null,
-                    'items' => $row[$columns['items']] ?? null,
-                    'amount' => $row[$columns['amount']] ?? null,
-                ];
-            }
-        }
-
-        return $data;
-    }
-
-    private function computeAccrualTotal(array $reportData): array
-    {
-        $sum = [
-            'qty' => 0,
-            'total' => 0.0,
-        ];
-
-        foreach (['accrual_packages', 'accrual_services'] as $key) {
-            if (!empty($reportData[$key])) {
-                foreach ($reportData[$key] as $entry) {
-                    $sum['qty'] += $entry['qty'] ?? 0;
-                    $sum['total'] += $entry['total'] ?? 0;
-                }
-            }
-        }
-
-        $sum['total'] = round($sum['total'], 2);
-        return $sum;
-    }
-
-
-    private function saveAndSleep(Report $report, array $data): void
-    {
-        $report->data = $data;
-        $report->updated_at = now();
-        $report->save();
-
-        usleep(mt_rand(config('services.gingr.queue_delay'), config('services.gingr.queue_delay') + 1000) * 1000);
-    }
-
-
 }

@@ -96,6 +96,91 @@ class FetchDataService
         return $response->json();
     }
 
+    /**
+     * Authenticate a specific Gingr user and return their session cookies (not cached).
+     *
+     * @throws Exception
+     */
+    public function authenticateUser(string $username, string $password): array
+    {
+        $jar     = new CookieJar();
+        $headers = ['User-Agent' => self::USER_AGENT];
+
+        $loginPage = Http::withOptions(['cookies' => $jar])
+            ->withHeaders($headers)
+            ->get(config('services.gingr.uris.login'));
+
+        preg_match('/<input[^>]+name=["\']gingr_csrf_token["\'][^>]+value=["\']([^"\']+)["\']/', $loginPage->body(), $m);
+        $csrfToken = $m[1] ?? null;
+
+        Http::withOptions(['cookies' => $jar])
+            ->withHeaders($headers)
+            ->asForm()
+            ->post(config('services.gingr.uris.login'), [
+                'identity'         => $username,
+                'password'         => $password,
+                'gingr_csrf_token' => $csrfToken,
+            ]);
+
+        $cookies = [];
+        foreach ($jar as $cookie) {
+            $cookies[$cookie->getName()] = $cookie->getValue();
+        }
+
+        if (empty($cookies['gingr_ci_session'])) {
+            throw new Exception('Gingr authentication failed for user: ' . $username);
+        }
+
+        return $cookies;
+    }
+
+    /**
+     * POST to a Gingr report endpoint using the provided session cookies.
+     *
+     * @throws Exception
+     */
+    public function postReport(string $url, array $params, array $cookies): array
+    {
+        $cookieHeader = collect($cookies)->map(fn($value, $name) => "$name=$value")->implode('; ');
+
+        $response = Http::withHeaders([
+            'Cookie'            => $cookieHeader,
+            'X-Requested-With'  => 'XMLHttpRequest',
+            'Accept'            => 'application/json, text/javascript, */*; q=0.01',
+            'User-Agent'        => self::USER_AGENT,
+            'Referer'           => config('services.gingr.uris.dashboard'),
+        ])->asForm()->post($url, $params);
+
+        if (!$response->successful()) {
+            throw new Exception("Gingr report request failed [{$response->status()}]: $url");
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * POST to a Gingr HTML report endpoint using the provided session cookies.
+     * Returns the raw HTML body.
+     *
+     * @throws Exception
+     */
+    public function fetchOccupancy(string $url, array $params, array $cookies): string
+    {
+        $cookieHeader = collect($cookies)->map(fn($value, $name) => "$name=$value")->implode('; ');
+
+        $response = Http::withHeaders([
+            'Cookie'    => $cookieHeader,
+            'User-Agent'=> self::USER_AGENT,
+            'Referer'   => config('services.gingr.uris.dashboard'),
+        ])->asForm()->post($url, $params);
+
+        if (!$response->successful()) {
+            throw new Exception("Gingr occupancy request failed [{$response->status()}]: $url");
+        }
+
+        return $response->body();
+    }
+
     // -------------------------------------------------------------------------
     // DD (Data Dawg) — used by Deposit Finder only
     // -------------------------------------------------------------------------
