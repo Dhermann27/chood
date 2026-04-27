@@ -10,7 +10,7 @@ import {
     faAdd, faAlarmClock, faArrowsUpDownLeftRight, faBadgeCheck, faBroom,
     faClipboard, faCowbellCirclePlus, faDroplet, faEdit, faHandDots,
     faHouseChimneyBlank, faHouseCircleCheck, faMars, faPrescriptionBottlePill,
-    faRotateLeft, faSheep, faSpinnerThird, faStethoscope, faTrash, faTurkey,
+    faRotateLeft, faRotateRight, faSheep, faSpinnerThird, faStethoscope, faTrash, faTurkey,
     faVenus, faWeightHanging, faXmark,
 } from '@awesome.me/kit-ed8e499057/icons/classic/solid';
 import {ZiggyVue} from '../../vendor/tightenco/ziggy/dist/index.esm.js';
@@ -19,7 +19,7 @@ library.add(
     faAdd, faAlarmClock, faArrowsUpDownLeftRight, faBadgeCheck, faBroom,
     faClipboard, faCowbellCirclePlus, faDroplet, faEdit, faHandDots,
     faHouseChimneyBlank, faHouseCircleCheck, faMars, faPrescriptionBottlePill,
-    faRotateLeft, faSheep, faSpinnerThird, faStethoscope, faTrash, faTurkey,
+    faRotateLeft, faRotateRight, faSheep, faSpinnerThird, faStethoscope, faTrash, faTurkey,
     faVenus, faWeightHanging, faXmark,
 );
 

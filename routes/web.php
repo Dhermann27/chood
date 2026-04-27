@@ -63,6 +63,7 @@ Route::prefix('api')->group(function () {
     Route::post('/mealmap/markActive', [DataController::class, 'markActiveYards']);
     Route::post('/mealmap/yard', [DataController::class, 'assignYard']);
     Route::post('/mealmap/break', [DataController::class, 'assignBreak']);
+    Route::post('/mealmap/refreshShifts', [DataController::class, 'refreshShifts']);
 
     Route::get('/groommap/{checksum?}', [DataController::class, 'groommap'])
         ->where('checksum', '[a-f0-9]{32}');

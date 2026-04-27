@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Jobs\GoFetchServiceListJob;
-use App\Jobs\Homebase\GoFetchEmployeesJob;
-use App\Jobs\Homebase\GoFetchShiftsJob;
+use App\Jobs\WIW\GoFetchEmployeesJob;
+use App\Jobs\WIW\GoFetchShiftsJob;
 use Illuminate\Console\Command;
 
 class DeploymentCommand extends Command

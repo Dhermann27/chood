@@ -89,20 +89,20 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
     {
         $dogs = Dog::whereIn('pet_id', $activePetIds)->get(['id', 'firstname', 'lastname']);
 
-        foreach ($dogs->groupBy('firstname') as $firstname => $group) {
+        foreach ($dogs->groupBy(fn($d) => trim($d->firstname ?? '')) as $firstname => $group) {
             if ($group->count() === 1) {
                 $group->first()->update(['display_name' => $firstname]);
                 continue;
             }
 
-            $maxLen = $group->max(fn($d) => strlen($d->lastname ?? ''));
+            $maxLen = $group->max(fn($d) => strlen(trim($d->lastname ?? '')));
             $resolved = false;
 
             for ($i = 1; $i <= $maxLen; $i++) {
-                $names = $group->map(fn($d) => $firstname . ' ' . ucfirst(strtolower(substr($d->lastname ?? '', 0, $i))));
+                $names = $group->map(fn($d) => $firstname . ' ' . ucfirst(strtolower(substr(trim($d->lastname ?? ''), 0, $i))));
                 if ($names->unique()->count() === $group->count()) {
                     $group->each(fn($d) => $d->update([
-                        'display_name' => $firstname . ' ' . ucfirst(strtolower(substr($d->lastname ?? '', 0, $i))),
+                        'display_name' => $firstname . ' ' . ucfirst(strtolower(substr(trim($d->lastname ?? ''), 0, $i))),
                     ]));
                     $resolved = true;
                     break;
@@ -120,8 +120,8 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         return array_filter([
             'order_id' => $row['id'],
             'account_id' => $row['o_id'],
-            'firstname' => $row['a_first'] ?: null,
-            'lastname' => $row['o_last'] ?: null,
+            'firstname' => isset($row['a_first']) ? trim($row['a_first']) ?: null : null,
+            'lastname' => isset($row['o_last']) ? trim($row['o_last']) ?: null : null,
             'weight' => $row['weight'] ? (int)$row['weight'] : null,
             'cabin_id' => $cabins->get($this->normCabinName($row['run_name'] ?? ''), null),
             'housing_code' => $this->housingCodeFromTypeId($row['type_id'] ?? ''),

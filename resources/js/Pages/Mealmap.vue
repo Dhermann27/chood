@@ -19,7 +19,7 @@ const props = defineProps({
 
 const controls = ref(ControlSchemes.NONE);
 const showOverwriteModal = ref(false);
-const pendingYardPreset = ref(null);
+const pendingConfirmAction = ref(null);
 const isSavingPreset = ref(false);
 const inputRefs = ref({});
 const breaks = ref([]);
@@ -34,6 +34,7 @@ const headerYardIds = ref([]);
 const openYardIdsByRotation = ref({});
 const uiAssignments = ref({});
 const localChecksum = ref('');
+const shiftsRefreshing = ref(false);
 let refreshInterval;
 
 const cardHeight = computed(() => Math.min(300, 800 / (lunchDogs.value.length + medicatedDogs.value.length)));
@@ -41,7 +42,7 @@ const allDogs = computed(() => [...lunchDogs.value, ...medicatedDogs.value]);
 const employeesById = computed(() => {
     const map = new Map();
     for (const group of employees.value ?? []) {
-        for (const e of (group.employees ?? [])) map.set(String(e.homebase_user_id), e);
+        for (const e of (group.employees ?? [])) map.set(String(e.wiw_user_id), e);
     }
     return map;
 });
@@ -81,30 +82,30 @@ async function updateData() {
 }
 
 function onYardPresetChange(e) {
-    pendingYardPreset.value = e.target.value;
-    showOverwriteModal.value = true;
+    const preset = e.target.value;
     e.target.value = selectedYardPreset.value;
+    pendingConfirmAction.value = async (overwrite) => {
+        isUpdatingPreset.value = true;
+        try {
+            await axios.post('/api/mealmap/markActive', {preset, overwrite});
+            selectedYardPreset.value = preset;
+            await updateData();
+        } finally {
+            isUpdatingPreset.value = false;
+        }
+    };
+    showOverwriteModal.value = true;
 }
 
 function cancelOverwrite() {
-    pendingYardPreset.value = null;
+    pendingConfirmAction.value = null;
     showOverwriteModal.value = false;
 }
 
-async function applyPreset(overwrite) {
-    isUpdatingPreset.value = true;
+async function confirmOverwrite(overwrite) {
     showOverwriteModal.value = false;
-
-    try {
-        const preset = pendingYardPreset.value;
-        await axios.post('/api/mealmap/markActive', {preset, overwrite});
-
-        selectedYardPreset.value = pendingYardPreset.value;
-        await updateData();
-    } finally {
-        isUpdatingPreset.value = false;
-        pendingYardPreset.value = null;
-    }
+    await pendingConfirmAction.value?.(overwrite);
+    pendingConfirmAction.value = null;
 }
 
 function hydrateUiAssignments() {
@@ -123,7 +124,7 @@ function hydrateUiAssignments() {
             }
 
             const s = assignments.value?.[r]?.[y] ?? null;
-            const userId = s?.homebase_user_id ? String(s.homebase_user_id) : null;
+            const userId = s?.wiw_user_id ? String(s.wiw_user_id) : null;
 
             out[r][y] = userId ? (employeesById.value.get(userId) ?? null) : null;
         }
@@ -151,7 +152,7 @@ function slot(rotationId, yardId) {
 // Next three methods are all so Vue3 detects changes inside the nested objects
 function matchEmployeeInGroups(employee) {
     for (const group of employees.value) {
-        const match = group.employees.find(e => e.homebase_user_id === employee.homebase_user_id);
+        const match = group.employees.find(e => e.wiw_user_id === employee.wiw_user_id);
         if (match) return match;
     }
     return null;
@@ -161,7 +162,7 @@ function matchByHour() {
     for (const rotationId in assignments.value) {
         for (const yardId in assignments.value[rotationId]) {
             const slot = assignments.value?.[rotationId]?.[yardId] ?? null;
-            if (!slot || !slot.homebase_user_id) continue;
+            if (!slot || !slot.wiw_user_id) continue;
 
             assignments.value[rotationId][yardId] = matchEmployeeInGroups(slot) ?? slot;
         }
@@ -180,7 +181,7 @@ async function handleYardChange(rotationId, yardId) {
 
     if (!assignments.value[r]) assignments.value[r] = {};
     assignments.value[r][y] = selected ? {
-        homebase_user_id: selected.homebase_user_id,
+        wiw_user_id: selected.wiw_user_id,
         first_name: selected.first_name
     } : null;
 
@@ -190,7 +191,7 @@ async function handleYardChange(rotationId, yardId) {
         await axios.post('/api/mealmap/yard', {
             rotation_id: Number(rotationId),
             yard_id: Number(yardId),
-            homebase_user_id: selected ? selected.homebase_user_id : null,
+            wiw_user_id: selected ? selected.wiw_user_id : null,
         });
 
         if (select) select.style.backgroundColor = 'green';
@@ -204,8 +205,20 @@ async function handleYardChange(rotationId, yardId) {
     }, 5000);
 }
 
-async function handleBreakChange(eventData, homebase_user_id, break_name) {
-    const select = inputRefs.value[`timepick-${homebase_user_id}-${break_name}`];
+function onRefreshShiftsClick() {
+    pendingConfirmAction.value = async (recalculate) => {
+        shiftsRefreshing.value = true;
+        try {
+            await axios.post('/api/mealmap/refreshShifts', {recalculate});
+        } finally {
+            shiftsRefreshing.value = false;
+        }
+    };
+    showOverwriteModal.value = true;
+}
+
+async function handleBreakChange(eventData, wiw_user_id, break_name) {
+    const select = inputRefs.value[`timepick-${wiw_user_id}-${break_name}`];
     const redClasses = Array.from({length: 9}, (_, i) => `bg-red-${(i + 1) * 100}`);
 
     try {
@@ -213,7 +226,7 @@ async function handleBreakChange(eventData, homebase_user_id, break_name) {
         select.style.backgroundColor = 'gray';
         await axios.post('/api/mealmap/break', {
             [break_name]: `${eventData.displayTime}`,
-            homebase_user_id: homebase_user_id,
+            wiw_user_id: wiw_user_id,
         });
         select.style.backgroundColor = 'green';
     } catch (error) {
@@ -338,7 +351,7 @@ onBeforeUnmount(() => {
                                 :id="`multiselect-${rotation.id}-${yardId}`"
                                 v-model="uiAssignments[rotation.id][yardId]" :options="employees"
                                 group-label="status" group-values="employees" :group-select="true"
-                                label="first_name" track-by="homebase_user_id" :searchable="true"
+                                label="first_name" track-by="wiw_user_id" :searchable="true"
                                 :clearable="true" placeholder="Unassigned"
                                 @select="() => handleYardChange(rotation.id, yardId)"
                                 @remove="() => handleYardChange(rotation.id, yardId)"/>
@@ -347,7 +360,14 @@ onBeforeUnmount(() => {
                     </tbody>
                 </table>
 
-                <table class="mx-5 bg-caregiver m-10">
+                <div class="mx-5 m-10 inline-block">
+                <div v-if="controls !== ControlSchemes.NONE" class="flex justify-end mb-1">
+                    <button @click="onRefreshShiftsClick" title="Refresh shift schedule"
+                            class="w-10 h-10 bg-crimson text-white rounded text-lg">
+                        <FontAwesomeIcon :icon="['fas', 'rotate-right']" :spin="shiftsRefreshing"/>
+                    </button>
+                </div>
+                <table class="bg-caregiver">
                     <thead>
                     <tr class="font-subheader uppercase">
                         <th>&nbsp;</th>
@@ -364,48 +384,49 @@ onBeforeUnmount(() => {
                             </template>
                         </td>
                         <td class="border border-DEFAULT px-4 py-2"
-                            :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_first_break`, el)">
+                            :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_first_break`, el)">
                             <div
                                 :class="[controls !== ControlSchemes.NONE  && employee.first_name !== 'Everyone' ? 'hidden' : '', 'print:block']">
                                 {{ employee.next_first_break }}
                             </div>
                             <VueTimepicker
                                 v-if="controls !== ControlSchemes.NONE && employee.first_name !== 'Everyone'"
-                                :id="`timepick-${String(employee.homebase_user_id)}-next_first_break`"
+                                :id="`timepick-${String(employee.wiw_user_id)}-next_first_break`"
                                 class="print-hide" placeholder="None"
                                 v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
                                 :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                @change="handleBreakChange($event, employee.homebase_user_id, 'next_first_break')"
+                                @change="handleBreakChange($event, employee.wiw_user_id, 'next_first_break')"
                             />
                             <!--                                :class="getFairnessColor(employee.fairness_score)"-->
                         </td>
                         <td class="border border-DEFAULT px-4 py-2"
-                            :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_lunch_break`, el)">
+                            :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_lunch_break`, el)">
                             <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                                 {{ employee.next_lunch_break }}
                             </div>
                             <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
-                                           :id="`timepick-${String(employee.homebase_user_id)}-next_lunch_break`"
+                                           :id="`timepick-${String(employee.wiw_user_id)}-next_lunch_break`"
                                            v-model="employee.next_lunch_break" format="HH:mma" :minute-interval="5"
                                            :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
                                            placeholder="None"
-                                           @change="handleBreakChange($event, employee.homebase_user_id, 'next_lunch_break')"/>
+                                           @change="handleBreakChange($event, employee.wiw_user_id, 'next_lunch_break')"/>
                         </td>
                         <td class="border border-DEFAULT px-4 py-2"
-                            :ref="el => setInputRef(`timepick-${String(employee.homebase_user_id)}-next_second_break`, el)">
+                            :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_second_break`, el)">
                             <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                                 {{ employee.next_second_break }}
                             </div>
                             <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
-                                           :id="`timepick-${String(employee.homebase_user_id)}-next_second_break`"
+                                           :id="`timepick-${String(employee.wiw_user_id)}-next_second_break`"
                                            v-model="employee.next_second_break" format="HH:mma" :minute-interval="5"
                                            :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
                                            placeholder="None"
-                                           @change="handleBreakChange($event, employee.homebase_user_id, 'next_second_break')"/>
+                                           @change="handleBreakChange($event, employee.wiw_user_id, 'next_second_break')"/>
                         </td>
                     </tr>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </div>
@@ -424,11 +445,11 @@ onBeforeUnmount(() => {
             </div>
             <div class="flex justify-end gap-3">
                 <button class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50"
-                        @click="applyPreset(true)">
+                        @click="confirmOverwrite(true)">
                     Recalculate, lose changes
                 </button>
                 <button class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-red-700"
-                        @click="applyPreset(false)">
+                        @click="confirmOverwrite(false)">
                     Keep existing assignments, add manually
                 </button>
             </div>

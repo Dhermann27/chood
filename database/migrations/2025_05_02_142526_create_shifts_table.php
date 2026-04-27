@@ -14,11 +14,10 @@ return new class extends Migration {
     {
         Schema::create('shifts', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('homebase_user_id');
-            $table->foreign('homebase_user_id')->references('homebase_user_id')->on('employees')
+            $table->unsignedBigInteger('wiw_user_id');
+            $table->foreign('wiw_user_id')->references('wiw_user_id')->on('employees')
                 ->onDelete('cascade');
 //            $table->date('shift_date'); // For identifying the specific day
-            $table->tinyInteger('is_working')->default('0');
             $table->string('role')->default('Camp Counselor');
             $table->time('start_time');
             $table->time('end_time');
@@ -27,7 +26,7 @@ return new class extends Migration {
             $table->time('next_second_break')->nullable();
             $table->integer('fairness_score')->default(0);
             $table->timestamps();
-            $table->unique(['homebase_user_id', 'start_time', 'end_time']);
+            $table->unique(['wiw_user_id', 'start_time', 'end_time']);
         });
         DB::update('ALTER TABLE shifts AUTO_INCREMENT = 1000');
 

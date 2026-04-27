@@ -83,8 +83,8 @@ return [
         'calendar_id' => env('GOOGLE_CALENDAR_ID'),
     ],
 
-    'homebase' => [
-        'api_key' => env('HOMEBASE_API_KEY'),
-        'loc_id' => env('HOMEBASE_LOCATION_ID'),
+    'wiw' => [
+        'email'    => env('WIW_EMAIL'),
+        'password' => env('WIW_PASSWORD'),
     ],
 ];

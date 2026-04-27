@@ -23,7 +23,7 @@ const openYards = ref(null);
 const statuses = ref(null);
 const statusMessage = ref(null);
 const statusClass = ref('text-greyhound');
-const homebaseId = ref(null);
+const wiwId = ref(null);
 const todo = ref(null);
 const targets = ref({
     'dogsToAssign': [],
@@ -120,7 +120,7 @@ function nextStep() {
 }
 
 function handleEmployeeClick(employee) {
-    homebaseId.value = employee.homebase_user_id;
+    wiwId.value = employee.wiw_user_id;
     nextStep();
 }
 
@@ -140,7 +140,7 @@ function handleTargetClick(cabin) {
         if (targets.value['dogsToAssign'].length > 0) nextStep();
     } else if (todo.value === 'cleanCabin') {
         targets.value = {
-            homebase_user_id: homebaseId.value,
+            wiw_user_id: wiwId.value,
             cabin_id: cabin.id,
             cabin_short_name: cabin.short_name,
             is_cleaned: statuses.value.hasOwnProperty(cabin.id)
@@ -244,7 +244,7 @@ onUnmounted(() => {
                     @click="handleEmployeeClick(employee)">
 
                     <img
-                        :src="`/images/staff/${employee.homebase_user_id}.png`"
+                        :src="`/images/staff/${employee.wiw_user_id}.png`"
                         :alt="employee.first_name"
                         class="w-[80%] h-[80%] rounded-full object-cover mb-4"
                     />

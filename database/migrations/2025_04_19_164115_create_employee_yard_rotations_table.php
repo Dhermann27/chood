@@ -11,14 +11,14 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('employee_yard_rotations', function (Blueprint $table) {
-            $table->unsignedBigInteger('homebase_user_id');
-            $table->foreign('homebase_user_id')->references('homebase_user_id')->on('employees')
+            $table->unsignedBigInteger('wiw_user_id');
+            $table->foreign('wiw_user_id')->references('wiw_user_id')->on('employees')
                 ->onDelete('cascade');
             $table->foreignId('yard_id')->constrained()->onDelete('cascade');
             $table->foreignId('rotation_id')->constrained('rotations')->onDelete('cascade');
             $table->timestamps();
 
-            $table->unique(['homebase_user_id', 'yard_id', 'rotation_id'], 'employee_yard_rotation_unique_index');
+            $table->unique(['wiw_user_id', 'yard_id', 'rotation_id'], 'employee_yard_rotation_unique_index');
         });
 
     }

@@ -43,7 +43,7 @@ class TaskController extends Controller
             ->orderBy('display_order')->get();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
         $employees = Employee::whereHas('shifts', function ($query) {
-            $query->where('is_working', true);
+            $query->where('start_time', '<=', now())->where('end_time', '>=', now());
         })->orderBy('first_name')->get();
         $new_checksum = md5($dogs->toJson() . $employees->toJson() . json_encode($statuses));
         if ($checksum !== $new_checksum) {
@@ -64,7 +64,7 @@ class TaskController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'homebase_user_id' => 'required|exists:employees,homebase_user_id',
+                'wiw_user_id' => 'required|exists:employees,wiw_user_id',
                 'cabin_id' => 'required|exists:cabins,id',
                 'is_cleaned' => 'required|boolean',
             ]);
@@ -78,7 +78,7 @@ class TaskController extends Controller
                 $cleaningStatus->updated_by = $isClean ? 'ApiMarkClean' : 'ApiMarkDirty';
                 $cleaningStatus->updated_at = Carbon::now();
             }
-            $cleaningStatus->homebase_user_id = $validatedData['homebase_user_id'];
+            $cleaningStatus->wiw_user_id = $validatedData['wiw_user_id'];
             $cleaningStatus->completed_at = $isClean ? now() : null;
             $cleaningStatus->save();
 

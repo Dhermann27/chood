@@ -28,7 +28,7 @@ return new class extends Migration {
 
             $table->dateTime('completed_at')->nullable();
             $table->unsignedBigInteger('completed_by')->nullable();
-            $table->foreign('completed_by')->references('homebase_user_id')->on('employees')->cascadeOnDelete();
+            $table->foreign('completed_by')->references('wiw_user_id')->on('employees')->cascadeOnDelete();
 
             $table->timestamps();
         });

@@ -43,7 +43,7 @@ class MarkCabinsForCleaningJob implements ShouldQueue
 //
 //            $cs = CleaningStatus::query()->update([
 //                'cleaning_type' => 'deep',
-//                'homebase_user_id' => null,
+//                'wiw_user_id' => null,
 //                'completed_at' => null,
 //                'updated_by' => 'MCFCJobIsSunday',
 //                'updated_at' => Carbon::now()
@@ -67,7 +67,7 @@ class MarkCabinsForCleaningJob implements ShouldQueue
             $cs = CleaningStatus::whereIn('cabin_id', $withCleaningStatus->pluck('id'))
                 ->update([
                     'cleaning_type' => CleaningStatus::STATUS_DAILY,
-                    'homebase_user_id' => null,
+                    'wiw_user_id' => null,
                     'completed_at' => null,
                     'updated_by' => 'MCFCJobNotSundayDaily',
                     'updated_at' => now(),

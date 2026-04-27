@@ -15,7 +15,7 @@ return new class extends Migration {
                 y.id AS yard_id,
                 y.name AS yard_name,
                 y.display_order,
-                eyr.homebase_user_id,
+                eyr.wiw_user_id,
                 e.first_name
             FROM rotations r
             JOIN employee_yard_rotations eyr
@@ -23,7 +23,7 @@ return new class extends Migration {
             JOIN yards y
                 ON y.id = eyr.yard_id
             LEFT JOIN employees e
-                ON e.homebase_user_id = eyr.homebase_user_id
+                ON e.wiw_user_id = eyr.wiw_user_id
             WHERE
                 DAYOFWEEK(CURDATE()) != 1
                 OR r.is_sunday_hour = 1

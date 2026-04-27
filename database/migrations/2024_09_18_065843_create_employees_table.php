@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('employees', function (Blueprint $table) {
-            $table->unsignedBigInteger('homebase_user_id')->unique();
+            $table->unsignedBigInteger('wiw_user_id')->unique();
             $table->string('first_name');
             $table->string('last_name');
             $table->timestamps();

@@ -29,7 +29,7 @@ class Appointment extends Model
     /** Appointment optionally belongs to an employee who completed it */
     public function completedBy()
     {
-        return $this->belongsTo(Employee::class, 'completed_by', 'homebase_user_id');
+        return $this->belongsTo(Employee::class, 'completed_by', 'wiw_user_id');
     }
 
 }

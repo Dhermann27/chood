@@ -7,10 +7,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class YardAssignment extends Model
 {
-    protected $fillable = ['homebase_user_id', 'description'];
+    protected $fillable = ['wiw_user_id', 'description'];
 
     public function employee(): HasOne
     {
-        return $this->hasOne(Employee::class, 'homebase_user_id', 'homebase_user_id');
+        return $this->hasOne(Employee::class, 'wiw_user_id', 'wiw_user_id');
     }
 }

@@ -16,7 +16,7 @@ class RotationSettings
     {
         $value = Cache::get(self::key());
 
-        return YardCodes::tryFrom($value) ?? YardCodes::DEFAULT;
+        return YardCodes::tryFrom($value ?? '') ?? YardCodes::DEFAULT;
     }
 
     public static function put(YardCodes $preset): void

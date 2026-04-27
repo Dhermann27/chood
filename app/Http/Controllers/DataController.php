@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\YardCodes;
-use App\Jobs\Homebase\GoFetchShiftsJob;
+use App\Jobs\WIW\GoFetchShiftsJob;
 use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\Employee;
@@ -64,17 +64,17 @@ class DataController extends Controller
         $headerYardIds = Yard::whereIn('id', $openByRotation->flatten()->unique()->all())
             ->orderBy('display_order')->pluck('id');
 
-        $assignments = RotationYardView::query()->get(['rotation_id', 'yard_id', 'homebase_user_id', 'first_name'])
+        $assignments = RotationYardView::query()->get(['rotation_id', 'yard_id', 'wiw_user_id', 'first_name'])
             ->groupBy('rotation_id')->map(fn($group) => $group->mapWithKeys(fn($row) => [
-                $row->yard_id => $row->homebase_user_id ?
-                    ['homebase_user_id' => $row->homebase_user_id, 'first_name' => $row->first_name,] : null,
+                $row->yard_id => $row->wiw_user_id ?
+                    ['wiw_user_id' => $row->wiw_user_id, 'first_name' => $row->first_name,] : null,
             ]));
 
 
-        $breaks = Shift::where('role', 'Camp Counselor')->orWhere('role', 'Shift Supervisor')
+        $breaks = Shift::where('role', 'Camp Counselor')->orWhere('role', 'Camp Counselor In Training')->orWhere('role', 'Supervisor')
             ->with('employee')->get()->map(function ($shift) {
                 return [
-                    'homebase_user_id' => $shift->employee->homebase_user_id,
+                    'wiw_user_id' => $shift->employee->wiw_user_id,
                     'first_name' => $shift->employee->first_name,
                     'shift_start' => $shift->start_time,
                     'shift_end' => $shift->end_time,
@@ -99,7 +99,7 @@ class DataController extends Controller
 
         $groupedEmployees = Employee::with('shifts')->orderBy('first_name')->get()
             ->groupBy(function ($employee) {
-                return $employee->shifts->contains('is_working', 1) ? 'Scheduled' : 'Unscheduled';
+                return $employee->shifts->contains(fn($s) => now()->between($s->start_time, $s->end_time)) ? 'Scheduled' : 'Unscheduled';
             })->map(function ($group, $status) {
                 return ['status' => $status, 'employees' => $group];
             })->sortBy(fn($group) => $group['status'] === 'Scheduled' ? 0 : 1)->values()->all();
@@ -174,15 +174,15 @@ class DataController extends Controller
         $validated = $request->validate([
             'rotation_id' => ['required', 'exists:rotations,id'],
             'yard_id' => ['required', 'exists:yards,id'],
-            'homebase_user_id' => ['nullable', 'exists:employees,homebase_user_id'],
+            'wiw_user_id' => ['nullable', 'exists:employees,wiw_user_id'],
         ]);
 
         $rotationId = $validated['rotation_id'];
         $yardId = $validated['yard_id'];
-        $homebaseUserId = $validated['homebase_user_id'] ?? null;
+        $wiwUserId = $validated['wiw_user_id'] ?? null;
 
         // Unassign
-        if ($homebaseUserId === null) {
+        if ($wiwUserId === null) {
             EmployeeYardRotation::where('rotation_id', $rotationId)
                 ->where('yard_id', $yardId)
                 ->delete();
@@ -192,7 +192,7 @@ class DataController extends Controller
 
         // Ensure employee is not assigned to a different yard this hour
         EmployeeYardRotation::where('rotation_id', $rotationId)
-            ->where('homebase_user_id', $homebaseUserId)
+            ->where('wiw_user_id', $wiwUserId)
             ->where('yard_id', '!=', $yardId)
             ->delete();
 
@@ -204,7 +204,7 @@ class DataController extends Controller
         EmployeeYardRotation::create([
             'rotation_id' => $rotationId,
             'yard_id' => $yardId,
-            'homebase_user_id' => $homebaseUserId,
+            'wiw_user_id' => $wiwUserId,
         ]);
 
         return response()->json(['message' => 'Joy.'], 200);
@@ -217,7 +217,7 @@ class DataController extends Controller
                 'next_first_break' => 'nullable|date_format:h:ia',
                 'next_lunch_break' => 'nullable|date_format:h:ia',
                 'next_second_break' => 'nullable|date_format:h:ia',
-                'homebase_user_id' => 'required|exists:employees,homebase_user_id',
+                'wiw_user_id' => 'required|exists:employees,wiw_user_id',
             ]);
 
             foreach (self::BREAK_COLUMNS as $field) {
@@ -227,7 +227,7 @@ class DataController extends Controller
                 }
             }
 
-            Shift::where('homebase_user_id', $validatedData['homebase_user_id'])
+            Shift::where('wiw_user_id', $validatedData['wiw_user_id'])
                 ->update(Arr::only($validatedData, self::BREAK_COLUMNS));
 
             return response()->json([
@@ -245,6 +245,13 @@ class DataController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    function refreshShifts(Request $request): JsonResponse
+    {
+        $recalculate = (bool) $request->input('recalculate', true);
+        GoFetchShiftsJob::dispatch($recalculate)->onQueue('high');
+        return response()->json(['message' => 'Shift refresh queued.'], 200);
     }
 
     function yardmap(string $size, string $checksum = null): JsonResponse

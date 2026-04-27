@@ -11,9 +11,8 @@ class Employee extends Model
     /** @use HasFactory<EmployeeFactory> */
     use HasFactory;
 
-    protected $primaryKey = 'homebase_user_id';
-    protected $fillable = ['homebase_user_id', 'first_name', 'last_name', 'is_working',
-        'next_first_break', 'next_lunch_break', 'next_second_break'];
+    protected $primaryKey = 'wiw_user_id';
+    protected $fillable = ['wiw_user_id', 'first_name', 'last_name'];
 
     public function employeeYardRotations()
     {
@@ -22,7 +21,7 @@ class Employee extends Model
 
     public function shifts()
     {
-        return $this->hasMany(Shift::class, 'homebase_user_id', 'homebase_user_id');
+        return $this->hasMany(Shift::class, 'wiw_user_id', 'wiw_user_id');
     }
 
 }
