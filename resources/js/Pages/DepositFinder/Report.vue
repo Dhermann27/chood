@@ -109,6 +109,12 @@ async function copyFullReport(e) {
         <div class="w-full max-w-full flex flex-col items-center">
             <div class="w-1/2 max-w-full min-w-0 p-8 space-y-8 bg-white shadow-md rounded-lg">
                 <h2 class="text-2xl font-header text-center">Daily Deposit Finder</h2>
+                <div class="bg-sunshine border-l-4 p-4 mt-4 rounded">
+                    <p class="font-medium">Important:</p>
+                    <p>This tool is for novelty purposes only. It was not created or supported by Camp Bow Wow or
+                        Propelled Brands; contact a franchisee with questions. Your login information is not saved and
+                        the data is not collected in any way.</p>
+                </div>
                 <form @submit.prevent="handleSubmit" class="space-y-6">
                     <div>
                         <label for="username" class="block font-medium text-greyhound">Gingr Username</label>

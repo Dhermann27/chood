@@ -363,7 +363,8 @@ onBeforeUnmount(() => {
                 <div class="mx-5 m-10 inline-block">
                 <div v-if="controls !== ControlSchemes.NONE" class="flex justify-end mb-1">
                     <button @click="onRefreshShiftsClick" title="Refresh shift schedule"
-                            class="w-10 h-10 bg-crimson text-white rounded text-lg">
+                            :disabled="shiftsRefreshing"
+                            class="w-10 h-10 bg-crimson text-white rounded text-lg disabled:opacity-50 disabled:cursor-not-allowed">
                         <FontAwesomeIcon :icon="['fas', 'rotate-right']" :spin="shiftsRefreshing"/>
                     </button>
                 </div>
@@ -440,17 +441,17 @@ onBeforeUnmount(() => {
             </button>
             <div class="text-lg font-semibold mb-2">Recalculate?</div>
             <div class="text-sm text-gray-600 mb-6">
-                Do you want to recalculate all assignments, overwriting any changes you have made, or leave new slots
-                unassigned?
+                Chood can recalculate yard rotation and breaks if needed. This process will overwrite any changes you have made today.
             </div>
             <div class="flex justify-end gap-3">
-                <button class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50"
-                        @click="confirmOverwrite(true)">
-                    Recalculate, lose changes
-                </button>
-                <button class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-red-700"
+                <button class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-sm leading-tight w-48"
                         @click="confirmOverwrite(false)">
-                    Keep existing assignments, add manually
+                    Do not recalculate<br>Assign manually
+                </button>
+                <button class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-red-700 text-sm leading-tight w-48"
+                        @click="confirmOverwrite(true)">
+                    <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']" class="text-yellow-400 float-left text-2xl mr-2"/>
+                    Recalculate<br>Lose assignments
                 </button>
             </div>
         </div>
