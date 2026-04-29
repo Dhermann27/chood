@@ -32,6 +32,11 @@ Route::get('/mealmap', [MapController::class, 'mealmap']);
 Route::get('/groommap', [MapController::class, 'groommap']);
 
 
+Route::prefix('journalmaker')->group(function () {
+    Route::get('/', [ReportController::class, 'journalMaker']);
+    Route::post('/transform', [ReportController::class, 'journalTransform']);
+});
+
 Route::prefix('depositfinder')->group(function () {
     Route::get('/', [ReportController::class, 'report']);
     Route::post('/login', [ReportController::class, 'overall']);

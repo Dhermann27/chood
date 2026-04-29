@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\Report\GoFetchReports;
 use App\Models\Report;
 use App\Services\FetchDataService;
+use App\Services\JournalEntryTransformer;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ use Inertia\Response;
 
 class ReportController extends Controller
 {
-    public function __construct(private FetchDataService $fetchDataService) {}
+    public function __construct(
+        private FetchDataService $fetchDataService,
+        private JournalEntryTransformer $journalTransformer,
+    ) {}
 
     public function report(): Response
     {
@@ -116,6 +120,25 @@ class ReportController extends Controller
 
         $report->data = $data;
         return response()->json($report);
+    }
+
+    public function journalMaker(): Response
+    {
+        return Inertia::render('JournalEntry/Index');
+    }
+
+    public function journalTransform(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'date'         => 'required|date',
+            'bank_account' => 'required|string|max:255',
+            'csv'          => 'required|file|mimes:csv,txt|max:2048',
+        ]);
+
+        $content = file_get_contents($request->file('csv')->getRealPath());
+        $result  = $this->journalTransformer->transform($content, $validated['date'], $validated['bank_account']);
+
+        return response()->json($result);
     }
 
     private function serviceCategory(string $name): ?string

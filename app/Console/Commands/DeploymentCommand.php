@@ -16,12 +16,13 @@ class DeploymentCommand extends Command
 
     public function handle(): void
     {
+        GoFetchEmployeesJob::dispatchSync();
+
         if ($rollbackDb = $this->option('rollback-db')) {
             $this->restoreFromRollback($rollbackDb);
         }
 
         GoFetchServiceListJob::dispatchSync();
-        GoFetchEmployeesJob::dispatchSync();
         GoFetchShiftsJob::dispatchSync();
     }
 
