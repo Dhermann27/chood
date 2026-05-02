@@ -6,7 +6,6 @@ use App\Enums\HousingServiceCodes;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Icon;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,11 +15,12 @@ class Dog extends Model
     use HasFactory;
 
     protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'display_name', 'gender', 'photoUri',
-        'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout',
+        'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout', 'checked_out_at',
         'rest_starts_at', 'break_type_id', 'food_type', 'feeding_method', 'feeding_notes',
     ];
 
-    protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s', 'rest_starts_at' => 'datetime'];
+    protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s',
+        'checked_out_at' => 'datetime', 'rest_starts_at' => 'datetime'];
 
     protected $appends = ['is_boarding', 'is_daycare', 'is_interview', 'size_letter', 'left_icons', 'right_icons'];
 
@@ -29,9 +29,9 @@ class Dog extends Model
         $map = [
             'Large Dog Playgroup' => 'L',
             'Small Dog Playgroup' => 'S',
-            'Float 30 - 40lbs'   => 'LS',
-            'Tea Cup'             => 'T',
-            'Float 11-16 lbs.'   => 'ST',
+            'Float 30 - 40lbs' => 'LS',
+            'Tea Cup' => 'T',
+            'Float 11-16 lbs.' => 'ST',
         ];
 
         $sizeIcon = $this->icons->first(fn($icon) => $icon->group_name === 'Size Group');
@@ -39,12 +39,12 @@ class Dog extends Model
             return $map[$sizeIcon->title];
         }
 
-        return match(true) {
+        return match (true) {
             $this->weight >= 40 => 'L',
             $this->weight >= 30 => 'LS',
             $this->weight >= 15 => 'S',
             $this->weight >= 10 => 'ST',
-            default             => 'T',
+            default => 'T',
         };
     }
 

@@ -20,7 +20,6 @@ const props = defineProps({
 const controls = ref(ControlSchemes.NONE);
 const showOverwriteModal = ref(false);
 const pendingConfirmAction = ref(null);
-const isSavingPreset = ref(false);
 const inputRefs = ref({});
 const breaks = ref([]);
 const lunchDogs = ref([]);
@@ -35,10 +34,10 @@ const openYardIdsByRotation = ref({});
 const uiAssignments = ref({});
 const localChecksum = ref('');
 const shiftsRefreshing = ref(false);
+const sectionCounts = ref({checkin_today: null, checkout_today: null});
 let refreshInterval;
 
 const cardHeight = computed(() => Math.min(300, 800 / (lunchDogs.value.length + medicatedDogs.value.length)));
-const allDogs = computed(() => [...lunchDogs.value, ...medicatedDogs.value]);
 const employeesById = computed(() => {
     const map = new Map();
     for (const group of employees.value ?? []) {
@@ -72,6 +71,7 @@ async function updateData() {
             selectedYardPreset.value = response.data.preset;
             headerYardIds.value = response.data.headerYards;
             openYardIdsByRotation.value = response.data.openYardsByRotation;
+            sectionCounts.value = response.data.sectionCounts ?? sectionCounts.value;
             localChecksum.value = response.data.checksum;
 
             hydrateUiAssignments();
@@ -257,7 +257,7 @@ onBeforeUnmount(() => {
 <template>
     <Head title="Mealmap"/>
     <div class="h-full w-full flex flex-col items-center justify-center">
-        <div class="w-full grid grid-cols-2 print:grid-cols-1 gap-4 h-full">
+        <div class="w-full grid grid-cols-2 print:grid-cols-1 gap-4 h-full relative">
             <div class="flex flex-col ps-3 items-center divider pt-5 print:hidden">
                 <div class="text-3xl font-header mb-2">Medications</div>
                 <div class="grid grid-cols-1 w-full">
@@ -361,74 +361,90 @@ onBeforeUnmount(() => {
                 </table>
 
                 <div class="mx-5 m-10 inline-block">
-                <div v-if="controls !== ControlSchemes.NONE" class="flex justify-end mb-1">
-                    <button @click="onRefreshShiftsClick" title="Refresh shift schedule"
-                            :disabled="shiftsRefreshing"
-                            class="w-10 h-10 bg-crimson text-white rounded text-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                        <FontAwesomeIcon :icon="['fas', 'rotate-right']" :spin="shiftsRefreshing"/>
-                    </button>
-                </div>
-                <table class="bg-caregiver">
-                    <thead>
-                    <tr class="font-subheader uppercase">
-                        <th>&nbsp;</th>
-                        <th>First Break</th>
-                        <th>Lunch</th>
-                        <th>Second Break</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr v-for="employee in breaks">
-                        <td class="border border-DEFAULT px-4 py-2">{{ employee.first_name }}
-                            <template v-if="employee.shift_start && employee.shift_end">
-                                ({{ formatTime(employee.shift_start) }}-{{ formatTime(employee.shift_end) }})
-                            </template>
-                        </td>
-                        <td class="border border-DEFAULT px-4 py-2"
-                            :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_first_break`, el)">
-                            <div
-                                :class="[controls !== ControlSchemes.NONE  && employee.first_name !== 'Everyone' ? 'hidden' : '', 'print:block']">
-                                {{ employee.next_first_break }}
-                            </div>
-                            <VueTimepicker
-                                v-if="controls !== ControlSchemes.NONE && employee.first_name !== 'Everyone'"
-                                :id="`timepick-${String(employee.wiw_user_id)}-next_first_break`"
-                                class="print-hide" placeholder="None"
-                                v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
-                                :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                @change="handleBreakChange($event, employee.wiw_user_id, 'next_first_break')"
-                            />
-                            <!--                                :class="getFairnessColor(employee.fairness_score)"-->
-                        </td>
-                        <td class="border border-DEFAULT px-4 py-2"
-                            :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_lunch_break`, el)">
-                            <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
-                                {{ employee.next_lunch_break }}
-                            </div>
-                            <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
-                                           :id="`timepick-${String(employee.wiw_user_id)}-next_lunch_break`"
-                                           v-model="employee.next_lunch_break" format="HH:mma" :minute-interval="5"
-                                           :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                           placeholder="None"
-                                           @change="handleBreakChange($event, employee.wiw_user_id, 'next_lunch_break')"/>
-                        </td>
-                        <td class="border border-DEFAULT px-4 py-2"
-                            :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_second_break`, el)">
-                            <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
-                                {{ employee.next_second_break }}
-                            </div>
-                            <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
-                                           :id="`timepick-${String(employee.wiw_user_id)}-next_second_break`"
-                                           v-model="employee.next_second_break" format="HH:mma" :minute-interval="5"
-                                           :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                           placeholder="None"
-                                           @change="handleBreakChange($event, employee.wiw_user_id, 'next_second_break')"/>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                    <div v-if="controls !== ControlSchemes.NONE" class="flex justify-end mb-1">
+                        <button @click="onRefreshShiftsClick" title="Refresh shift schedule"
+                                :disabled="shiftsRefreshing"
+                                class="w-10 h-10 bg-crimson text-white rounded text-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                            <FontAwesomeIcon :icon="['fas', 'rotate-right']" :spin="shiftsRefreshing"/>
+                        </button>
+                    </div>
+                    <table class="bg-caregiver">
+                        <thead>
+                        <tr class="font-subheader uppercase">
+                            <th>&nbsp;</th>
+                            <th>First Break</th>
+                            <th>Lunch</th>
+                            <th>Second Break</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="employee in breaks">
+                            <td class="border border-DEFAULT px-4 py-2">{{ employee.first_name }}
+                                <template v-if="employee.shift_start && employee.shift_end">
+                                    ({{ formatTime(employee.shift_start) }}-{{ formatTime(employee.shift_end) }})
+                                </template>
+                            </td>
+                            <td class="border border-DEFAULT px-4 py-2"
+                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_first_break`, el)">
+                                <div
+                                    :class="[controls !== ControlSchemes.NONE  && employee.first_name !== 'Everyone' ? 'hidden' : '', 'print:block']">
+                                    {{ employee.next_first_break }}
+                                </div>
+                                <VueTimepicker
+                                    v-if="controls !== ControlSchemes.NONE && employee.first_name !== 'Everyone'"
+                                    :id="`timepick-${String(employee.wiw_user_id)}-next_first_break`"
+                                    class="print-hide" placeholder="None"
+                                    v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
+                                    :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
+                                    @change="handleBreakChange($event, employee.wiw_user_id, 'next_first_break')"
+                                />
+                                <!--                                :class="getFairnessColor(employee.fairness_score)"-->
+                            </td>
+                            <td class="border border-DEFAULT px-4 py-2"
+                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_lunch_break`, el)">
+                                <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
+                                    {{ employee.next_lunch_break }}
+                                </div>
+                                <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
+                                               :id="`timepick-${String(employee.wiw_user_id)}-next_lunch_break`"
+                                               v-model="employee.next_lunch_break" format="HH:mma" :minute-interval="5"
+                                               :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
+                                               placeholder="None"
+                                               @change="handleBreakChange($event, employee.wiw_user_id, 'next_lunch_break')"/>
+                            </td>
+                            <td class="border border-DEFAULT px-4 py-2"
+                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_second_break`, el)">
+                                <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
+                                    {{ employee.next_second_break }}
+                                </div>
+                                <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
+                                               :id="`timepick-${String(employee.wiw_user_id)}-next_second_break`"
+                                               v-model="employee.next_second_break" format="HH:mma" :minute-interval="5"
+                                               :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
+                                               placeholder="None"
+                                               @change="handleBreakChange($event, employee.wiw_user_id, 'next_second_break')"/>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
+
+            <div v-if="sectionCounts.in_house != null"
+                 class="absolute left-1/2 -translate-x-1/2 z-10 bg-crimson text-white font-bold flex items-center justify-center print:hidden"
+                 :style="{ width: cardHeight + 'px', height: cardHeight + 'px' }">
+                <span :style="{ fontSize: (cardHeight * 0.5) + 'px' }">
+                    {{ sectionCounts.in_house }}
+                </span>
+                <span v-if="sectionCounts.checkin_today !== null"
+                      class="absolute left-0 right-0 flex items-center justify-center gap-1 leading-none"
+                      :style="{ fontSize: (cardHeight * 0.18) + 'px', top: '5px' }">
+                    {{ sectionCounts.checkin_today }}
+                    <FontAwesomeIcon :icon="['fas', 'arrows-left-right']" style="transform: translateY(-0.1em)"/>
+                    {{ sectionCounts.checkout_today }}
+                </span>
+            </div>
+
         </div>
     </div>
     <div v-if="showOverwriteModal" class="fixed inset-0 z-50 flex items-center justify-center print:hidden">
@@ -441,19 +457,23 @@ onBeforeUnmount(() => {
             </button>
             <div class="text-lg font-semibold mb-2">Recalculate?</div>
             <div class="text-sm text-gray-600 mb-6">
-                Chood can recalculate yard rotation and breaks if needed. This process will overwrite any changes you have made today.
+                Chood can recalculate yard rotation and breaks if needed. This process will overwrite any changes you
+                have made today.
             </div>
             <div class="flex justify-end gap-3">
-                <button class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-sm leading-tight w-48"
-                        @click="confirmOverwrite(false)">
+                <button
+                    class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-sm leading-tight w-48"
+                    @click="confirmOverwrite(false)">
                     Do not recalculate<br>Assign manually
                 </button>
                 <button class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-red-700 text-sm leading-tight w-48"
                         @click="confirmOverwrite(true)">
-                    <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']" class="text-yellow-400 float-left text-2xl mr-2"/>
+                    <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']"
+                                     class="text-yellow-400 float-left text-2xl mr-2"/>
                     Recalculate<br>Lose assignments
                 </button>
             </div>
+
         </div>
     </div>
 </template>

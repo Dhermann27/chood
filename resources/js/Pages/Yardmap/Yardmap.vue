@@ -15,6 +15,7 @@ const dogsByGroup = ref({});
 const assignments = ref([]);
 const nextBreak = ref(null);
 const nextLunch = ref(null);
+const sectionCounts = ref({checkin_today: null, checkout_today: null});
 const currentGif = ref('/images/doggifs/dog1.webp');
 const randomPosition = ref({top: 0, left: 0});
 const localChecksum = ref('');
@@ -100,6 +101,7 @@ async function updateData() {
             assignments.value = response.data.assignments;
             nextBreak.value = response.data.nextBreak;
             nextLunch.value = response.data.nextLunch;
+            sectionCounts.value = response.data.sectionCounts ?? sectionCounts.value;
             localChecksum.value = response.data.checksum;
 
             if (chyron.value) {
@@ -143,7 +145,7 @@ onBeforeUnmount(() => {
             <div v-if="groupKeys.length >= 1" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[0]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
-                           :cardHeight="cardHeight"/>
+                           :cardHeight="cardHeight" :sectionCounts="sectionCounts"/>
             </div>
 
             <div v-if="groupKeys.length >= 2" class="bg-crimson h-full" :style="{width: DIVIDER_W + 'px'}"></div>
@@ -151,7 +153,7 @@ onBeforeUnmount(() => {
             <div v-if="groupKeys.length >= 2" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[1]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
-                           :cardHeight="cardHeight"/>
+                           :cardHeight="cardHeight" :sectionCounts="sectionCounts"/>
             </div>
 
         </div>

@@ -26,13 +26,11 @@ async function updateData() {
     }
 }
 
-// Fetch data when the component is mounted
 onMounted(() => {
     updateData();
     refreshInterval = setInterval(updateData, 5000);
 });
 
-// Clear the interval when the component is unmounted
 onBeforeUnmount(() => {
     clearInterval(refreshInterval);
 });

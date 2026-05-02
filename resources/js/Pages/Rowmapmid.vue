@@ -10,6 +10,7 @@ const props = defineProps({
 const dogs = ref([]);
 const statuses = ref([]);
 const localChecksum = ref('');
+const sectionCounts = ref({checkin_today: null, checkout_today: null});
 let refreshInterval;
 
 async function updateData() {
@@ -21,6 +22,7 @@ async function updateData() {
             )
         );
         statuses.value = response.statuses;
+        sectionCounts.value = response.sectionCounts ?? sectionCounts.value;
         localChecksum.value = response.checksum;
     }
 }
@@ -39,10 +41,11 @@ onBeforeUnmount(() => {
 
 <template>
     <Head title="Rowmap Midrow"/>
-    <main class="w-full h-full">
+    <main class="w-full h-full relative">
         <div class="choodmap items-center justify-center p-1">
             <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :maxlength="12"
-                 :card-width="250" :card-height="211"/>
+                 :card-width="250" :card-height="211"
+                 :display-cabin-id="2028" :section-counts="sectionCounts"/>
         </div>
     </main>
 </template>

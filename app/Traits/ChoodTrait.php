@@ -6,9 +6,10 @@ use App\Enums\HousingServiceCodes;
 use App\Http\Controllers\MapController;
 use App\Models\Cabin;
 use App\Models\Dog;
-// use App\Models\Service; // TODO: restore when Gingr service sync is verified in prod
-// use Carbon\Carbon;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
+
+// use App\Models\Service; // TODO: restore when Gingr service sync is verified in prod
 
 
 trait ChoodTrait
@@ -36,7 +37,7 @@ trait ChoodTrait
 
     public function getDogsByCabin(): Collection
     {
-        return new Collection($this->getDogs(false)
+        return new Collection($this->getDogs(false, null, true)
             ->groupBy(function ($dog) {
                 return $dog->cabin_id ?? 'unassigned';
             })
@@ -48,15 +49,21 @@ trait ChoodTrait
     /**
      * @param bool $filterByCabinId
      * @param string|null $size
+     * @param bool $includeCheckedOut
      * @return Collection
      */
-    public function getDogs(bool $filterByCabinId = false, string $size = null): Collection
+    public function getDogs(bool $filterByCabinId = false, string $size = null, bool $includeCheckedOut = false): Collection
     {
         // TODO: re-add appointments.service once Gingr service sync is verified in prod
         $dogs = Dog::with(/*'appointments.service',*/ 'cabin', 'breakType', 'icons');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
         if ($size) $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());
 
+        if (!$includeCheckedOut) {
+            // Yardmap: in-house + checked out within 120s
+            $dogs->where(fn($q) => $q->whereNull('checked_out_at')
+                ->orWhere('checked_out_at', '>=', Carbon::now()->subSeconds(120)));
+        }
         $result = $dogs->orderBy('firstname')->get();
 
         if ($size === 'small') {

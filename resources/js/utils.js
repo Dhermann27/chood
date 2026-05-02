@@ -35,6 +35,7 @@ export async function fetchMapData(uri, checksum) {
             return {
                 dogs: response.data.dogs,
                 statuses: response.data.statuses,
+                sectionCounts: response.data.sectionCounts,
                 checksum: response.data.checksum,
             }
         }
@@ -53,18 +54,25 @@ export function getYardGridStyle(rows, columns, includeFooter = true) {
     };
 }
 
+export function checkoutReservationColor(dog) {
+    if (dog?.is_boarding) return '#87b3d1';
+    if (dog?.is_daycare) return '#88c999';
+    if (dog?.is_interview) return '#9e1b32';
+    return '#000000';
+}
+
 export function getBannerStyle(currentDog, breakTimeLeft) {
     if (breakTimeLeft?.expired) {
-        return { label: 'Return to Yard', class: 'bg-alerted' };
+        return {label: 'Return to Yard', class: 'bg-alerted'};
     }
     if (currentDog?.is_boarding) {
-        return { label: 'Sleepover', class: 'bg-caregiver' };
+        return {label: 'Sleepover', class: 'bg-caregiver'};
     }
     if (currentDog?.is_daycare) {
-        return { label: 'Daycamper', class: 'bg-meadow' };
+        return {label: 'Daycamper', class: 'bg-meadow'};
     }
     if (currentDog?.is_interview) {
-        return { label: 'Orientation', class: 'bg-crimson' };
+        return {label: 'Orientation', class: 'bg-crimson'};
     }
-    return { label: 'Grooming/Training Only', class: 'bg-greyhound' };
+    return {label: 'Grooming/Training Only', class: 'bg-greyhound'};
 }

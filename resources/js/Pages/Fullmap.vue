@@ -12,6 +12,7 @@ const dogs = ref([]);
 const statuses = ref({});
 const localChecksum = ref('');
 const controls = ref(ControlSchemes.NONE);
+const sectionCounts = ref({checkin_today: null, checkout_today: null});
 let refreshInterval;
 
 async function updateData() {
@@ -20,6 +21,7 @@ async function updateData() {
     if (response && localChecksum.value !== response.checksum) {
         dogs.value = response.dogs;
         statuses.value = response.statuses;
+        sectionCounts.value = response.sectionCounts ?? sectionCounts.value;
         localChecksum.value = response.checksum;
     }
 }
@@ -42,10 +44,11 @@ onBeforeUnmount(() => {
 
 <template>
     <Head title="Fullmap"/>
-    <main class="w-full h-full">
+    <main class="w-full h-full relative">
         <div class="choodmap items-center justify-center p-1">
             <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :controls="controls"
-                 :maxlength="8" :card-width="96" :card-height="117"/>
+                 :maxlength="8" :card-width="96" :card-height="117"
+                 :display-cabin-id="2028" :section-counts="sectionCounts"/>
         </div>
     </main>
 </template>

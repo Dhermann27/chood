@@ -39,6 +39,10 @@ class DataController extends Controller
             $response = [
                 'dogs' => $dogs,
                 'statuses' => $statuses,
+                'sectionCounts' => array_merge(
+                    Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
+                    ['in_house' => Dog::whereNull('checked_out_at')->count()]
+                ),
                 'checksum' => $new_checksum,
             ];
 
@@ -129,6 +133,10 @@ class DataController extends Controller
                 'preset' => $preset->value,
                 'headerYards' => $headerYardIds,
                 'openYardsByRotation' => $openByRotation,
+                'sectionCounts' => array_merge(
+                    Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
+                    ['in_house' => Dog::whereNull('checked_out_at')->count()]
+                ),
                 'checksum' => $new_checksum,
             ];
 
@@ -249,7 +257,7 @@ class DataController extends Controller
 
     function refreshShifts(Request $request): JsonResponse
     {
-        $recalculate = (bool) $request->input('recalculate', true);
+        $recalculate = (bool)$request->input('recalculate', true);
         GoFetchShiftsJob::dispatch($recalculate)->onQueue('high');
         return response()->json(['message' => 'Shift refresh queued.'], 200);
     }
@@ -325,6 +333,7 @@ class DataController extends Controller
                 'assignments' => $assignments,
                 'nextBreak' => $nextBreak,
                 'nextLunch' => $nextLunch,
+                'sectionCounts' => Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
                 'checksum' => $new_checksum,
             ];
 
