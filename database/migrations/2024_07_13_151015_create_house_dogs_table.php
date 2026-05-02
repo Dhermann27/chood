@@ -14,7 +14,7 @@ return new class extends Migration {
     {
         Schema::create('dogs', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('pet_id')->unique();
+            $table->unsignedBigInteger('pet_id')->nullable()->unique();
             $table->string('account_id')->nullable();
             $table->string('firstname')->default('Dog');
             $table->string('lastname')->default('Smith');
@@ -28,6 +28,7 @@ return new class extends Migration {
             $table->string('housing_code')->default(HousingServiceCodes::BRDC->value);
             $table->dateTime('checkin')->nullable();
             $table->dateTime('checkout')->nullable();
+            $table->dateTime('checked_out_at')->nullable();
             $table->timestamp('rest_starts_at')->nullable();
             $table->foreignId('break_type_id')->nullable()->constrained('break_types')->nullOnDelete();
             $table->string('food_type')->nullable();

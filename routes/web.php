@@ -53,6 +53,8 @@ Route::prefix('task')->group(function () {
     Route::post('/startBreak', [TaskController::class, 'startBreak']);
     Route::post('/markReturned/{dogId}', [TaskController::class, 'markReturned']);
     Route::post('/moveDog', [TaskController::class, 'moveDogs']);
+    Route::post('/assignFeedingCabin', [TaskController::class, 'assignFeedingCabin']);
+    Route::delete('/assignFeedingCabin', [TaskController::class, 'clearFeedingCabin']);
 
 });
 

@@ -12,6 +12,7 @@ const props = defineProps({
 const dogs = ref([]);
 const statuses = ref([]);
 const localChecksum = ref('');
+const sectionCounts = ref({checkin_today: null, checkout_today: null});
 let refreshInterval;
 
 async function updateData() {
@@ -20,17 +21,16 @@ async function updateData() {
     if (response && localChecksum.value !== response.checksum) {
         dogs.value = response.dogs;
         statuses.value = response.statuses;
+        sectionCounts.value = response.sectionCounts ?? sectionCounts.value;
         localChecksum.value = response.checksum;
     }
 }
 
-// Fetch data when the component is mounted
 onMounted(() => {
     updateData();
     refreshInterval = setInterval(updateData, 5000);
 });
 
-// Clear the interval when the component is unmounted
 onBeforeUnmount(() => {
     clearInterval(refreshInterval);
 });
@@ -38,10 +38,22 @@ onBeforeUnmount(() => {
 
 <template>
     <Head title="Rowmap Firstrow"/>
-    <main class="w-full h-full">
+    <main class="w-full h-full relative">
         <div class="choodmap items-center justify-center p-1">
             <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :maxlength="12"
                  :card-width="230" :card-height="216"/>
+        </div>
+        <div v-if="sectionCounts.in_house != null"
+             class="bg-crimson text-white font-bold flex flex-col items-center justify-center"
+             style="position: absolute; top: 4px; left: 4px; width: 230px; height: 216px;">
+            <span v-if="sectionCounts.checkin_today !== null"
+                  class="flex items-center justify-center gap-1 leading-none"
+                  style="font-size: 39px;">
+                {{ sectionCounts.checkin_today }}
+                <FontAwesomeIcon :icon="['fas', 'arrows-left-right']" style="transform: translateY(-0.1em)"/>
+                {{ sectionCounts.checkout_today }}
+            </span>
+            <span style="font-size: 108px; line-height: 1;">{{ sectionCounts.in_house }}</span>
         </div>
     </main>
 </template>

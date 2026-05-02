@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Cabin;
 use App\Models\CleaningStatus;
+use App\Models\Dog;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -27,6 +28,10 @@ class MarkCabinsForCleaningJob implements ShouldQueue
     public function handle(): void
     {
         Log::info('Starting MarkCabinsForCleaningJob');
+
+        $deleted = Dog::whereNotNull('checked_out_at')->where('checked_out_at', '<', Carbon::today())->delete();
+        Log::info("Deleted {$deleted} checked-out dog records from previous day(s)");
+        Dog::whereNull('pet_id')->delete();
 //        if (Carbon::today()->isSunday()) {
 //            $withoutCleaningStatus = Cabin::whereHas('dogs')->whereDoesntHave('cleaningStatus')->with(['dogs'])->get();
 //            if ($withoutCleaningStatus->isNotEmpty()) {

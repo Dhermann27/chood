@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Enums\HousingServiceCodes;
-use App\Models\Appointment;
 use App\Models\Cabin;
+use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\Service;
 use App\Services\FetchDataService;
@@ -16,6 +16,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class GoFetchListJob implements ShouldQueue, ShouldBeUnique
@@ -52,6 +53,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         $activeOwnerIds = [];
         $dispatchedOwnerIds = [];
         $seenTypeIds = [];
+        $listChanged = false;
 
         foreach ($output['data'] as $row) {
             if (!empty($row['type_id']) && !isset($seenTypeIds[$row['type_id']])) {
@@ -63,8 +65,9 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             }
             $dog = Dog::updateOrCreate(
                 ['pet_id' => $row['a_id']],
-                $this->getUpdateValues($row, $cabins)
+                array_merge($this->getUpdateValues($row, $cabins), ['checked_out_at' => null])
             );
+            if ($dog->wasRecentlyCreated) $listChanged = true;
             $activePetIds[] = $dog->pet_id;
             $activeOwnerIds[] = $row['o_id'];
 
@@ -77,9 +80,31 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         $this->resolveDisplayNames($activePetIds);
         GoFetchIconsJob::dispatch($activePetIds, $activeOwnerIds);
 
-        $inactivePetIds = Dog::whereNotIn('pet_id', $activePetIds)->pluck('pet_id');
-        Appointment::whereIn('pet_id', $inactivePetIds)->delete();
-        Dog::whereIn('pet_id', $inactivePetIds)->delete();
+        // Mark newly departed dogs (first time missing from Gingr feed)
+        $newlyGoneDogs = Dog::whereNotNull('pet_id')->whereNull('checked_out_at')->whereNotIn('pet_id', $activePetIds)->get(['pet_id', 'cabin_id', 'account_id']);
+        Dog::whereIn('pet_id', $newlyGoneDogs->pluck('pet_id'))->update(['checked_out_at' => now()]);
+
+        if ($listChanged || $newlyGoneDogs->isNotEmpty() || !Cache::has('section_counts')) {
+            GoFetchSectionCountsJob::dispatch();
+        }
+
+        $feedingBlocks = Dog::whereNull('pet_id')
+            ->whereIn('account_id', $newlyGoneDogs->pluck('account_id')->filter()->unique())
+            ->get(['id', 'cabin_id']);
+
+        $cabinsToMark = $newlyGoneDogs->pluck('cabin_id')
+            ->merge($feedingBlocks->pluck('cabin_id'))
+            ->filter()
+            ->unique();
+
+        foreach ($cabinsToMark as $cabinId) {
+            CleaningStatus::firstOrCreate(
+                ['cabin_id' => $cabinId],
+                ['cleaning_type' => CleaningStatus::STATUS_DAILY, 'created_by' => 'GoFetchListJob', 'created_at' => now()]
+            );
+        }
+
+        Dog::whereIn('id', $feedingBlocks->pluck('id'))->delete();
 
         $delay = config('services.gingr.queue_delay');
         usleep(mt_rand($delay, $delay + 1000) * 1000);

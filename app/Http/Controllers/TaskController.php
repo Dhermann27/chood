@@ -16,6 +16,7 @@ use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Validation\ValidationException;
@@ -52,6 +53,10 @@ class TaskController extends Controller
                 'openYards' => $yards,
                 'statuses' => $statuses,
                 'employees' => $employees,
+                'sectionCounts' => array_merge(
+                    Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
+                    ['in_house' => Dog::whereNull('checked_out_at')->count()]
+                ),
                 'checksum' => $new_checksum,
             ];
 
@@ -81,6 +86,10 @@ class TaskController extends Controller
             $cleaningStatus->wiw_user_id = $validatedData['wiw_user_id'];
             $cleaningStatus->completed_at = $isClean ? now() : null;
             $cleaningStatus->save();
+
+            if ($isClean) {
+                Dog::where('cabin_id', $validatedData['cabin_id'])->whereNotNull('checked_out_at')->delete();
+            }
 
             return response()->json([
                 'message' => 'Cabin ' . $cleaningStatus->cabin->cabinName . ' successfully marked as ' . ($isClean ? 'clean' : 'dirty')], 200);
@@ -194,6 +203,39 @@ class TaskController extends Controller
     /**
      * @throws Throwable
      */
+    public function clearFeedingCabin(Request $request): JsonResponse
+    {
+        $request->validate(['cabin_id' => 'required|exists:cabins,id']);
+        Dog::whereNull('pet_id')->where('cabin_id', $request->input('cabin_id'))->delete();
+        return response()->json(['message' => 'Feeding cabin cleared']);
+    }
+
+    public function assignFeedingCabin(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'cabin_id'        => 'required|exists:cabins,id',
+                'dogsToAssign.id' => 'required|exists:dogs,id',
+            ]);
+
+            $dog   = Dog::findOrFail($request->input('dogsToAssign.id'));
+            $cabin = Cabin::findOrFail($request->input('cabin_id'));
+
+            Dog::firstOrCreate(
+                ['cabin_id' => $cabin->id, 'account_id' => $dog->account_id, 'pet_id' => null],
+                ['display_name' => $dog->display_name, 'firstname' => $dog->firstname, 'lastname' => $dog->lastname, 'photoUri' => $dog->photoUri]
+            );
+
+            return response()->json(['message' => "Feeding cabin set for {$dog->display_name}"]);
+        } catch (ValidationException $e) {
+            return response()->json(['error' => $e->errors(), 'message' => 'Validation error.'], 422);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Not found.', 'error' => $e->getMessage()], 404);
+        } catch (Exception $e) {
+            return response()->json(['message' => 'Unknown error.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function moveDogs(Request $request): JsonResponse
     {
         $validated = $request->validate([
