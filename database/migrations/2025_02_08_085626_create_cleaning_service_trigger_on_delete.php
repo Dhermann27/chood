@@ -3,8 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -19,7 +18,8 @@ return new class extends Migration
                 IF OLD.cabin_id IS NOT NULL THEN
                     IF NOT EXISTS (
                         SELECT 1 FROM cleaning_status
-                            WHERE cabin_id = OLD.cabin_id AND cleaning_type = 'deep' AND completed_at IS NULL
+                            WHERE cabin_id = OLD.cabin_id
+                            AND ((cleaning_type = 'deep' AND completed_at IS NULL) OR completed_at IS NOT NULL)
                     ) THEN
                         -- If no such row exists, insert/update the cleaning_status
                         INSERT INTO cleaning_status (cabin_id, cleaning_type, created_by, created_at)

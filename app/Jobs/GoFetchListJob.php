@@ -59,7 +59,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             if (!empty($row['type_id']) && !isset($seenTypeIds[$row['type_id']])) {
                 $seenTypeIds[$row['type_id']] = true;
                 Service::updateOrCreate(
-                    ['gingr_id' => (int) $row['type_id']],
+                    ['gingr_id' => (int)$row['type_id']],
                     ['name' => $row['type'], 'housing_code' => HousingServiceCodes::fromServiceName($row['type'] ?? '')]
                 );
             }
@@ -98,10 +98,13 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             ->unique();
 
         foreach ($cabinsToMark as $cabinId) {
-            CleaningStatus::firstOrCreate(
-                ['cabin_id' => $cabinId],
-                ['cleaning_type' => CleaningStatus::STATUS_DAILY, 'created_by' => 'GoFetchListJob', 'created_at' => now()]
-            );
+            $status = CleaningStatus::where('cabin_id', $cabinId)->first();
+            if (!$status) {
+                CleaningStatus::create(['cabin_id' => $cabinId, 'cleaning_type' => CleaningStatus::STATUS_DAILY, 'created_by' => 'GoFetchListJob', 'created_at' => now()]);
+            } elseif ($status->completed_at !== null) {
+                $status->update(['cleaning_type' => CleaningStatus::STATUS_DAILY, 'wiw_user_id' => null, 'completed_at' => null, 'updated_by' => 'GoFetchListJob', 'updated_at' => now()]);
+            }
+            // completed_at IS NULL: already pending (daily or deep) — leave it alone
         }
 
         Dog::whereIn('id', $feedingBlocks->pluck('id'))->delete();

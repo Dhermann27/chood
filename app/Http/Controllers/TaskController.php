@@ -18,16 +18,16 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Response;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Inertia\Response;
 use Throwable;
 
 class TaskController extends Controller
 {
     use ChoodTrait;
 
-    public function index(): \Inertia\Response
+    public function index(): Response
     {
         return Inertia::render('Task/TaskEntry', [
             'cabins' => $this->getCabins(),
@@ -37,9 +37,9 @@ class TaskController extends Controller
     }
 
     // TODO: Add cool way to see status messages from others
-    function getData(string $checksum = null): JsonResponse
+    public function getData(string $checksum = null): JsonResponse
     {
-        $dogs = $this->getDogs();
+        $dogs = $this->getDogs(false, null, true);
         $yards = Yard::whereIn('id', RotationSettings::get()->allowedYards(false))
             ->orderBy('display_order')->get();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
@@ -60,9 +60,9 @@ class TaskController extends Controller
                 'checksum' => $new_checksum,
             ];
 
-            return Response::json($response);
+            return response()->json($response);
         }
-        return Response::json(false);
+        return response()->json(false);
     }
 
     public function markCleaned(Request $request): JsonResponse
@@ -77,7 +77,7 @@ class TaskController extends Controller
 
             $cleaningStatus = CleaningStatus::firstOrNew(['cabin_id' => $validatedData['cabin_id']]);
             if (!$cleaningStatus->exists) {
-                $cleaningStatus->created_by = $isClean ? 'ApiMarkClean' : 'ApiMarkDirty';;
+                $cleaningStatus->created_by = $isClean ? 'ApiMarkClean' : 'ApiMarkDirty';
                 $cleaningStatus->created_at = Carbon::now();
             } else {
                 $cleaningStatus->updated_by = $isClean ? 'ApiMarkClean' : 'ApiMarkDirty';
@@ -214,11 +214,11 @@ class TaskController extends Controller
     {
         try {
             $request->validate([
-                'cabin_id'        => 'required|exists:cabins,id',
+                'cabin_id' => 'required|exists:cabins,id',
                 'dogsToAssign.id' => 'required|exists:dogs,id',
             ]);
 
-            $dog   = Dog::findOrFail($request->input('dogsToAssign.id'));
+            $dog = Dog::findOrFail($request->input('dogsToAssign.id'));
             $cabin = Cabin::findOrFail($request->input('cabin_id'));
 
             Dog::firstOrCreate(

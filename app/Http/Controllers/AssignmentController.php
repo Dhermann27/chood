@@ -22,16 +22,13 @@ class AssignmentController extends Controller
                 'cabin_id' => 'required|exists:cabins,id',
             ]);
 
-            $filteredValues = array_filter($validatedData, function ($value) {
-                return !is_null($value);
-            });
+            $filteredValues = $this->filterNulls($validatedData);
 
             if (array_key_exists('dogs', $filteredValues)) {
                 foreach ($filteredValues['dogs'] as $dog) {
                     Dog::updateOrCreate(['id' => $dog['id']], ['cabin_id' => $filteredValues['cabin_id']]);
                 }
             } else {
-                //$filteredValues['is_overnight'] = 0; Unnecessary, I think
                 Dog::create($filteredValues);
             }
 
@@ -62,19 +59,22 @@ class AssignmentController extends Controller
             'lastname' => 'nullable|string|max:255',
         ]);
 
-        $filteredValues = array_filter($validatedData, function ($value) {
-            return !is_null($value);
-        });
+        $filteredValues = $this->filterNulls($validatedData);
 
         if (array_key_exists('dogs', $filteredValues)) {
             foreach ($filteredValues['dogs'] as $dog) {
-                $dog = Dog::updateOrCreate(['id' => $dog['id']], ['cabin_id' => $filteredValues['cabin_id']]);
+                Dog::updateOrCreate(['id' => $dog['id']], ['cabin_id' => $filteredValues['cabin_id']]);
             }
         } else {
-            $dog = Dog::updateOrCreate(['id' => $filteredValues['id']], $filteredValues);
+            Dog::updateOrCreate(['id' => $filteredValues['id']], $filteredValues);
         }
 
         return response()->json('Very nice', 200);
+    }
+
+    private function filterNulls(array $data): array
+    {
+        return array_filter($data, fn($value) => !is_null($value));
     }
 
     public function deleteAssignment(Request $request): JsonResponse

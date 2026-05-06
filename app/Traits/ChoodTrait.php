@@ -37,13 +37,9 @@ trait ChoodTrait
 
     public function getDogsByCabin(): Collection
     {
-        return new Collection($this->getDogs(false, null, true)
-            ->groupBy(function ($dog) {
-                return $dog->cabin_id ?? 'unassigned';
-            })
-            ->map(function ($dogs) {
-                return $dogs->values()->all(); // Ensure each group is converted into an array
-            }));
+        return $this->getDogs(false, null, true)
+            ->groupBy(fn($dog) => $dog->cabin_id ?? 'unassigned')
+            ->map(fn($dogs) => $dogs->values()->all());
     }
 
     /**
@@ -83,18 +79,6 @@ trait ChoodTrait
     {
         // TODO: rewrite for Gingr once service sync is verified in prod
         return new Collection();
-
-//        $specialServiceIds = Service::whereIn('category', config('services.gingr.special_service_cats'))->pluck('id');
-//        $today = Carbon::today();
-//
-//        return Dog::select('dogs.*')->distinct()->join('appointments', 'appointments.pet_id', '=', 'dogs.pet_id')
-//            ->whereIn('appointments.service_id', $specialServiceIds)
-//            ->whereDate('appointments.scheduled_start', config('services.gingr.sandbox_service_condition'), $today)
-//            ->with(['appointments.service'])->get()->sortBy(fn($dog) => optional(
-//                $dog->appointments->firstWhere(fn($ds) => in_array($ds->service_id, $specialServiceIds->all(), true)
-//                    && Carbon::parse($ds->scheduled_start)->isSameDay($today)
-//                )
-//            )?->scheduled_start)->values();
     }
 
 }

@@ -21,7 +21,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Response;
 use Illuminate\Validation\ValidationException;
 
 class DataController extends Controller
@@ -46,9 +45,9 @@ class DataController extends Controller
                 'checksum' => $new_checksum,
             ];
 
-            return Response::json($response);
+            return response()->json($response);
         }
-        return Response::json(false);
+        return response()->json(false);
     }
 
     function mealmap(string $checksum = null): JsonResponse
@@ -82,9 +81,9 @@ class DataController extends Controller
                     'first_name' => $shift->employee->first_name,
                     'shift_start' => $shift->start_time,
                     'shift_end' => $shift->end_time,
-                    'next_first_break' => optional($shift->next_first_break ? Carbon::parse($shift->next_first_break) : null)->format('h:ia'),
-                    'next_lunch_break' => optional($shift->next_lunch_break ? Carbon::parse($shift->next_lunch_break) : null)->format('h:ia'),
-                    'next_second_break' => optional($shift->next_second_break ? Carbon::parse($shift->next_second_break) : null)->format('h:ia'),
+                    'next_first_break' => $shift->next_first_break ? Carbon::parse($shift->next_first_break)->format('h:ia') : null,
+                    'next_lunch_break' => $shift->next_lunch_break ? Carbon::parse($shift->next_lunch_break)->format('h:ia') : null,
+                    'next_second_break' => $shift->next_second_break ? Carbon::parse($shift->next_second_break)->format('h:ia') : null,
                 ];
             })->sortBy('first_name')->values();
 
@@ -140,9 +139,9 @@ class DataController extends Controller
                 'checksum' => $new_checksum,
             ];
 
-            return Response::json($response);
+            return response()->json($response);
         }
-        return Response::json(false);
+        return response()->json(false);
 
     }
 
@@ -337,9 +336,9 @@ class DataController extends Controller
                 'checksum' => $new_checksum,
             ];
 
-            return Response::json($response);
+            return response()->json($response);
         }
-        return Response::json(false);
+        return response()->json(false);
 
     }
 
@@ -348,11 +347,11 @@ class DataController extends Controller
         $dogs = $this->getGroomingDogsToday();
         $new_checksum = md5($dogs->toJson());
         if ($checksum !== $new_checksum) {
-            return Response::json([
+            return response()->json([
                 'dogs' => $dogs,
                 'checksum' => $new_checksum,
             ]);
         }
-        return Response::json(false);
+        return response()->json(false);
     }
 }

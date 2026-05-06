@@ -10,8 +10,8 @@ import {
     faAdd, faAlarmClock, faArrowsUpDownLeftRight, faBadgeCheck, faBed, faBroom,
     faClipboard, faCowbellCirclePlus, faDroplet, faEdit, faHandDots,
     faHouseChimneyBlank, faHouseCircleCheck, faMars, faPrescriptionBottlePill,
-    faRotateLeft, faRotateRight, faSheep, faSpinnerThird, faStethoscope, faArrowsLeftRight, faRightFromBracket, faTrash, faTriangleExclamation, faTurkey,
-    faUtensils, faVenus, faWeightHanging, faXmark,
+    faLeftRight, faRotateLeft, faRotateRight, faSheep, faSpinnerThird, faStethoscope,
+    faTrash, faTriangleExclamation, faTurkey, faUtensils, faVenus, faWeightHanging, faXmark,
 } from '@awesome.me/kit-ed8e499057/icons/classic/solid';
 import {ZiggyVue} from '../../vendor/tightenco/ziggy/dist/index.esm.js';
 
@@ -19,8 +19,8 @@ library.add(
     faAdd, faAlarmClock, faArrowsUpDownLeftRight, faBadgeCheck, faBed, faBroom,
     faClipboard, faCowbellCirclePlus, faDroplet, faEdit, faHandDots,
     faHouseChimneyBlank, faHouseCircleCheck, faMars, faPrescriptionBottlePill,
-    faRotateLeft, faRotateRight, faSheep, faSpinnerThird, faStethoscope, faArrowsLeftRight, faRightFromBracket, faTrash, faTriangleExclamation, faTurkey,
-    faUtensils, faVenus, faWeightHanging, faXmark,
+    faLeftRight, faRotateLeft, faRotateRight, faSheep, faSpinnerThird, faStethoscope,
+    faTrash, faTriangleExclamation, faTurkey, faUtensils, faVenus, faWeightHanging, faXmark,
 );
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel'

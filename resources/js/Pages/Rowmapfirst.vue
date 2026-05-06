@@ -50,7 +50,7 @@ onBeforeUnmount(() => {
                   class="flex items-center justify-center gap-1 leading-none"
                   style="font-size: 39px;">
                 {{ sectionCounts.checkin_today }}
-                <FontAwesomeIcon :icon="['fas', 'arrows-left-right']" style="transform: translateY(-0.1em)"/>
+                <FontAwesomeIcon :icon="['fas', 'left-right']" />
                 {{ sectionCounts.checkout_today }}
             </span>
             <span style="font-size: 108px; line-height: 1;">{{ sectionCounts.in_house }}</span>

@@ -46,7 +46,8 @@ const gridStyle = computed(() => {
 <template>
     <div class="h-full overflow-y-auto overflow-x-hidden min-w-0">
         <div class="p-1 w-full h-full overflow-x-hidden min-w-0" :style="gridStyle">
-            <div v-for="(dog, dogIndex) in dogs" :key="dog.id ?? `${groupKey}-${dogIndex}`" class="w-full h-full" :style="checkoutStyle(dog)">
+            <div v-for="(dog, dogIndex) in dogs" :key="dog.id ?? `${groupKey}-${dogIndex}`" class="w-full h-full"
+                 :style="checkoutStyle(dog)">
                 <DogCard :dogs="[dog]" :card-width="cardWidth" :card-height="cardHeight"/>
             </div>
 
@@ -55,11 +56,12 @@ const gridStyle = computed(() => {
                     {{ activeCount }}
                 </span>
                 <span v-if="lsActiveCount > 0" class="absolute bottom-2 right-1 leading-none"
-                    :style="{ fontSize: (cardHeight * 0.2) + 'px', bottom: '5px', right: '5px' }">
+                      :style="{ fontSize: (cardHeight * 0.2) + 'px', bottom: '5px', right: '5px' }">
                     LS:{{ lsActiveCount }}
                 </span>
                 <div class="absolute top-2 left-0 right-0 flex items-center justify-center">
-                    <SectionCounts :section-counts="sectionCounts" :font-size="cardHeight * 0.18"/>
+                    <SectionCounts :section-counts="sectionCounts" :font-size="cardHeight * 0.18"
+                                   :max-width="cardWidth"/>
                 </div>
             </div>
         </div>

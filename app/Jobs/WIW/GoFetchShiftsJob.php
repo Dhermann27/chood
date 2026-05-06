@@ -22,6 +22,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use stdClass;
 
 class GoFetchShiftsJob implements ShouldQueue
 {
@@ -58,6 +59,11 @@ class GoFetchShiftsJob implements ShouldQueue
 
             $userMap = collect($data['users'] ?? [])->keyBy('id')
                 ->map(fn($u) => $u['first_name']);
+
+            $savedBreaks = $this->recalculateRotation ? collect() : Shift::whereNotNull('next_first_break')
+                ->orWhereNotNull('next_lunch_break')->orWhereNotNull('next_second_break')
+                ->get(['wiw_user_id', 'next_first_break', 'next_lunch_break', 'next_second_break'])
+                ->keyBy('wiw_user_id');
 
             Shift::query()->delete();
             $yards = Yard::orderBy('display_order')->get();
@@ -115,6 +121,16 @@ class GoFetchShiftsJob implements ShouldQueue
 
             Shift::insert($shiftInsertData);
 
+            if ($savedBreaks->isNotEmpty()) {
+                foreach ($savedBreaks as $userId => $breaks) {
+                    Shift::where('wiw_user_id', $userId)->update([
+                        'next_first_break' => $breaks->next_first_break,
+                        'next_lunch_break' => $breaks->next_lunch_break,
+                        'next_second_break' => $breaks->next_second_break,
+                    ]);
+                }
+            }
+
             $excludedShiftData = $wiwShifts
                 ->filter(fn($s) => !in_array($positionMap->get($s['position_id']), self::QUALIFIED_POSITIONS)
                     && !in_array($positionMap->get($s['position_id']), self::SKIPPED_POSITIONS))
@@ -142,7 +158,7 @@ class GoFetchShiftsJob implements ShouldQueue
 
     private function buildShift(array $s, Collection $positionMap, Collection $userMap, Collection $yards): object
     {
-        $shift = new \stdClass();
+        $shift = new stdClass();
         $shift->user_id = $s['user_id'];
         $shift->start_at = $s['start_time'];
         $shift->end_at = $s['end_time'];
@@ -177,7 +193,7 @@ class GoFetchShiftsJob implements ShouldQueue
         )->values();
     }
 
-    public function assignLunches(Collection &$qualifiedShifts, array &$breakMatrix): void
+    private function assignLunches(Collection &$qualifiedShifts, array &$breakMatrix): void
     {
         $shifts = $qualifiedShifts->filter(fn($shift) => $this->getDurationInSegments($shift) >= 6.5 * 12);
 
@@ -193,7 +209,7 @@ class GoFetchShiftsJob implements ShouldQueue
         }
     }
 
-    public function assignBreaks(Collection &$qualifiedShifts, array &$breakMatrix): void
+    private function assignBreaks(Collection &$qualifiedShifts, array &$breakMatrix): void
     {
         foreach ($qualifiedShifts as $shift) {
             $duration = $this->getDurationInSegments($shift);
@@ -222,7 +238,7 @@ class GoFetchShiftsJob implements ShouldQueue
         }
     }
 
-    public function findBreakIndex(int $idealIndex, int $duration, array $breakMatrix, bool $allowFallback = false): array|null
+    private function findBreakIndex(int $idealIndex, int $duration, array $breakMatrix, bool $allowFallback = false): array|null
     {
         $searcherIndex = $idealIndex;
         $segmentsSearched = 0;

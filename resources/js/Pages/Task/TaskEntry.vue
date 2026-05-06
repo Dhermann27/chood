@@ -45,7 +45,7 @@ const dogsOnBreak = computed(() => {
     return dogs.value.filter(dog => dog.rest_starts_at !== null);
 });
 const dogsNotOnBreak = computed(() => {
-    return dogs.value.filter(dog => dog.rest_starts_at === null && dog.pet_id !== null);
+    return dogs.value.filter(dog => dog.rest_starts_at === null && dog.pet_id !== null && !dog.checked_out_at);
 });
 const dogsByCabin = computed(() => {
     const grouped = {};
@@ -60,8 +60,10 @@ const moveDogEnabled = computed(() => openYards.value.length >= 3);
 const dogsWithCabinMates = computed(() => {
     if (!dogs.value) return [];
     const counts = {};
-    dogs.value.forEach(dog => { if (dog.cabin_id && dog.is_boarding && dog.pet_id !== null) counts[dog.cabin_id] = (counts[dog.cabin_id] || 0) + 1; });
-    return dogs.value.filter(dog => dog.cabin_id && dog.is_boarding && dog.pet_id !== null && counts[dog.cabin_id] > 1);
+    dogs.value.forEach(dog => {
+        if (dog.cabin_id && dog.is_boarding && dog.pet_id !== null && !dog.checked_out_at) counts[dog.cabin_id] = (counts[dog.cabin_id] || 0) + 1;
+    });
+    return dogs.value.filter(dog => dog.cabin_id && dog.is_boarding && dog.pet_id !== null && !dog.checked_out_at && counts[dog.cabin_id] > 1);
 });
 const markReturnedIsWalked = computed(() => {
     const dog = targets.value.dogsToAssign;
@@ -147,7 +149,12 @@ function handleTargetClick(cabin) {
         const dummy = (dogsByCabin.value[cabin.id] ?? []).find(d => d.pet_id === null);
         if (dummy) {
             todo.value = 'clearFeedingCabin';
-            targets.value = { ...targets.value, cabin_id: cabin.id, cabin_short_name: cabin.short_name, dummy_display_name: dummy.display_name };
+            targets.value = {
+                ...targets.value,
+                cabin_id: cabin.id,
+                cabin_short_name: cabin.short_name,
+                dummy_display_name: dummy.display_name
+            };
             nextStep();
             return;
         }
@@ -337,10 +344,13 @@ onUnmounted(() => {
                 <multiselect
                     class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
                     v-model="targets.dogsToAssign" multiple track-by="id"
-                    :options="(dogsByCabin['unassigned'] ?? []).filter(d => !d.is_boarding)" label="display_name"
+                    :options="(dogsByCabin['unassigned'] ?? []).filter(d => !d.is_boarding && !d.checked_out_at)"
+                    label="display_name"
                     placeholder="Select Dog(s) (Required)" @update:modelValue="handleAssignDogUpdate">
                     <template #tag="{ option, remove }">
-                        <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{ option.display_name }}</span>
+                        <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{
+                                option.display_name
+                            }}</span>
                     </template>
                     <template #option="{ option }">
                         <div class="dog-option-item">
@@ -389,10 +399,13 @@ onUnmounted(() => {
                 <h3 class="text-xl font-subheader uppercase mb-4">Set a dog's lunch</h3>
                 <multiselect
                     class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
-                    v-model="targets.dogsToAssign" multiple track-by="id" :options="dogs.filter(d => d.pet_id !== null)" label="display_name"
+                    v-model="targets.dogsToAssign" multiple track-by="id"
+                    :options="dogs.filter(d => d.pet_id !== null && !d.checked_out_at)" label="display_name"
                     placeholder="Select Dog(s) (Required)">
                     <template #tag="{ option, remove }">
-                        <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{ option.display_name }}</span>
+                        <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{
+                                option.display_name
+                            }}</span>
                     </template>
                     <template #option="{ option }">
                         <div class="dog-option-item">
@@ -419,27 +432,30 @@ onUnmounted(() => {
             <template v-else-if="todo === 'startBreak'">
                 <h3 class="text-xl font-subheader uppercase mb-4">Start a Break</h3>
                 <div class="flex items-start gap-2 w-2/3 mb-5">
-                <multiselect
-                    class="dogsToAssign-multiselect border-2 bg-crimson placeholder:text-crimson"
-                    v-model="targets.dogsToAssign" multiple track-by="id" :options="dogsNotOnBreak" label="display_name"
-                    placeholder="Select Dog(s) (Required)" @click="counter = 0;">
-                    <template #tag="{ option, remove }">
-                        <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{ option.display_name }}</span>
-                    </template>
-                    <template #option="{ option }">
-                        <div class="dog-option-item">
-                            <div v-if="option.photoUri" class="dog-photo-wrap">
-                                <img :src="option.photoUri" :alt="option.display_name"
-                                     @error="e => e.target.parentElement.style.display = 'none'"/>
+                    <multiselect
+                        class="dogsToAssign-multiselect border-2 bg-crimson placeholder:text-crimson"
+                        v-model="targets.dogsToAssign" multiple track-by="id" :options="dogsNotOnBreak"
+                        label="display_name"
+                        placeholder="Select Dog(s) (Required)" @click="counter = 0;">
+                        <template #tag="{ option, remove }">
+                            <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{
+                                    option.display_name
+                                }}</span>
+                        </template>
+                        <template #option="{ option }">
+                            <div class="dog-option-item">
+                                <div v-if="option.photoUri" class="dog-photo-wrap">
+                                    <img :src="option.photoUri" :alt="option.display_name"
+                                         @error="e => e.target.parentElement.style.display = 'none'"/>
+                                </div>
+                                <span class="text-3xl ml-10">{{ option.display_name }}</span>
                             </div>
-                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
-                        </div>
-                    </template>
-                </multiselect>
-                <button @click="addAllBoarders"
-                        class="bg-caregiver text-white px-4 py-3 rounded-xl shrink-0 text-xl">
-                    <FontAwesomeIcon :icon="['fas', 'bed']"/>
-                </button>
+                        </template>
+                    </multiselect>
+                    <button @click="addAllBoarders"
+                            class="bg-caregiver text-white px-4 py-3 rounded-xl shrink-0 text-xl">
+                        <FontAwesomeIcon :icon="['fas', 'bed']"/>
+                    </button>
                 </div>
                 <div class="flex gap-2 text-white text-xl">
                     <button v-for="bt in breakTypes" :key="bt.id"

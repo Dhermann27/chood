@@ -5,6 +5,7 @@ namespace App\Jobs\Report;
 use App\Enums\HousingServiceCodes;
 use App\Models\Report;
 use App\Services\FetchDataService;
+use Carbon\Carbon;
 use DOMDocument;
 use DOMXPath;
 use Exception;
@@ -36,16 +37,16 @@ class FetchBoardingJob implements ShouldQueue
      */
     public function handle(FetchDataService $fetchDataService): void
     {
-        $report    = Report::findOrFail($this->reportId);
-        $formatted = \Carbon\Carbon::parse($report->report_date)->format('m/d/Y');
+        $report = Report::findOrFail($this->reportId);
+        $formatted = Carbon::parse($report->report_date)->format('m/d/Y');
 
         $html = $fetchDataService->fetchOccupancy(
             config('services.gingr.uris.lodging_occupancy'),
             [
-                'date_from'   => $formatted,
-                'date_to'     => $formatted,
+                'date_from' => $formatted,
+                'date_to' => $formatted,
                 'location_id' => config('services.gingr.location_id'),
-                'csv'         => 'false',
+                'csv' => 'false',
             ],
             $this->cookies
         );
@@ -56,15 +57,15 @@ class FetchBoardingJob implements ShouldQueue
 
         $data['boarding_accrual'] = ['qty' => $qty, 'total' => round($total, 2)];
 
-        $report->data       = $data;
+        $report->data = $data;
         $report->updated_at = now();
         $report->save();
     }
 
     private function parseOccupancy(string $html): array
     {
-        $qty       = 0;
-        $total     = 0.0;
+        $qty = 0;
+        $total = 0.0;
         $breakdown = [];
 
         $dom = new DOMDocument();
@@ -78,12 +79,12 @@ class FetchBoardingJob implements ShouldQueue
             $cells = $row->getElementsByTagName('td');
             if ($cells->length < 3) continue;
 
-            $area  = trim($cells->item(1)->textContent ?? '');
-            $code  = str_contains(strtolower($area), 'luxury') ? HousingServiceCodes::BRDL->value : HousingServiceCodes::BRDC->value;
-            $base  = self::BASE_RATES[$code];
+            $area = trim($cells->item(1)->textContent ?? '');
+            $code = str_contains(strtolower($area), 'luxury') ? HousingServiceCodes::BRDL->value : HousingServiceCodes::BRDC->value;
+            $base = self::BASE_RATES[$code];
 
             // Date column is index 2 — extract count from number-reservations span direct text
-            $dateCell  = $cells->item(2);
+            $dateCell = $cells->item(2);
             $countSpan = $xpath->query('.//span[@class="number-reservations"]', $dateCell)->item(0);
             if (!$countSpan) continue;
 
@@ -97,16 +98,16 @@ class FetchBoardingJob implements ShouldQueue
             if ($count === 0) continue;
 
             $discounts = self::MULTI_DOG_DISCOUNTS[$code];
-            $discount  = $discounts[min($count, max(array_keys($discounts)))] ?? 0;
-            $rate      = $base - $discount;
+            $discount = $discounts[min($count, max(array_keys($discounts)))] ?? 0;
+            $rate = $base - $discount;
             $cabinTotal = $rate * $count;
 
-            $lodging   = trim($cells->item(0)->textContent ?? '');
-            $qty      += $count;
-            $total    += $cabinTotal;
+            $lodging = trim($cells->item(0)->textContent ?? '');
+            $qty += $count;
+            $total += $cabinTotal;
             $breakdown[] = [
                 'label' => 'Boarding: ' . $lodging . ($count > 1 ? " ({$count} dogs)" : ''),
-                'qty'   => $count,
+                'qty' => $count,
                 'total' => $cabinTotal,
             ];
         }

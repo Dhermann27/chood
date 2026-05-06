@@ -4,13 +4,14 @@ namespace App\Jobs\Report;
 
 use App\Models\Report;
 use App\Services\FetchDataService;
+use App\Traits\BuildsReportParams;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 class FetchPaymentsJob implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, BuildsReportParams;
 
     public function __construct(public readonly string $reportId, public readonly array $cookies)
     {
@@ -33,37 +34,23 @@ class FetchPaymentsJob implements ShouldQueue
 
         $methodData = $paymentsRaw['payment_method_data'] ?? [];
 
-        $data                     = $report->data ?? [];
-        $data['deposits']         = $this->parseDeposits($methodData, $paymentsRaw['payment_method_refund_data'] ?? []);
+        $data = $report->data ?? [];
+        $data['deposits'] = $this->parseDeposits($methodData, $paymentsRaw['payment_method_refund_data'] ?? []);
         $data['cash_transactions'] = $this->parseCashTransactions($paymentsRaw['payment_events'] ?? [], $methodData);
 
-        $report->data       = $data;
+        $report->data = $data;
         $report->updated_at = now();
         $report->save();
-    }
-
-    private function buildParams(string $date): array
-    {
-        $formatted = \Carbon\Carbon::parse($date)->format('m/d/Y');
-
-        return [
-            'date_from'      => $formatted,
-            'time_from'      => '00:00:00',
-            'date_to'        => $formatted,
-            'time_to'        => '23:59:59',
-            'payment_method' => range(1, 12),
-            'location'       => [config('services.gingr.location_id')],
-        ];
     }
 
     // payment_method_data: { "Cash": { "Payments": {sum, pt_count}, ... }, "Credit Card": {...}, ... }
     private function parseDeposits(array $methodData, array $refundData = []): array
     {
-        $exclude     = ['no payment', 'store credit', 'account credit'];
+        $exclude = ['no payment', 'store credit', 'account credit'];
         $cardMethods = config('services.dd.card_types', []);
-        $cardLower   = array_map('strtolower', $cardMethods);
+        $cardLower = array_map('strtolower', $cardMethods);
 
-        $card    = ['qty' => 0, 'total' => 0.0];
+        $card = ['qty' => 0, 'total' => 0.0];
         $nonCard = [];
         $refunds = ['qty' => 0, 'total' => 0.0];
 
@@ -74,10 +61,10 @@ class FetchPaymentsJob implements ShouldQueue
             $isCard = in_array($lower, $cardLower, true) || str_contains($lower, 'credit card');
             foreach ($types as $entry) {
                 if ($isCard) {
-                    $card['qty']   += (int)($entry['pt_count'] ?? 0);
+                    $card['qty'] += (int)($entry['pt_count'] ?? 0);
                     $card['total'] += (float)($entry['sum'] ?? 0);
                 } else {
-                    $nonCard[$method]['qty']   = ($nonCard[$method]['qty'] ?? 0) + (int)($entry['pt_count'] ?? 0);
+                    $nonCard[$method]['qty'] = ($nonCard[$method]['qty'] ?? 0) + (int)($entry['pt_count'] ?? 0);
                     $nonCard[$method]['total'] = ($nonCard[$method]['total'] ?? 0.0) + (float)($entry['sum'] ?? 0);
                 }
             }
@@ -85,7 +72,7 @@ class FetchPaymentsJob implements ShouldQueue
 
         foreach ($refundData as $types) {
             foreach ($types as $entry) {
-                $refunds['qty']   += (int)($entry['pt_count'] ?? 0);
+                $refunds['qty'] += (int)($entry['pt_count'] ?? 0);
                 $refunds['total'] += (float)($entry['sum'] ?? 0);
             }
         }
@@ -126,11 +113,11 @@ class FetchPaymentsJob implements ShouldQueue
 
             preg_match('/>([^<]+)<\/a>/', $row[1] ?? '', $m);
             $owner = trim($m[1] ?? '');
-            $date  = preg_replace('/^\w+,\s*/', '', $row[2] ?? '');
+            $date = preg_replace('/^\w+,\s*/', '', $row[2] ?? '');
 
             $transactions[$invoiceId] = [
-                'date'   => $date,
-                'owner'  => $owner,
+                'date' => $date,
+                'owner' => $owner,
                 'amount' => (float)($row[4] ?? 0),
             ];
         }

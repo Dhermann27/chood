@@ -6,6 +6,7 @@ use App\Jobs\Report\GoFetchReports;
 use App\Models\Report;
 use App\Services\FetchDataService;
 use App\Services\JournalEntryTransformer;
+use App\Traits\ParsesServiceCategory;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,10 +15,14 @@ use Inertia\Response;
 
 class ReportController extends Controller
 {
+    use ParsesServiceCategory;
+
     public function __construct(
-        private FetchDataService $fetchDataService,
+        private FetchDataService        $fetchDataService,
         private JournalEntryTransformer $journalTransformer,
-    ) {}
+    )
+    {
+    }
 
     public function report(): Response
     {
@@ -32,7 +37,7 @@ class ReportController extends Controller
         $validated = $request->validate([
             'username' => 'required|string|max:255',
             'password' => 'required|string|max:255',
-            'date'     => 'required|date',
+            'date' => 'required|date',
         ]);
 
         try {
@@ -52,7 +57,7 @@ class ReportController extends Controller
 
         } catch (Exception $e) {
             return response()->json([
-                'error'  => 'Fetching failed',
+                'error' => 'Fetching failed',
                 'output' => $e->getMessage(),
             ], 500);
         }
@@ -61,7 +66,7 @@ class ReportController extends Controller
     public function results($reportId): JsonResponse
     {
         $report = Report::findOrFail($reportId);
-        $data   = $report->data ?? [];
+        $data = $report->data ?? [];
 
         $customOrder = ['Daycare', 'Boarding', 'Enrichment', 'Grooming', 'Training'];
 
@@ -74,7 +79,7 @@ class ReportController extends Controller
             $cat = $this->serviceCategory($name);
             if (!$cat) continue;
             $pkgByCategory[$cat] ??= ['qty' => 0, 'total' => 0.0];
-            $pkgByCategory[$cat]['qty']   += $entry['qty'] ?? 0;
+            $pkgByCategory[$cat]['qty'] += $entry['qty'] ?? 0;
             $pkgByCategory[$cat]['total'] += (float)($entry['total'] ?? 0);
         }
 
@@ -82,7 +87,7 @@ class ReportController extends Controller
         $usedServices = [];
         foreach ($services as $category => $entry) {
             $usedServices[$category] = [
-                'qty'   => max(0, ($entry['qty'] ?? 0) - ($pkgByCategory[$category]['qty'] ?? 0)),
+                'qty' => max(0, ($entry['qty'] ?? 0) - ($pkgByCategory[$category]['qty'] ?? 0)),
                 'total' => max(0.0, (float)($entry['total'] ?? 0) - (float)($pkgByCategory[$category]['total'] ?? 0)),
             ];
         }
@@ -90,7 +95,7 @@ class ReportController extends Controller
         // Boarding Used also includes overnight occupancy (not yet charged)
         if (isset($data['boarding_accrual'])) {
             $usedServices['Boarding'] ??= ['qty' => 0, 'total' => 0.0];
-            $usedServices['Boarding']['qty']   += $data['boarding_accrual']['qty'];
+            $usedServices['Boarding']['qty'] += $data['boarding_accrual']['qty'];
             $usedServices['Boarding']['total'] += $data['boarding_accrual']['total'];
         }
 
@@ -107,14 +112,14 @@ class ReportController extends Controller
 
         // Overall totals — Services rows + Tips
         $tipsTotal = (float)($data['tips']['total'] ?? 0);
-        $tipsQty   = (int)($data['tips']['qty'] ?? 0);
+        $tipsQty = (int)($data['tips']['qty'] ?? 0);
 
-        $data['overall_paid']  = [
-            'qty'   => array_sum(array_column($data['combined_services'], 'sold_qty')) + $tipsQty,
+        $data['overall_paid'] = [
+            'qty' => array_sum(array_column($data['combined_services'], 'sold_qty')) + $tipsQty,
             'total' => round(array_sum(array_column($data['combined_services'], 'sold_total')) + $tipsTotal, 2),
         ];
         $data['accrual_total'] = [
-            'qty'   => array_sum(array_column($data['combined_services'], 'used_qty')) + $tipsQty,
+            'qty' => array_sum(array_column($data['combined_services'], 'used_qty')) + $tipsQty,
             'total' => round(array_sum(array_column($data['combined_services'], 'used_total')) + $tipsTotal, 2),
         ];
 
@@ -130,26 +135,15 @@ class ReportController extends Controller
     public function journalTransform(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'date'         => 'required|date',
+            'date' => 'required|date',
             'bank_account' => 'required|string|max:255',
-            'csv'          => 'required|file|mimes:csv,txt|max:2048',
+            'csv' => 'required|file|mimes:csv,txt|max:2048',
         ]);
 
         $content = file_get_contents($request->file('csv')->getRealPath());
-        $result  = $this->journalTransformer->transform($content, $validated['date'], $validated['bank_account']);
+        $result = $this->journalTransformer->transform($content, $validated['date'], $validated['bank_account']);
 
         return response()->json($result);
-    }
-
-    private function serviceCategory(string $name): ?string
-    {
-        $lower = strtolower($name);
-        if (str_contains($lower, 'day care') || str_contains($lower, 'daycare') || str_contains($lower, 'day camp')) return 'Daycare';
-        if (str_contains($lower, 'board'))                                                                              return 'Boarding';
-        if (str_contains($lower, 'train'))                                                                              return 'Training';
-        if (str_contains($lower, 'groom') || str_contains($lower, 'bath') || str_contains($lower, 'nail'))             return 'Grooming';
-        if (str_contains($lower, 'enrich'))                                                                             return 'Enrichment';
-        return null;
     }
 
     private function mergeGroups(array $primary = [], array $secondary = [], string $prefix1 = 'sold', string $prefix2 = 'used'): array
@@ -160,9 +154,9 @@ class ReportController extends Controller
 
         return $allKeys->mapWithKeys(function ($key) use ($primary, $secondary, $prefix1, $prefix2) {
             return [$key => [
-                "{$prefix1}_qty"   => $primary[$key]['qty'] ?? 0,
+                "{$prefix1}_qty" => $primary[$key]['qty'] ?? 0,
                 "{$prefix1}_total" => $primary[$key]['total'] ?? 0,
-                "{$prefix2}_qty"   => $secondary[$key]['qty'] ?? 0,
+                "{$prefix2}_qty" => $secondary[$key]['qty'] ?? 0,
                 "{$prefix2}_total" => $secondary[$key]['total'] ?? 0,
             ]];
         })->sortKeys()->toArray();

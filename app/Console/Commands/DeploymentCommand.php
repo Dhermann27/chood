@@ -32,10 +32,12 @@ class DeploymentCommand extends Command
 
         $this->info("Restoring persistent data from {$rollbackDb}...");
 
-        $this->tryStatement(
-            "INSERT INTO cleaning_status SELECT * FROM {$db}.cleaning_status",
-            'Cleaning_status restored'
-        );
+        $this->tryStatement("
+            INSERT INTO cleaning_status
+                (cabin_id, wiw_user_id, cleaning_type, completed_at, created_by, updated_by, created_at, updated_at)
+            SELECT cabin_id, wiw_user_id, cleaning_type, completed_at, created_by, updated_by, created_at, updated_at
+            FROM {$db}.cleaning_status
+        ", 'Cleaning_status restored');
 
         $this->tryStatement("
             INSERT INTO dogs (pet_id, cabin_id, rest_starts_at, break_type_id, yard_id)

@@ -83,7 +83,9 @@ async function updateData() {
 
 function onYardPresetChange(e) {
     const preset = e.target.value;
-    e.target.value = selectedYardPreset.value;
+    const previous = selectedYardPreset.value;
+    e.target.value = previous;
+    selectedYardPreset.value = previous;
     pendingConfirmAction.value = async (overwrite) => {
         isUpdatingPreset.value = true;
         try {
@@ -303,7 +305,7 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <div class="flex flex-col items-center pt-5 print:flex relative">
+            <div class="mealmap-right flex flex-col items-center pt-5 print:flex relative">
                 <div class="absolute top-5 right-10">
                     <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                         Yards: {{ openYards.filter(y => Number(y.id) >= 1000).map(y => y.name).join(', ') }}
@@ -440,7 +442,7 @@ onBeforeUnmount(() => {
                       class="absolute left-0 right-0 flex items-center justify-center gap-1 leading-none"
                       :style="{ fontSize: (cardHeight * 0.18) + 'px', top: '5px' }">
                     {{ sectionCounts.checkin_today }}
-                    <FontAwesomeIcon :icon="['fas', 'arrows-left-right']" style="transform: translateY(-0.1em)"/>
+                    <FontAwesomeIcon :icon="['fas', 'left-right']"/>
                     {{ sectionCounts.checkout_today }}
                 </span>
             </div>
@@ -484,8 +486,41 @@ onBeforeUnmount(() => {
 }
 
 @media print {
+    @page {
+        margin: 0.5cm;
+    }
+
     .print-hide {
         display: none !important;
+    }
+
+    .mealmap-right {
+        font-size: 82%;
+        padding-top: 0;
+        width: 100%;
+    }
+
+    .mealmap-right :deep(td),
+    .mealmap-right :deep(th) {
+        padding: 2px 8px;
+    }
+
+    .mealmap-right :deep(.m-10) {
+        margin: 4px 0;
+    }
+
+    .mealmap-right :deep(.text-3xl) {
+        font-size: 1.4em;
+        margin-bottom: 2px;
+    }
+
+    .mealmap-right :deep(.mb-2) {
+        margin-bottom: 2px;
+    }
+
+    .mealmap-right :deep(.absolute) {
+        top: 0;
+        right: 0;
     }
 }
 </style>

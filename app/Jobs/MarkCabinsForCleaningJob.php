@@ -14,17 +14,6 @@ class MarkCabinsForCleaningJob implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
         Log::info('Starting MarkCabinsForCleaningJob');
@@ -32,29 +21,6 @@ class MarkCabinsForCleaningJob implements ShouldQueue
         $deleted = Dog::whereNotNull('checked_out_at')->where('checked_out_at', '<', Carbon::today())->delete();
         Log::info("Deleted {$deleted} checked-out dog records from previous day(s)");
         Dog::whereNull('pet_id')->delete();
-//        if (Carbon::today()->isSunday()) {
-//            $withoutCleaningStatus = Cabin::whereHas('dogs')->whereDoesntHave('cleaningStatus')->with(['dogs'])->get();
-//            if ($withoutCleaningStatus->isNotEmpty()) {
-//                Log::info(count($withoutCleaningStatus) . ' cabins created with Deep Clean ');
-//                CleaningStatus::insert($withoutCleaningStatus->map(function ($cabin) {
-//                    return [
-//                        'cabin_id' => $cabin->id,
-//                        'cleaning_type' => CleaningStatus::STATUS_DEEP,
-//                        'created_by' => 'MCFCJobIsSunday',
-//                        'created_at' => now(),
-//                    ];
-//                })->toArray());
-//            }
-//
-//            $cs = CleaningStatus::query()->update([
-//                'cleaning_type' => 'deep',
-//                'wiw_user_id' => null,
-//                'completed_at' => null,
-//                'updated_by' => 'MCFCJobIsSunday',
-//                'updated_at' => Carbon::now()
-//            ]);
-//            Log::info('Sunday rows updated: ' . $cs);
-//        } else {
 
         $cabins = Cabin::whereHas('dogs')->with(['dogs', 'cleaningStatus'])->get();
 
@@ -101,5 +67,4 @@ class MarkCabinsForCleaningJob implements ShouldQueue
                 ]);
         }
     }
-//    }
 }

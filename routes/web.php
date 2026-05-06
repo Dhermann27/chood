@@ -103,8 +103,6 @@ if (app()->environment('local')) {
     });
     Route::get('/sync', function () {
         GoFetchListJob::dispatchSync();
-        $ownerId = App\Models\Dog::where('firstname', 'Fraud')->value('account_id');
-        App\Jobs\GoFetchOwnerDataJob::dispatchSync((string) $ownerId);
         return 'Sync complete';
     });
 }

@@ -4,6 +4,7 @@ import axios from 'axios';
 
 import DogCard from "@/Components/chood/DogCard.vue";
 import AssignmentModal from "@/Components/chood/AssignmentModal.vue";
+import SectionCounts from "@/Components/chood/SectionCounts.vue";
 import {ControlSchemes} from "@/controlSchemes.js";
 import {checkoutReservationColor} from '@/utils.js';
 
@@ -206,13 +207,9 @@ function displayCabinStyle(cabin) {
         <div v-if="displayCabinId && cabin.id === displayCabinId"
              class="bg-crimson text-white font-bold flex flex-col items-center justify-center"
              :style="displayCabinStyle(cabin)">
-            <span v-if="sectionCounts?.checkin_today !== null"
-                  class="flex items-center justify-center gap-1 leading-none"
-                  :style="{ fontSize: (cardHeight * 0.18) + 'px' }">
-                {{ sectionCounts.checkin_today }}
-                <FontAwesomeIcon :icon="['fas', 'arrows-left-right']" style="transform: translateY(-0.1em)"/>
-                {{ sectionCounts.checkout_today }}
-            </span>
+            <SectionCounts
+                :section-counts="{ checkin_today: sectionCounts?.checkin_today, checkout_today: sectionCounts?.checkout_today }"
+                :font-size="cardHeight * 0.18" :max-width="cardWidth"/>
             <span :style="{ fontSize: (cardHeight * 0.5) + 'px', lineHeight: 1 }">
                 {{ sectionCounts?.in_house }}
             </span>
