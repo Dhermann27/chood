@@ -87,5 +87,6 @@ return [
     'wiw' => [
         'email' => env('WIW_EMAIL'),
         'password' => env('WIW_PASSWORD'),
+        'small_medium_only' => array_filter(array_map('trim', explode(',', env('SMALL_MEDIUM_ONLY_STAFF', '')))),
     ],
 ];

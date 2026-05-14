@@ -14,6 +14,7 @@ return new class extends Migration {
         Schema::create('yards', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->boolean('is_large')->default(false);
             $table->integer('display_order')->default(0);
         });
         DB::update('ALTER TABLE yards AUTO_INCREMENT = 1000');

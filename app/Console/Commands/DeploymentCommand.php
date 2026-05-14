@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\GoFetchServiceListJob;
 use App\Jobs\WIW\GoFetchEmployeesJob;
 use App\Jobs\WIW\GoFetchShiftsJob;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -17,13 +18,14 @@ class DeploymentCommand extends Command
     public function handle(): void
     {
         GoFetchEmployeesJob::dispatchSync();
+        GoFetchServiceListJob::dispatchSync();
+        GoFetchShiftsJob::dispatchSync();
 
         if ($rollbackDb = $this->option('rollback-db')) {
             $this->restoreFromRollback($rollbackDb);
         }
 
-        GoFetchServiceListJob::dispatchSync();
-        GoFetchShiftsJob::dispatchSync();
+        $this->dropOldRollbackDbs();
     }
 
     private function restoreFromRollback(string $rollbackDb): void
@@ -64,10 +66,31 @@ class DeploymentCommand extends Command
 
         $this->tryStatement("
             DELETE eyr FROM employee_yard_rotations AS eyr
-            JOIN employee_yard_rotations AS eyrp
+            JOIN {$db}.employee_yard_rotations AS eyrp
                 ON eyr.wiw_user_id = eyrp.wiw_user_id AND eyr.rotation_id = eyrp.rotation_id
             WHERE eyr.yard_id = 999 AND eyrp.yard_id != 999
         ", 'Yard rotations restored');
+    }
+
+    private function dropOldRollbackDbs(): void
+    {
+        $rows = DB::select("SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'laravel_rollback_%'");
+        $cutoff = now()->subWeeks(2);
+
+        foreach ($rows as $row) {
+            $name = $row->schema_name;
+            if (!preg_match('/^laravel_rollback_(\d{8}_\d{6})$/', $name, $m)) continue;
+
+            try {
+                $date = Carbon::createFromFormat('Ymd_His', $m[1]);
+            } catch (Throwable) {
+                continue;
+            }
+
+            if ($date->lt($cutoff)) {
+                $this->tryStatement("DROP DATABASE `{$name}`", "Dropped old rollback DB: {$name}");
+            }
+        }
     }
 
     private function tryStatement(string $sql, string $successMessage = ''): void

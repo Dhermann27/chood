@@ -57,6 +57,7 @@ const dogsByCabin = computed(() => {
     return grouped;
 });
 const moveDogEnabled = computed(() => openYards.value.length >= 3);
+const feedingCabinEnabled = computed(() => dogsWithCabinMates.value.length > 0);
 const dogsWithCabinMates = computed(() => {
     if (!dogs.value) return [];
     const counts = {};
@@ -319,11 +320,13 @@ onUnmounted(() => {
                     <FontAwesomeIcon :icon="['fas', 'alarm-clock']" class="me-5"/>
                     Rest Break
                 </button>
-                <button
-                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
-                    @click="handleTaskClick('assignFeedingCabin')">
+                <button class="text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition
+                bg-caregiver text-white hover:bg-blue-500 disabled:bg-gray-400 disabled:text-gray-200
+                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
+                        :disabled="!feedingCabinEnabled" @click="handleTaskClick('assignFeedingCabin')">
                     <FontAwesomeIcon :icon="['fas', 'utensils']" class="me-5"/>
-                    Assign Feeding Cabin
+                    <span v-if="feedingCabinEnabled">Assign Feeding Cabin</span>
+                    <span v-else>No cabin siblings</span>
                 </button>
                 <button class="text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition
                 bg-caregiver text-white hover:bg-blue-500 disabled:bg-gray-400 disabled:text-gray-200

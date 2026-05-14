@@ -20,11 +20,13 @@ const currentDog = computed(() => {
     return dogs.length ? dogs[index] : null;
 });
 const iconRefs = ref({});
+
 function setIconRef(index, dir) {
     return (el) => {
         if (el) iconRefs.value[`chood${dir}Icon${index}`] = el;
     };
 }
+
 const intervals = [null]; // [rotationInterval]
 
 const bannerStyle = computed(() =>
@@ -184,7 +186,7 @@ onUnmounted(() => {
 
 
         <div ref="photoContainer" class="relative bg-cover bg-center z-0 overflow-hidden" style="flex: 1 1 auto"
-             :style="{ backgroundImage: currentDog.photoUri && imageCache.has(currentDog.photoUri) ? `url(${currentDog.photoUri})` : 'none' }">
+             :style="{ backgroundImage: currentDog.photoUri && imageCache.has(currentDog.photoUri) ? `url('${currentDog.photoUri}')` : 'none' }">
 
             <svg v-if="breakTimeLeft && !breakTimeLeft.expired" preserveAspectRatio="none"
                  class="absolute top-0 left-0 w-full h-full pointer-events-none z-10" viewBox="0 0 1 1">

@@ -47,6 +47,7 @@ class GoFetchShiftsJob implements ShouldQueue
     public function handle(WiwService $wiw): void
     {
         $day = Carbon::today();
+        $smallMediumOnly = collect(config('services.wiw.small_medium_only'));
 
         try {
             $data = $wiw->getV2('shifts', [
@@ -73,8 +74,8 @@ class GoFetchShiftsJob implements ShouldQueue
             $qualifiedShifts = $wiwShifts
                 ->filter(fn($s) => in_array($positionMap->get($s['position_id']), self::QUALIFIED_POSITIONS))
                 ->sortBy(['start_time', 'position_id'])
-                ->map(function ($s) use ($positionMap, $userMap, $yards) {
-                    return $this->buildShift($s, $positionMap, $userMap, $yards);
+                ->map(function ($s) use ($positionMap, $userMap, $yards, $smallMediumOnly) {
+                    return $this->buildShift($s, $positionMap, $userMap, $yards, $smallMediumOnly);
                 })
                 ->values();
 
@@ -148,7 +149,7 @@ class GoFetchShiftsJob implements ShouldQueue
             }
 
             if ($this->recalculateRotation) {
-                $this->updateYardAssignments($yards, $qualifiedShifts);
+                $this->updateYardAssignments($yards, $qualifiedShifts, $smallMediumOnly);
             }
 
         } catch (ConnectionException $e) {
@@ -156,7 +157,7 @@ class GoFetchShiftsJob implements ShouldQueue
         }
     }
 
-    private function buildShift(array $s, Collection $positionMap, Collection $userMap, Collection $yards): object
+    private function buildShift(array $s, Collection $positionMap, Collection $userMap, Collection $yards, Collection $smallMediumOnly): object
     {
         $shift = new stdClass();
         $shift->user_id = $s['user_id'];
@@ -165,7 +166,10 @@ class GoFetchShiftsJob implements ShouldQueue
         $shift->first_name = $userMap->get($s['user_id'], 'Unknown');
         $positionName = $positionMap->get($s['position_id'], '');
         $shift->role = in_array($positionName, self::SUPERVISOR_POSITIONS) ? self::SUPERVISOR : $positionName;
-        $shift->yardHoursWorked = $yards->pluck('id')->mapWithKeys(fn($id) => [$id => 0])->toArray();
+        $isSyo = $smallMediumOnly->contains($shift->first_name);
+        $shift->yardHoursWorked = $yards->mapWithKeys(fn($yard) => [
+            $yard->id => ($isSyo && !$yard->is_large && $yard->id !== 999) ? -1 : 0,
+        ])->toArray();
         $shift->next_lunch_break = null;
         $shift->fairness_score = 0;
         return $shift;
@@ -306,7 +310,7 @@ class GoFetchShiftsJob implements ShouldQueue
         return true;
     }
 
-    private function updateYardAssignments(Collection $yards, Collection $shifts): void
+    private function updateYardAssignments(Collection $yards, Collection $shifts, Collection $smallMediumOnly): void
     {
         $lastYardHourIds = [];
         $lastYardHourId = null;
@@ -353,42 +357,41 @@ class GoFetchShiftsJob implements ShouldQueue
                     !$shift->next_lunch_break->between($startOfHour, $endOfHour, false) &&
                     !$shift->next_lunch_break->copy()->addMinutes(30)->between($startOfHour, $endOfHour, false));
 
-                $notSuperHandoff = !Str::contains($shift->role, self::SUPERVISOR)
-                    || $rotation->is_super_handoff == 0;
+                $notIncomingSuper = !Str::contains($shift->role, self::SUPERVISOR)
+                    || Carbon::parse($shift->start_at)->lt($startOfHour);
 
-                return $isWorking && $noBreaks && $notSuperHandoff;
-            });
+                return $isWorking && $noBreaks && $notIncomingSuper;
+            })->values();
 
             $openYardIds = $openYardCodes->allowedYards((bool)$rotation->is_midday);
             $openYardIds[] = 999;
             $openYards = $yards->whereIn('id', $openYardIds)->values();
 
             foreach ($openYards as $yard) {
-                $availableShifts = $availableShifts->sortBy(function ($shift) use ($yard) {
-                    return [$shift->yardHoursWorked[$yard->id], $shift->start_at];
-                });
+                $pool = $availableShifts
+                    ->when($yard->is_large,
+                        fn($c) => $c->reject(fn($s) => $smallMediumOnly->contains($s->first_name) ||
+                            (Str::contains($s->role, self::SUPERVISOR) && $startOfHour->hour === 8)
+                        ))
+                    ->sortBy(fn($s) => [$s->yardHoursWorked[$yard->id], $smallMediumOnly->contains($s->first_name) ? 0 : 1, $s->start_at])
+                    ->values();
 
-                Log::info("Available employees: {$names->only($availableShifts->pluck('user_id')->all())->values()->implode(', ')}");
+                Log::info("Available employees: {$names->only($pool->pluck('user_id')->all())->values()->implode(', ')}");
 
-                while ($availableShifts->isNotEmpty()) {
-                    $shift = $availableShifts->shift();
-                    if ($shift === null) break;
+                $chosen = $pool->first(fn($s) => $yard->id === 999 ||
+                    $smallMediumOnly->contains($s->first_name) ||
+                    !isset($lastYardHourIds[$s->user_id][$yard->id]) ||
+                    !$lastYardHourId ||
+                    $lastYardHourIds[$s->user_id][$yard->id] !== $lastYardHourId
+                ) ?? $pool->first();
 
-                    if ($yard->id != 999 && isset($lastYardHourIds[$shift->user_id][$yard->id]) &&
-                        $lastYardHourId && $lastYardHourIds[$shift->user_id][$yard->id] == $lastYardHourId) {
-                        Log::info("{$names[$shift->user_id]} worked this yard within the last hour, skipping");
-                        if ($availableShifts->isNotEmpty()) {
-                            $availableShifts->push($shift);
-                            continue;
-                        }
-                    }
+                if (!$chosen) continue;
 
-                    $hoursWorked = $shift->yardHoursWorked[$yard->id] ?? 0;
-                    Log::info("{$names[$shift->user_id]} assigned, having {$hoursWorked} hours in {$yard->name}");
+                $hoursWorked = $chosen->yardHoursWorked[$yard->id] ?? 0;
+                Log::info("{$names[$chosen->user_id]} assigned, having {$hoursWorked} hours in {$yard->name}");
 
-                    $this->assignEmployee($yard, $rotation, $shift, $shifts, $lastYardHourIds);
-                    break;
-                }
+                $this->assignEmployee($yard, $rotation, $chosen, $shifts, $lastYardHourIds);
+                $availableShifts = $availableShifts->reject(fn($s) => $s->user_id === $chosen->user_id)->values();
             }
 
             $lastYardHourId = $rotation->id;

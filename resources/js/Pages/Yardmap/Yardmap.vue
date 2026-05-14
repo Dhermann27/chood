@@ -15,6 +15,7 @@ const dogsByGroup = ref({});
 const assignments = ref([]);
 const nextBreak = ref(null);
 const nextLunch = ref(null);
+const overscheduled = ref([]);
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
 const currentGif = ref('/images/doggifs/dog1.webp');
 const randomPosition = ref({top: 0, left: 0});
@@ -101,6 +102,7 @@ async function updateData() {
             assignments.value = response.data.assignments;
             nextBreak.value = response.data.nextBreak;
             nextLunch.value = response.data.nextLunch;
+            overscheduled.value = response.data.overscheduled ?? [];
             sectionCounts.value = response.data.sectionCounts ?? sectionCounts.value;
             localChecksum.value = response.data.checksum;
 
@@ -164,6 +166,8 @@ onBeforeUnmount(() => {
                 <span v-for="assignment in assignments" class="pe-8 whitespace-nowrap">
                     {{ assignment.yard?.name }}:
                     {{ assignment.employee?.first_name ?? 'None' }}
+                    <FontAwesomeIcon v-if="overscheduled.includes(`${assignment.rotation_id}-${assignment.yard_id}`)"
+                                     :icon="['fas', 'clock']"/>
                 </span>
             <span v-if="nextBreak" class="pe-8 whitespace-nowrap">
                     Break: {{ nextBreak.employee.first_name }}

@@ -152,11 +152,22 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             'lastname' => isset($row['o_last']) ? trim($row['o_last']) ?: null : null,
             'weight' => $row['weight'] ? (int)$row['weight'] : null,
             'cabin_id' => $cabins->get($this->normCabinName($row['run_name'] ?? ''), null),
-            'housing_code' => $this->housingCodeFromTypeId($row['type_id'] ?? ''),
+            'housing_code' => $this->resolveHousingCode($row),
             'photoUri' => $row['image'] ?: null,
             'checkin' => $row['check_in_stamp'] ? Carbon::createFromTimestamp($row['check_in_stamp']) : null,
             'checkout' => $row['end_date'] ? Carbon::createFromTimestamp($row['end_date']) : null,
         ], fn($v) => !is_null($v));
+    }
+
+    private function resolveHousingCode(array $row): string
+    {
+        // Gingr workaround: orientation dogs needing grooming are checked in as Grooming Services
+        // with Interview added on. Detect via services_string and treat as INTV.
+        if (str_contains(strtolower($row['services_string'] ?? ''), 'interview')) {
+            return HousingServiceCodes::INTV->value;
+        }
+
+        return $this->housingCodeFromTypeId($row['type_id'] ?? '');
     }
 
     private function housingCodeFromTypeId(string $typeId): string

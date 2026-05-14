@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Yard extends Model
 {
     public $timestamps = false;
+    protected $casts = ['is_large' => 'boolean'];
 
     public function employeeYardRotations()
     {

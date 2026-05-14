@@ -8,7 +8,7 @@ import {FontAwesomeIcon, FontAwesomeLayers, FontAwesomeLayersText} from '@fortaw
 import {library} from '@fortawesome/fontawesome-svg-core';
 import {
     faAdd, faAlarmClock, faArrowsUpDownLeftRight, faBadgeCheck, faBed, faBroom,
-    faClipboard, faCowbellCirclePlus, faDroplet, faEdit, faHandDots,
+    faClipboard, faClock, faCowbellCirclePlus, faDroplet, faEdit, faHandDots,
     faHouseChimneyBlank, faHouseCircleCheck, faMars, faPrescriptionBottlePill,
     faLeftRight, faRotateLeft, faRotateRight, faSheep, faSpinnerThird, faStethoscope,
     faTrash, faTriangleExclamation, faTurkey, faUtensils, faVenus, faWeightHanging, faXmark,
@@ -17,7 +17,7 @@ import {ZiggyVue} from '../../vendor/tightenco/ziggy/dist/index.esm.js';
 
 library.add(
     faAdd, faAlarmClock, faArrowsUpDownLeftRight, faBadgeCheck, faBed, faBroom,
-    faClipboard, faCowbellCirclePlus, faDroplet, faEdit, faHandDots,
+    faClipboard, faClock, faCowbellCirclePlus, faDroplet, faEdit, faHandDots,
     faHouseChimneyBlank, faHouseCircleCheck, faMars, faPrescriptionBottlePill,
     faLeftRight, faRotateLeft, faRotateRight, faSheep, faSpinnerThird, faStethoscope,
     faTrash, faTriangleExclamation, faTurkey, faUtensils, faVenus, faWeightHanging, faXmark,

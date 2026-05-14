@@ -53,7 +53,10 @@ trait ChoodTrait
         // TODO: re-add appointments.service once Gingr service sync is verified in prod
         $dogs = Dog::with(/*'appointments.service',*/ 'cabin', 'breakType', 'icons');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
-        if ($size) $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());
+        if ($size) {
+            $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());
+            $dogs->whereNotNull('pet_id');
+        }
 
         if (!$includeCheckedOut) {
             // Yardmap: in-house + checked out within 120s

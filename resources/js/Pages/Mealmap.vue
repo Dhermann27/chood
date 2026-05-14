@@ -34,6 +34,7 @@ const openYardIdsByRotation = ref({});
 const uiAssignments = ref({});
 const localChecksum = ref('');
 const shiftsRefreshing = ref(false);
+const overscheduled = ref([]);
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
 let refreshInterval;
 
@@ -50,7 +51,6 @@ const openYards = computed(() => {
     if (!ids.length) return [];
     return (props.yards ?? []).filter(e => ids.includes(Number(e.id)));
 });
-
 
 function setInputRef(key, el) {
     if (!inputRefs.value) inputRefs.value = {};
@@ -71,6 +71,7 @@ async function updateData() {
             selectedYardPreset.value = response.data.preset;
             headerYardIds.value = response.data.headerYards;
             openYardIdsByRotation.value = response.data.openYardsByRotation;
+            overscheduled.value = response.data.overscheduled ?? [];
             sectionCounts.value = response.data.sectionCounts ?? sectionCounts.value;
             localChecksum.value = response.data.checksum;
 
@@ -337,11 +338,15 @@ onBeforeUnmount(() => {
                     <tr v-for="rotation in props.rotations" :key="rotation.id">
                         <td class="border border-DEFAULT px-4 py-2">{{ rotation.label }}</td>
 
-                        <td v-for="yardId in headerYardIds" :key="yardId" class="border border-DEFAULT px-4 py-2">
+                        <td v-for="yardId in headerYardIds" :key="yardId"
+                            class="border border-DEFAULT px-4 py-2"
+                            :class="{ 'bg-orange-300': overscheduled.includes(`${rotation.id}-${yardId}`) }">
 
                             <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                               <span v-if="slot(rotation.id, yardId)">
                                 {{ slot(rotation.id, yardId).first_name }}
+                                  <FontAwesomeIcon v-if="overscheduled.includes(`${rotation.id}-${yardId}`)"
+                                                   :icon="['fas', 'clock']" class="me-1"/>
                               </span>
                             </div>
 
