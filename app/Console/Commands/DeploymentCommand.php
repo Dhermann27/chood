@@ -74,22 +74,26 @@ class DeploymentCommand extends Command
 
     private function dropOldRollbackDbs(): void
     {
-        $rows = DB::select("SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'laravel_rollback_%'");
-        $cutoff = now()->subWeeks(2);
+        try {
+            $rows = DB::select("SELECT SCHEMA_NAME AS db_name FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'laravel_rollback_%'");
+            $cutoff = now()->subWeeks(2);
 
-        foreach ($rows as $row) {
-            $name = $row->schema_name;
-            if (!preg_match('/^laravel_rollback_(\d{8}_\d{6})$/', $name, $m)) continue;
+            foreach ($rows as $row) {
+                $name = $row->db_name;
+                if (!preg_match('/^laravel_rollback_(\d{8}_\d{6})$/', $name, $m)) continue;
 
-            try {
-                $date = Carbon::createFromFormat('Ymd_His', $m[1]);
-            } catch (Throwable) {
-                continue;
+                try {
+                    $date = Carbon::createFromFormat('Ymd_His', $m[1]);
+                } catch (Throwable) {
+                    continue;
+                }
+
+                if ($date->lt($cutoff)) {
+                    $this->tryStatement("DROP DATABASE `{$name}`", "Dropped old rollback DB: {$name}");
+                }
             }
-
-            if ($date->lt($cutoff)) {
-                $this->tryStatement("DROP DATABASE `{$name}`", "Dropped old rollback DB: {$name}");
-            }
+        } catch (Throwable $e) {
+            $this->warn("Could not clean up old rollback databases: {$e->getMessage()}");
         }
     }
 
