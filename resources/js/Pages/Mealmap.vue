@@ -439,13 +439,13 @@ onBeforeUnmount(() => {
 
             <div v-if="sectionCounts.in_house != null"
                  class="absolute left-1/2 -translate-x-1/2 z-10 bg-crimson text-white font-bold flex items-center justify-center print:hidden"
-                 :style="{ width: cardHeight + 'px', height: cardHeight + 'px' }">
-                <span :style="{ fontSize: (cardHeight * 0.5) + 'px' }">
+                 :style="{ width: Math.max(150, cardHeight) + 'px', height: Math.max(150, cardHeight) + 'px' }">
+                <span :style="{ fontSize: (Math.max(150, cardHeight) * 0.5) + 'px' }">
                     {{ sectionCounts.in_house }}
                 </span>
                 <span v-if="sectionCounts.checkin_today !== null"
                       class="absolute left-0 right-0 flex items-center justify-center gap-1 leading-none"
-                      :style="{ fontSize: (cardHeight * 0.18) + 'px', top: '5px' }">
+                      :style="{ fontSize: (Math.max(150, cardHeight) * 0.18) + 'px', top: '5px' }">
                     {{ sectionCounts.checkin_today }}
                     <FontAwesomeIcon :icon="['fas', 'left-right']"/>
                     {{ sectionCounts.checkout_today }}

@@ -32,6 +32,8 @@ Route::get('/mealmap', [MapController::class, 'mealmap']);
 Route::get('/groommap', [MapController::class, 'groommap']);
 
 
+Route::get('/dailyreports', [ReportController::class, 'dailyReports']);
+
 Route::prefix('journalmaker')->group(function () {
     Route::get('/', [ReportController::class, 'journalMaker']);
     Route::post('/transform', [ReportController::class, 'journalTransform']);

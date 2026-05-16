@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\HousingServiceCodes;
 use App\Jobs\Report\GoFetchReports;
+use App\Models\Dog;
 use App\Models\Report;
 use App\Services\FetchDataService;
 use App\Services\JournalEntryTransformer;
 use App\Traits\ParsesServiceCategory;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -125,6 +128,41 @@ class ReportController extends Controller
 
         $report->data = $data;
         return response()->json($report);
+    }
+
+    public function dailyReports(): Response
+    {
+        $today = Carbon::today();
+        $fsgCats = config('services.gingr.fsg_service_cats');
+        $bathCats = config('services.gingr.bath_service_cats');
+
+        // TODO: Include future reservations not yet checked in
+        $dogs = Dog::with([
+            'allergies',
+            'appointments' => fn($q) => $q->whereDate('scheduled_start', $today)->with('service'),
+        ])->whereNull('checked_out_at')
+            ->whereHas('appointments', fn($q) => $q->whereDate('scheduled_start', $today))
+            ->get();
+
+        $interviews = Dog::with('allergies')
+            ->where('housing_code', HousingServiceCodes::INTV->value)
+            ->whereNull('checked_out_at')
+            ->orderBy('checkin')
+            ->get();
+
+        return Inertia::render('DailyReports', [
+            'date' => $today->format('l, F j, Y'),
+            'fsg' => $dogs->filter(fn($d) =>
+                $d->appointments->contains(fn($a) => in_array($a->service?->category, $fsgCats))
+            )->sortBy('checkin')->values(),
+            'enrichment' => $dogs->filter(fn($d) =>
+                $d->appointments->contains(fn($a) => str_contains(strtolower($a->service?->name ?? ''), 'enrich'))
+            )->sortBy('checkin')->values(),
+            'bath' => $dogs->filter(fn($d) =>
+                $d->appointments->contains(fn($a) => in_array($a->service?->category, $bathCats))
+            )->sortBy('checkin')->values(),
+            'interviews' => $interviews,
+        ]);
     }
 
     public function journalMaker(): Response

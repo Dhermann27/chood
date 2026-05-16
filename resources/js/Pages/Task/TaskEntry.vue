@@ -35,6 +35,7 @@ const targets = ref({
 });
 const step = ref(1);
 const localChecksum = ref('');
+const showNoCabinWarning = ref(false);
 const is1pmOrLater = ref(false);
 const restColumns = computed(() => Math.ceil(Math.sqrt((16 / 9) * (dogsOnBreak.value.length + 1))));
 const restRows = computed(() => Math.ceil((dogsOnBreak.value.length + 1) / restColumns.value));
@@ -42,7 +43,7 @@ const restGridStyle = computed(() => getYardGridStyle(restRows.value, restColumn
 const restCardWidth = computed(() => (770 - (restColumns.value - 1) * 10) / restColumns.value);
 const restCardHeight = computed(() => (290 - (restRows.value - 1) * 10) / restRows.value);
 const dogsOnBreak = computed(() => {
-    return dogs.value.filter(dog => dog.rest_starts_at !== null);
+    return dogs.value.filter(dog => dog.rest_starts_at !== null && !dog.checked_out_at);
 });
 const dogsNotOnBreak = computed(() => {
     return dogs.value.filter(dog => dog.rest_starts_at === null && dog.pet_id !== null && !dog.checked_out_at);
@@ -195,7 +196,30 @@ function addAllBoarders() {
 function handleBreakDogUpdate(breakTypeId) {
     counter = 0;
     targets.value.break_type_id = breakTypeId;
-    if (targets.value['dogsToAssign'].length > 0) nextStep();
+    if (targets.value['dogsToAssign'].length === 0) return;
+
+    if (targets.value.dogsToAssign.some(d => !d.cabin_id)) {
+        showNoCabinWarning.value = true;
+        return;
+    }
+
+    nextStep();
+}
+
+function handleNoCabinAssign() {
+    showNoCabinWarning.value = false;
+    targets.value = {
+        ...targets.value,
+        dogsToAssign: targets.value.dogsToAssign.filter(d => !d.cabin_id),
+        cabin_id: 0,
+        cabin_short_name: '',
+        break_type_id: null,
+    };
+    todo.value = 'assignCabin';
+}
+
+function handleNoCabinDismiss() {
+    showNoCabinWarning.value = false;
 }
 
 function handleBreakDogDelete(dog) {
@@ -537,6 +561,29 @@ onUnmounted(() => {
                 </div>
             </div>
         </template>
+
+        <div v-if="showNoCabinWarning" class="fixed inset-0 bg-greyhound flex justify-center items-center z-50">
+            <div class="bg-white p-6 rounded-lg w-2/3 text-center">
+                <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']" class="text-5xl text-alerted mb-4"/>
+                <h3 class="text-2xl mb-2">
+                    {{ targets.dogsToAssign.filter(d => !d.cabin_id).map(d => d.display_name).join(', ') }}
+                    {{ targets.dogsToAssign.filter(d => !d.cabin_id).length === 1 ? "doesn't" : "don't" }} have a cabin assigned!
+                </h3>
+                <p class="text-xl text-gray-600 mb-6">Assign a cabin first, then start the rest break.</p>
+                <div class="flex justify-center gap-6 text-2xl">
+                    <button @click="handleNoCabinAssign"
+                            class="px-8 py-4 bg-caregiver text-white rounded-xl flex items-center gap-3">
+                        <FontAwesomeIcon :icon="['fas', 'house-circle-check']"/>
+                        Assign Cabin
+                    </button>
+                    <button @click="handleNoCabinDismiss"
+                            class="px-8 py-4 bg-gray-500 text-white rounded-xl flex items-center gap-3">
+                        <FontAwesomeIcon :icon="['fas', 'xmark']"/>
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <div v-if="statusMessage" class="text-3xl mt-4 text-center" :class="statusClass">
             {{ statusMessage }}

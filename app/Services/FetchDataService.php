@@ -24,22 +24,20 @@ class FetchDataService
         $url = config('services.gingr.uris.' . $endpoint, $endpoint);
         $params['key'] = config('services.gingr.api_key');
 
-        $cookies = Cache::get('gingr_session_cookies') ?? $this->authenticate();
-        $cookieHeader = collect($cookies)->map(fn($value, $name) => "$name=$value")->implode('; ');
+        $response = Http::withHeaders($this->gingrHeaders())->get($url, $params);
 
-        $response = Http::withHeaders([
-            'Cookie' => $cookieHeader,
-            'X-Requested-With' => 'XMLHttpRequest',
-            'Accept' => 'application/json, text/javascript, */*; q=0.01',
-            'User-Agent' => self::USER_AGENT,
-            'Referer' => config('services.gingr.uris.dashboard'),
-        ])->get($url, $params);
+        if ($response->successful() && null !== ($data = $response->json())) return $data;
+        if (!in_array($response->status(), [401, 403])) {
+            throw new Exception("Gingr API request failed [{$response->status()}]: $url");
+        }
+
+        $response = Http::withHeaders($this->gingrHeaders(fresh: true))->get($url, $params);
 
         if (!$response->successful()) {
             throw new Exception("Gingr API request failed [{$response->status()}]: $url");
         }
 
-        return $response->json();
+        return $response->json() ?? throw new Exception("Gingr API returned non-JSON after re-authentication: $url");
     }
 
     /**
@@ -49,25 +47,22 @@ class FetchDataService
      */
     public function fetchWithSession(string $path): array
     {
-        $cookies = Cache::get('gingr_session_cookies') ?? $this->authenticate();
+        $url = config('services.gingr.uris.' . $path, $path);
 
-        $cookieHeader = collect($cookies)
-            ->map(fn($value, $name) => "$name=$value")
-            ->implode('; ');
+        $response = Http::withHeaders($this->gingrHeaders())->get($url);
 
-        $response = Http::withHeaders([
-            'Cookie' => $cookieHeader,
-            'X-Requested-With' => 'XMLHttpRequest',
-            'Accept' => 'application/json, text/javascript, */*; q=0.01',
-            'User-Agent' => self::USER_AGENT,
-            'Referer' => config('services.gingr.uris.dashboard'),
-        ])->get(config('services.gingr.uris.' . $path, $path));
+        if ($response->successful() && null !== ($data = $response->json())) return $data;
+        if (!in_array($response->status(), [401, 403])) {
+            throw new Exception("Gingr session request failed [{$response->status()}]: $path", $response->status());
+        }
+
+        $response = Http::withHeaders($this->gingrHeaders(fresh: true))->get($url);
 
         if (!$response->successful()) {
             throw new Exception("Gingr session request failed [{$response->status()}]: $path", $response->status());
         }
 
-        return $response->json();
+        return $response->json() ?? throw new Exception("Gingr session returned non-JSON after re-authentication: $path");
     }
 
     /**
@@ -77,23 +72,22 @@ class FetchDataService
      */
     public function postWithSession(string $url, array $params = []): array
     {
-        $cookies = Cache::get('gingr_session_cookies') ?? $this->authenticate();
-        $cookieHeader = collect($cookies)->map(fn($value, $name) => "$name=$value")->implode('; ');
         $params['key'] = config('services.gingr.api_key');
 
-        $response = Http::withHeaders([
-            'Cookie'            => $cookieHeader,
-            'X-Requested-With'  => 'XMLHttpRequest',
-            'Accept'            => 'application/json, text/javascript, */*; q=0.01',
-            'User-Agent'        => self::USER_AGENT,
-            'Referer'           => config('services.gingr.uris.dashboard'),
-        ])->asForm()->post($url, $params);
+        $response = Http::withHeaders($this->gingrHeaders())->asForm()->post($url, $params);
+
+        if ($response->successful() && null !== ($data = $response->json())) return $data;
+        if (!in_array($response->status(), [401, 403])) {
+            throw new Exception("Gingr POST request failed [{$response->status()}]: $url", $response->status());
+        }
+
+        $response = Http::withHeaders($this->gingrHeaders(fresh: true))->asForm()->post($url, $params);
 
         if (!$response->successful()) {
             throw new Exception("Gingr POST request failed [{$response->status()}]: $url", $response->status());
         }
 
-        return $response->json();
+        return $response->json() ?? throw new Exception("Gingr POST returned non-JSON after re-authentication: $url");
     }
 
     /**
@@ -155,7 +149,7 @@ class FetchDataService
             throw new Exception("Gingr report request failed [{$response->status()}]: $url");
         }
 
-        return $response->json();
+        return $response->json() ?? throw new Exception("Gingr report returned non-JSON response: $url");
     }
 
     /**
@@ -282,6 +276,21 @@ class FetchDataService
     // Gingr
     // -------------------------------------------------------------------------
 
+    private function gingrHeaders(bool $fresh = false): array
+    {
+        if ($fresh) Cache::forget('gingr_session_cookies');
+        $cookies = Cache::get('gingr_session_cookies') ?? $this->authenticate();
+        $cookieHeader = collect($cookies)->map(fn($v, $n) => "$n=$v")->implode('; ');
+
+        return [
+            'Cookie'           => $cookieHeader,
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept'           => 'application/json, text/javascript, */*; q=0.01',
+            'User-Agent'       => self::USER_AGENT,
+            'Referer'          => config('services.gingr.uris.dashboard'),
+        ];
+    }
+
     /**
      * @throws Exception
      */
@@ -313,7 +322,7 @@ class FetchDataService
         }
 
         if (empty($cookies['gingr_ci_session'])) {
-            throw new Exception('Gingr authentication failed: no session cookie. CSRF token found: ' . ($csrfToken ? 'yes' : 'no'));
+            throw new Exception('Gingr authentication failed — session cookie not set. The password may have expired; check GINGR_PASSWORD in .env. CSRF token found: ' . ($csrfToken ? 'yes' : 'no'));
         }
 
         // Cache just under 3 days — CSRF cookie is shortest-lived at 3 days
