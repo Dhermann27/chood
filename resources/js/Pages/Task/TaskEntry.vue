@@ -193,24 +193,22 @@ function addAllBoarders() {
     targets.value.dogsToAssign = [...targets.value.dogsToAssign, ...boarders];
 }
 
+function handleBreakDogSelect(dog) {
+    counter = 0;
+    if (!dog.cabin_id) showNoCabinWarning.value = true;
+}
+
 function handleBreakDogUpdate(breakTypeId) {
     counter = 0;
     targets.value.break_type_id = breakTypeId;
-    if (targets.value['dogsToAssign'].length === 0) return;
-
-    if (targets.value.dogsToAssign.some(d => !d.cabin_id)) {
-        showNoCabinWarning.value = true;
-        return;
-    }
-
-    nextStep();
+    if (targets.value['dogsToAssign'].length > 0) nextStep();
 }
 
 function handleNoCabinAssign() {
     showNoCabinWarning.value = false;
     targets.value = {
         ...targets.value,
-        dogsToAssign: targets.value.dogsToAssign.filter(d => !d.cabin_id),
+        dogsToAssign: [],
         cabin_id: 0,
         cabin_short_name: '',
         break_type_id: null,
@@ -220,6 +218,7 @@ function handleNoCabinAssign() {
 
 function handleNoCabinDismiss() {
     showNoCabinWarning.value = false;
+    targets.value.dogsToAssign = targets.value.dogsToAssign.filter(d => d.cabin_id);
 }
 
 function handleBreakDogDelete(dog) {
@@ -463,7 +462,7 @@ onUnmounted(() => {
                         class="dogsToAssign-multiselect border-2 bg-crimson placeholder:text-crimson"
                         v-model="targets.dogsToAssign" multiple track-by="id" :options="dogsNotOnBreak"
                         label="display_name"
-                        placeholder="Select Dog(s) (Required)" @click="counter = 0;">
+                        placeholder="Select Dog(s) (Required)" @click="counter = 0;" @select="handleBreakDogSelect">
                         <template #tag="{ option, remove }">
                             <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{
                                     option.display_name

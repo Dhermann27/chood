@@ -139,6 +139,7 @@ class ReportController extends Controller
         // TODO: Include future reservations not yet checked in
         $dogs = Dog::with([
             'allergies',
+            'cabin',
             'appointments' => fn($q) => $q->whereDate('scheduled_start', $today)->with('service'),
         ])->whereNull('checked_out_at')
             ->whereHas('appointments', fn($q) => $q->whereDate('scheduled_start', $today))
@@ -153,16 +154,27 @@ class ReportController extends Controller
         return Inertia::render('DailyReports', [
             'date' => $today->format('l, F j, Y'),
             'fsg' => $dogs->filter(fn($d) =>
-                $d->appointments->contains(fn($a) => in_array($a->service?->category, $fsgCats))
-            )->sortBy('checkin')->values(),
+                $d->appointments->contains(fn($a) => $this->nameMatchesAny($a->service?->name, $fsgCats))
+            )->sortBy(fn($d) =>
+                $d->appointments->first(fn($a) => $this->nameMatchesAny($a->service?->name, $fsgCats))?->scheduled_start
+            )->values(),
             'enrichment' => $dogs->filter(fn($d) =>
                 $d->appointments->contains(fn($a) => str_contains(strtolower($a->service?->name ?? ''), 'enrich'))
-            )->sortBy('checkin')->values(),
+            )->sortBy('display_name')->values(),
             'bath' => $dogs->filter(fn($d) =>
-                $d->appointments->contains(fn($a) => in_array($a->service?->category, $bathCats))
-            )->sortBy('checkin')->values(),
+                $d->appointments->contains(fn($a) => $this->nameMatchesAny($a->service?->name, $bathCats))
+            )->sortBy(fn($d) =>
+                $d->appointments->first(fn($a) => $this->nameMatchesAny($a->service?->name, $bathCats))?->scheduled_start
+            )->values(),
             'interviews' => $interviews,
         ]);
+    }
+
+    private function nameMatchesAny(?string $name, array $keywords): bool
+    {
+        if (!$name) return false;
+        $lower = strtolower($name);
+        return collect($keywords)->contains(fn($k) => str_contains($lower, strtolower($k)));
     }
 
     public function journalMaker(): Response
