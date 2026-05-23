@@ -17,6 +17,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class GoFetchListJob implements ShouldQueue, ShouldBeUnique
@@ -63,11 +64,17 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
                     ['name' => $row['type'], 'housing_code' => HousingServiceCodes::fromServiceName($row['type'] ?? '')]
                 );
             }
+            $servicesString = $row['services_string'] ?? null ?: null;
             $dog = Dog::updateOrCreate(
                 ['pet_id' => $row['a_id']],
-                array_merge($this->getUpdateValues($row, $cabins), ['checked_out_at' => null])
+                array_merge($this->getUpdateValues($row, $cabins), [
+                    'checked_out_at' => null,
+                    'services_string' => $servicesString,
+                ])
             );
-            if ($dog->wasRecentlyCreated) $listChanged = true;
+            if ($dog->wasRecentlyCreated) {
+                $listChanged = true;
+            }
             $activePetIds[] = $dog->pet_id;
             $activeOwnerIds[] = $row['o_id'];
 
@@ -83,6 +90,9 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         // Mark newly departed dogs (first time missing from Gingr feed)
         $newlyGoneDogs = Dog::whereNotNull('pet_id')->whereNull('checked_out_at')->whereNotIn('pet_id', $activePetIds)->get(['pet_id', 'cabin_id', 'account_id']);
         Dog::whereIn('pet_id', $newlyGoneDogs->pluck('pet_id'))->update(['checked_out_at' => now()]);
+        if ($newlyGoneDogs->isNotEmpty()) {
+            DB::table('dog_icons')->whereIn('pet_id', $newlyGoneDogs->pluck('pet_id'))->delete();
+        }
 
         if ($listChanged || $newlyGoneDogs->isNotEmpty() || !Cache::has('section_counts')) {
             GoFetchSectionCountsJob::dispatch();
@@ -154,16 +164,16 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             'cabin_id' => $cabins->get($this->normCabinName($row['run_name'] ?? ''), null),
             'housing_code' => $this->resolveHousingCode($row),
             'photoUri' => $row['image'] ?: null,
-            'checkin' => $row['check_in_stamp'] ? Carbon::createFromTimestamp($row['check_in_stamp']) : null,
-            'checkout' => $row['end_date'] ? Carbon::createFromTimestamp($row['end_date']) : null,
+            'checkin' => $row['check_in_stamp'] ? Carbon::createFromTimestamp($row['check_in_stamp'], config('app.timezone')) : null,
+            'checkout' => $row['end_date'] ? Carbon::createFromTimestamp($row['end_date'], config('app.timezone')) : null,
         ], fn($v) => !is_null($v));
     }
 
     private function resolveHousingCode(array $row): string
     {
-        // Gingr workaround: orientation dogs needing grooming are checked in as Grooming Services
-        // with Interview added on. Detect via services_string and treat as INTV.
-        if (str_contains(strtolower($row['services_string'] ?? ''), 'interview')) {
+        // Orientation dogs may be checked in as Grooming Services with Interview/Evaluation added on.
+        $sl = strtolower($row['services_string'] ?? '');
+        if (str_contains($sl, 'interview') || str_contains($sl, 'evaluation') || str_contains($sl, 'orientation')) {
             return HousingServiceCodes::INTV->value;
         }
 

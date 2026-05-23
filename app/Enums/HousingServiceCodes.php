@@ -40,7 +40,7 @@ enum HousingServiceCodes: string
         if (str_contains($name, 'boarding')) return self::BRDC;
         if (str_contains($name, 'day camp') && str_contains($name, 'half')) return self::DCHD;
         if (str_contains($name, 'day camp')) return self::DCFD;
-        if (str_contains($name, 'interview')) return self::INTV;
+        if (str_contains($name, 'interview') || str_contains($name, 'evaluation') || str_contains($name, 'orientation')) return self::INTV;
         return null;
     }
 }

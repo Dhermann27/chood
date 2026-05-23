@@ -3,22 +3,20 @@
 namespace App\Models;
 
 use App\Enums\HousingServiceCodes;
+use App\Enums\ReportCategory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Service extends Model
 {
-    protected $fillable = ['gingr_id', 'name', 'category', 'code', 'housing_code', 'duration', 'is_active'];
+    protected $fillable = ['gingr_id', 'name', 'housing_code', 'report_category',
+        'booking_category_id', 'account_code_id', 'duration', 'is_active'];
 
     public $timestamps = false;
 
     protected $casts = [
-        'housing_code' => HousingServiceCodes::class,
+        'housing_code'    => HousingServiceCodes::class,
+        'report_category' => ReportCategory::class,
     ];
 
 
-    public function appointments(): HasMany
-    {
-        return $this->hasMany(Appointment::class);
-    }
 }

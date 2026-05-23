@@ -32,7 +32,7 @@ Route::get('/mealmap', [MapController::class, 'mealmap']);
 Route::get('/groommap', [MapController::class, 'groommap']);
 
 
-Route::get('/dailyreports', [ReportController::class, 'dailyReports']);
+Route::get('/dailyreports/{date?}', [ReportController::class, 'dailyReports'])->where('date', '\d{4}-\d{2}-\d{2}');
 
 Route::prefix('journalmaker')->group(function () {
     Route::get('/', [ReportController::class, 'journalMaker']);

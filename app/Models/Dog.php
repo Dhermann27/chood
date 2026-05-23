@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\HousingServiceCodes;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,10 +15,10 @@ class Dog extends Model
 
     protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'display_name', 'gender', 'photoUri',
         'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout', 'checked_out_at',
-        'rest_starts_at', 'break_type_id', 'food_type', 'feeding_method', 'feeding_notes',
+        'rest_starts_at', 'break_type_id', 'food_type', 'feeding_method', 'feeding_notes', 'services_string',
     ];
 
-    protected $casts = ['checkin' => 'datetime:Y-m-d H:i:s', 'checkout' => 'datetime:Y-m-d H:i:s',
+    protected $casts = ['checkin' => 'datetime', 'checkout' => 'datetime',
         'checked_out_at' => 'datetime', 'rest_starts_at' => 'datetime'];
 
     protected $appends = ['is_boarding', 'is_daycare', 'is_interview', 'size_letter', 'left_icons', 'right_icons'];
@@ -71,26 +70,7 @@ class Dog extends Model
             $icons[] = ['icon' => 'weight-hanging', 'text' => $this->size_letter];
         }
 
-        if ($this->appointments) {
-            foreach ($this->appointments as $appointment) {
-                $start = Carbon::parse($appointment->scheduled_start);
-                $today = Carbon::today();
-                if (config('services.gingr.sandbox_service_condition') === '<=' ? $start->lessThanOrEqualTo($today)
-                    : $start->isSameDay($today)) {
-                    if (in_array($appointment->service->category, config('services.gingr.bath_service_cats')) &&
-                        !array_search('droplet', array_column($icons, 'icon'))) {
-                        $icons[] = ['icon' => 'droplet', 'text' => substr($start->format('ga'), 0, 2),
-                            'transform' => 'grow-1', 'start' => $appointment->scheduled_start, 'checkout' => $this->checkout,
-                            'completed' => $appointment->completed_at != null];
-                    } elseif (in_array($appointment->service->category, config('services.gingr.fsg_service_cats')) &&
-                        !array_search('sheep', array_column($icons, 'icon'))) {
-                        $icons[] = ['icon' => 'sheep', 'text' => substr($start->format('ga'), 0, 2),
-                            'transform' => 'grow-1 right-2', 'start' => $appointment->scheduled_start, 'checkout' => $this->checkout,
-                            'completed' => $appointment->completed_at != null];
-                    }
-                }
-            }
-        }
+        // TODO: add droplet/sheep icons by parsing services_string for bath/FSG keywords
 
         return $icons;
     }
@@ -140,9 +120,5 @@ class Dog extends Model
         return $this->belongsToMany(Icon::class, 'dog_icons', 'pet_id', 'icon_id', 'pet_id');
     }
 
-    public function appointments()
-    {
-        return $this->hasMany(Appointment::class, 'pet_id', 'pet_id');
-    }
 
 }

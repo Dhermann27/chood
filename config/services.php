@@ -65,6 +65,7 @@ return [
         'bath_service_cats' => array_map('trim', explode(',', env('BATH_SERVICE_CATEGORIES', ''))),
         'fsg_service_cats' => array_map('trim', explode(',', env('FSG_SERVICE_CATEGORIES', ''))),
         'location_id' => env('GINGR_LOCATION_ID', 3),
+        'service_type_ids' => array_map('intval', array_filter(array_map('trim', explode(',', env('GINGR_SERVICE_TYPE_IDS', ''))))),
         'uris' => [
             'login' => env('GINGR_BASE_URL') . env('GINGR_LOGIN_URI'),
             'dashboard' => env('GINGR_BASE_URL') . '/dashboard',
@@ -77,6 +78,8 @@ return [
             'payments_refunds_raw' => env('GINGR_BASE_URL') . '/reports/payments_refunds_raw',
             'lodging_occupancy' => env('GINGR_BASE_URL') . '/reports/lodging_occupancy',
             'sectionCounts' => env('GINGR_BASE_URL') . '/dashboard/section_counts',
+            'reservationView'  => env('GINGR_BASE_URL') . '/reservations/view/id/',
+            'servicesByDate'   => env('GINGR_BASE_URL') . '/reports/services_by_date',
         ],
     ],
 

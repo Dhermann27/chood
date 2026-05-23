@@ -16,9 +16,10 @@ return new class extends Migration
             $table->id();
             $table->integer('gingr_id')->unique()->nullable();
             $table->string('name')->nullable();
-            $table->string('category')->index()->nullable();
-            $table->string('code')->nullable();
             $table->string('housing_code')->nullable();
+            $table->string('report_category')->nullable();
+            $table->unsignedSmallInteger('booking_category_id')->nullable();
+            $table->unsignedSmallInteger('account_code_id')->nullable();
             $table->integer('duration')->default(45000); // Full day
             $table->tinyInteger('is_active')->default(true);
         });

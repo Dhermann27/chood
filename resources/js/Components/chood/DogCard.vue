@@ -1,5 +1,5 @@
 <script setup>
-import {computed, nextTick, onUnmounted, ref, watch} from "vue";
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from "vue";
 import {getBannerStyle, getFittedFontSize} from "@/utils.js";
 import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
 
@@ -27,7 +27,15 @@ function setIconRef(index, dir) {
     };
 }
 
-const intervals = [null]; // [rotationInterval]
+const now = ref(Date.now());
+const intervals = [null, null]; // [rotationInterval, clockInterval]
+
+onMounted(() => {
+    intervals[1] = setInterval(() => {
+        now.value = Date.now();
+    }, 60000);
+});
+
 
 const bannerStyle = computed(() =>
     getBannerStyle(currentDog.value, breakTimeLeft.value)
@@ -58,7 +66,7 @@ const breakTimeLeft = computed(() => {
 
     if (bt.behavior === 'countdown') {
         const end = new Date(start.getTime() + bt.duration_minutes * 60 * 1000);
-        const minutesLeft = Math.max(Math.ceil((end.getTime() - Date.now()) / (60 * 1000)), 0);
+        const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
         return {
             minutesLeft,
             percentElapsed: 1 - minutesLeft / bt.duration_minutes,
@@ -71,7 +79,7 @@ const breakTimeLeft = computed(() => {
         const onePm = new Date(start);
         onePm.setHours(13, 0, 0, 0);
         const totalMinutes = Math.max(Math.ceil((onePm.getTime() - start.getTime()) / (60 * 1000)), 1);
-        const minutesLeft = Math.max(Math.ceil((onePm.getTime() - Date.now()) / (60 * 1000)), 0);
+        const minutesLeft = Math.max(Math.ceil((onePm.getTime() - now.value) / (60 * 1000)), 0);
         return {
             minutesLeft,
             percentElapsed: 1 - minutesLeft / totalMinutes,
@@ -81,7 +89,7 @@ const breakTimeLeft = computed(() => {
     }
 
     if (bt.behavior === 'walks_only') {
-        const elapsed = Math.floor((Date.now() - start.getTime()) / (60 * 1000));
+        const elapsed = Math.floor((now.value - start.getTime()) / (60 * 1000));
         const timeForWalk = elapsed >= bt.duration_minutes;
         return {
             minutesLeft: timeForWalk ? 'Walk!' : 'EOD',

@@ -50,8 +50,7 @@ trait ChoodTrait
      */
     public function getDogs(bool $filterByCabinId = false, string $size = null, bool $includeCheckedOut = false): Collection
     {
-        // TODO: re-add appointments.service once Gingr service sync is verified in prod
-        $dogs = Dog::with(/*'appointments.service',*/ 'cabin', 'breakType', 'icons');
+        $dogs = Dog::with('cabin', 'breakType', 'icons');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
         if ($size) {
             $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());

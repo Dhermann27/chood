@@ -3,16 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Enums\HousingServiceCodes;
+use App\Enums\ReportCategory;
 use App\Jobs\Report\GoFetchReports;
 use App\Models\Dog;
 use App\Models\Report;
+use App\Models\Service;
 use App\Services\FetchDataService;
 use App\Services\JournalEntryTransformer;
 use App\Traits\ParsesServiceCategory;
 use Carbon\Carbon;
+use DOMDocument;
+use DOMXPath;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -130,51 +135,115 @@ class ReportController extends Controller
         return response()->json($report);
     }
 
-    public function dailyReports(): Response
+    public function dailyReports(string $date = null): Response
     {
-        $today = Carbon::today();
-        $fsgCats = config('services.gingr.fsg_service_cats');
-        $bathCats = config('services.gingr.bath_service_cats');
+        $today = $date ? Carbon::parse($date)->startOfDay() : Carbon::today();
+        $serviceIds = Service::where('is_active', true)->whereNotNull('gingr_id')->pluck('gingr_id')->toArray();
 
-        // TODO: Include future reservations not yet checked in
-        $dogs = Dog::with([
-            'allergies',
-            'cabin',
-            'appointments' => fn($q) => $q->whereDate('scheduled_start', $today)->with('service'),
-        ])->whereNull('checked_out_at')
-            ->whereHas('appointments', fn($q) => $q->whereDate('scheduled_start', $today))
-            ->get();
+        $rows = [];
+        if (!empty($serviceIds)) {
+            try {
+                $html = $this->fetchDataService->fetchServicesByDate($today->format('m/d/Y'), $serviceIds);
+                $rows = $this->parseServicesByDate($html);
+            } catch (Exception $e) {
+                Log::warning('dailyReports: fetch failed: ' . $e->getMessage());
+            }
+        }
+
+        $petIds = collect($rows)->pluck('pet_id')->unique();
+        $dogs = Dog::whereIn('pet_id', $petIds)->with('allergies', 'cabin')->get()->keyBy('pet_id');
+
+        $buildEntry = function (array $row) use ($dogs): array {
+            $dog = $dogs->get($row['pet_id']);
+            return [
+                'pet_id' => $row['pet_id'],
+                'display_name' => trim(preg_replace('/\s*\(.+\)\s*$/', '', $dog?->display_name ?? $row['pet_name'])),
+                'breed' => $row['breed'],
+                'gender' => $dog?->gender,
+                'weight' => $dog?->weight,
+                'size_letter' => $dog?->size_letter,
+                'cabin' => $dog?->cabin,
+                'allergies' => $dog?->allergies ?? collect(),
+                'report_category' => ReportCategory::fromServiceName($row['service_name'])->value,
+                'service_name' => $row['service_name'],
+                'assigned_to' => $row['assigned_to'],
+                'scheduled_start' => $row['scheduled_start'],
+            ];
+        };
+
+        $entries = collect($rows)->map($buildEntry);
+
+        $sortByTimeThenName = fn($col) => $col
+            ->sortBy('display_name')
+            ->sortBy(fn($e) => $e['scheduled_start'] ?? '9999-99-99')
+            ->values();
 
         $interviews = Dog::with('allergies')
             ->where('housing_code', HousingServiceCodes::INTV->value)
-            ->whereNull('checked_out_at')
-            ->orderBy('checkin')
+            ->whereDate('checkin', $today)
             ->get();
 
         return Inertia::render('DailyReports', [
             'date' => $today->format('l, F j, Y'),
-            'fsg' => $dogs->filter(fn($d) =>
-                $d->appointments->contains(fn($a) => $this->nameMatchesAny($a->service?->name, $fsgCats))
-            )->sortBy(fn($d) =>
-                $d->appointments->first(fn($a) => $this->nameMatchesAny($a->service?->name, $fsgCats))?->scheduled_start
-            )->values(),
-            'enrichment' => $dogs->filter(fn($d) =>
-                $d->appointments->contains(fn($a) => str_contains(strtolower($a->service?->name ?? ''), 'enrich'))
-            )->sortBy('display_name')->values(),
-            'bath' => $dogs->filter(fn($d) =>
-                $d->appointments->contains(fn($a) => $this->nameMatchesAny($a->service?->name, $bathCats))
-            )->sortBy(fn($d) =>
-                $d->appointments->first(fn($a) => $this->nameMatchesAny($a->service?->name, $bathCats))?->scheduled_start
-            )->values(),
-            'interviews' => $interviews,
+            'fsg' => $sortByTimeThenName($entries->filter(fn($e) => $e['report_category'] === ReportCategory::FSG->value)),
+            'enrichment' => $sortByTimeThenName($entries->filter(fn($e) => $e['report_category'] === ReportCategory::Enrichment->value)),
+            'bath' => $sortByTimeThenName($entries->filter(fn($e) => in_array($e['report_category'], [ReportCategory::Bath->value, ReportCategory::Nail->value]))),
+            'interviews' => $interviews->sortBy('display_name')->sortBy('checkin')->values(),
         ]);
     }
 
-    private function nameMatchesAny(?string $name, array $keywords): bool
+    private function parseServicesByDate(string $html): array
     {
-        if (!$name) return false;
-        $lower = strtolower($name);
-        return collect($keywords)->contains(fn($k) => str_contains($lower, strtolower($k)));
+        $services = [];
+
+        $dom = new DOMDocument();
+        libxml_use_internal_errors(true);
+        $dom->loadHTML($html);
+        libxml_clear_errors();
+
+        $xpath = new DOMXPath($dom);
+        $rows = $xpath->query('//tr[.//*[contains(@class,"completeCheck") and @data-id]]');
+
+        foreach ($rows as $row) {
+            $checkNode = $xpath->query('.//*[contains(@class,"completeCheck") and @data-id]', $row)->item(0);
+            $serviceId = (int)($checkNode?->getAttribute('data-id') ?? 0);
+            if (!$serviceId) continue;
+
+            $tds = $xpath->query('./td', $row);
+            if ($tds->length < 12) continue;
+
+            $link = $xpath->query('.//a[contains(@href,"/animals/view/id/")]', $tds->item(3))->item(0);
+            if (!$link) continue;
+            preg_match('~/animals/view/id/(\d+)~', $link->getAttribute('href'), $animalMatch);
+            $petId = (int)($animalMatch[1] ?? 0);
+            if (!$petId) continue;
+            $linkText = trim(preg_replace('/\s+/', ' ', $link->textContent));
+            preg_match('/\((.+)\)\s*$/', $linkText, $breedMatch);
+            $breed = $breedMatch[1] ?? null;
+            $petName = trim(preg_replace('/\s*\(.+\)\s*$/', '', $linkText));
+
+            $boldNode = $xpath->query('.//*[contains(@class,"font-bold")]', $tds->item(1))->item(0);
+            $name = trim($boldNode?->textContent ?? '');
+            $name = trim(preg_replace('/ (?:Starting At: )?@.+$/', '', $name));
+            if (!$name) continue;
+
+            $timeText = trim(preg_replace('/\s+/', ' ', $tds->item(11)->textContent));
+            $scheduledStart = $timeText ? Carbon::createFromFormat('l, n/j/Y g:i a', $timeText) : null;
+
+            $assignedTo = trim(preg_replace('/\s+/', ' ', $tds->item(10)->textContent)) ?: null;
+
+            $services[] = [
+                'service_id' => $serviceId,
+                'pet_id' => $petId,
+                'pet_name' => $petName,
+                'breed' => $breed,
+                'service_name' => $name,
+                'assigned_to' => $assignedTo,
+                'scheduled_start' => $scheduledStart,
+            ];
+        }
+
+        return $services;
     }
 
     public function journalMaker(): Response

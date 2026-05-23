@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\HousingServiceCodes;
+use App\Enums\ReportCategory;
 use App\Models\Service;
 use App\Services\FetchDataService;
 use Exception;
@@ -18,9 +19,6 @@ class GoFetchServiceListJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    // Gingr reservation type_ids to fetch services for
-    private const TYPE_IDS = [1, 2, 3, 4, 5];
-
     public function __construct()
     {
     }
@@ -31,9 +29,10 @@ class GoFetchServiceListJob implements ShouldQueue, ShouldBeUnique
     public function handle(FetchDataService $fetchDataService): void
     {
         $location = config('services.gingr.location_id');
+        $typeIds = config('services.gingr.service_type_ids', []);
         $seen = [];
 
-        foreach (self::TYPE_IDS as $typeId) {
+        foreach ($typeIds as $typeId) {
             try {
                 $output = $fetchDataService->fetchApi('servicesByType', [
                     'type_id' => $typeId,
@@ -51,12 +50,16 @@ class GoFetchServiceListJob implements ShouldQueue, ShouldBeUnique
                 if (isset($seen[$gingrId])) continue;
                 $seen[$gingrId] = true;
 
+                $name = trim(preg_replace('/ (?:Starting At: )?@.+$/', '', $svc['name']));
+
                 Service::updateOrCreate(
                     ['gingr_id' => $gingrId],
                     [
-                        'name' => $svc['name'],
-                        'category' => $svc['booking_category_id'],
-                        'housing_code' => HousingServiceCodes::fromServiceName($svc['name']),
+                        'name' => $name,
+                        'housing_code' => HousingServiceCodes::fromServiceName($name),
+                        'report_category' => ReportCategory::resolve($svc['booking_category_id'], $svc['account_code_id'], $name),
+                        'booking_category_id' => $svc['booking_category_id'] ?: null,
+                        'account_code_id' => $svc['account_code_id'] ?: null,
                         'duration' => (int)$svc['duration'],
                         'is_active' => $svc['is_deleted'] === '0' && $svc['status'] === '1',
                     ]

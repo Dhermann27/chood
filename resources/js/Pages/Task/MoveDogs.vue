@@ -92,6 +92,22 @@ function handleDragPreview(e, yard) {
     emit('changed', pendingMoves.value);
 }
 
+function moveAll() {
+    const basicLarge = moveDogYards.value.find(y => y.id === LARGE_YARD_IDS[0]);
+    const basicSmall = moveDogYards.value.find(y => y.id === SMALL_YARD_IDS[0]);
+    const newMoves = {...pendingMoves.value};
+    props.dogs.forEach(d => {
+        const currentYard = pendingMoves.value[d.id] ?? d.yard_id;
+        const isLarge = d.size_letter?.includes('L') && d.size_letter !== 'LS';
+        const target = isLarge ? basicLarge : basicSmall;
+        if (!target || currentYard === target.id) return;
+        newMoves[d.id] = target.id;
+    });
+    pendingMoves.value = newMoves;
+    rebuildYardTiles();
+    emit('changed', pendingMoves.value);
+}
+
 function undoMoves() {
     pendingMoves.value = {};
     rebuildYardTiles();
@@ -144,6 +160,12 @@ watch(() => [moveDogYards.value, props.dogs], rebuildYardTiles, {deep: true, imm
                         class="px-10 py-4 text-2xl rounded-2xl bg-greyhound text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         :disabled="pendingCount === 0" @click="undoMoves">
                         Clear All
+                    </button>
+
+                    <button
+                        class="px-10 py-4 text-2xl rounded-2xl bg-caregiver text-white"
+                        @click="moveAll">
+                        Move All
                     </button>
 
                     <button

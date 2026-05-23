@@ -41,6 +41,48 @@ class FetchDataService
     }
 
     /**
+     * POST to a Gingr session-authenticated endpoint and return the raw HTML body.
+     *
+     * @throws Exception
+     */
+    public function postHtmlWithSession(string $url, array $params): string
+    {
+        $response = Http::withHeaders($this->gingrHeaders())->asForm()->post($url, $params);
+
+        if ($response->successful()) return $response->body();
+        if (!in_array($response->status(), [401, 403])) {
+            throw new Exception("Gingr HTML POST failed [{$response->status()}]: $url");
+        }
+
+        $response = Http::withHeaders($this->gingrHeaders(fresh: true))->asForm()->post($url, $params);
+        if (!$response->successful()) {
+            throw new Exception("Gingr HTML POST failed [{$response->status()}]: $url");
+        }
+        return $response->body();
+    }
+
+    /**
+     * Fetch the Services by Date HTML report for a given date (MM/DD/YYYY).
+     *
+     * @throws Exception
+     */
+    public function fetchServicesByDate(string $date, array $serviceIds): string
+    {
+        return $this->postHtmlWithSession(
+            config('services.gingr.uris.servicesByDate'),
+            [
+                'date_from' => $date,
+                'date_to' => $date,
+                'locations' => [config('services.gingr.location_id')],
+                'service_type' => 'addl_services',
+                'service' => $serviceIds,
+                'type' => 'scheduled',
+                'checked_out' => 'true',
+            ]
+        );
+    }
+
+    /**
      * Fetch from a Gingr session-authenticated endpoint (e.g. /owners/get_form_data).
      *
      * @throws Exception
@@ -97,7 +139,7 @@ class FetchDataService
      */
     public function authenticateUser(string $username, string $password): array
     {
-        $jar     = new CookieJar();
+        $jar = new CookieJar();
         $headers = ['User-Agent' => self::USER_AGENT];
 
         $loginPage = Http::withOptions(['cookies' => $jar])
@@ -111,8 +153,8 @@ class FetchDataService
             ->withHeaders($headers)
             ->asForm()
             ->post(config('services.gingr.uris.login'), [
-                'identity'         => $username,
-                'password'         => $password,
+                'identity' => $username,
+                'password' => $password,
                 'gingr_csrf_token' => $csrfToken,
             ]);
 
@@ -138,11 +180,11 @@ class FetchDataService
         $cookieHeader = collect($cookies)->map(fn($value, $name) => "$name=$value")->implode('; ');
 
         $response = Http::withHeaders([
-            'Cookie'            => $cookieHeader,
-            'X-Requested-With'  => 'XMLHttpRequest',
-            'Accept'            => 'application/json, text/javascript, */*; q=0.01',
-            'User-Agent'        => self::USER_AGENT,
-            'Referer'           => config('services.gingr.uris.dashboard'),
+            'Cookie' => $cookieHeader,
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json, text/javascript, */*; q=0.01',
+            'User-Agent' => self::USER_AGENT,
+            'Referer' => config('services.gingr.uris.dashboard'),
         ])->asForm()->post($url, $params);
 
         if (!$response->successful()) {
@@ -163,9 +205,9 @@ class FetchDataService
         $cookieHeader = collect($cookies)->map(fn($value, $name) => "$name=$value")->implode('; ');
 
         $response = Http::withHeaders([
-            'Cookie'    => $cookieHeader,
-            'User-Agent'=> self::USER_AGENT,
-            'Referer'   => config('services.gingr.uris.dashboard'),
+            'Cookie' => $cookieHeader,
+            'User-Agent' => self::USER_AGENT,
+            'Referer' => config('services.gingr.uris.dashboard'),
         ])->asForm()->post($url, $params);
 
         if (!$response->successful()) {
@@ -217,7 +259,7 @@ class FetchDataService
                     'order' => [],
                     'criteria' => [
                         ['key' => 'dateFrom', 'operator' => 'gte', 'value' => $report->report_date],
-                        ['key' => 'dateTo',   'operator' => 'lte', 'value' => $report->report_date],
+                        ['key' => 'dateTo', 'operator' => 'lte', 'value' => $report->report_date],
                     ],
                 ]],
             ],
@@ -276,6 +318,25 @@ class FetchDataService
     // Gingr
     // -------------------------------------------------------------------------
 
+    /**
+     * @throws Exception
+     */
+    public function fetchHtmlWithSession(string $url): string
+    {
+        $response = Http::withHeaders($this->gingrHeaders())->get($url);
+
+        if ($response->successful()) return $response->body();
+        if (!in_array($response->status(), [401, 403])) {
+            throw new Exception("Gingr HTML request failed [{$response->status()}]: $url");
+        }
+
+        $response = Http::withHeaders($this->gingrHeaders(fresh: true))->get($url);
+        if (!$response->successful()) {
+            throw new Exception("Gingr HTML request failed [{$response->status()}]: $url");
+        }
+        return $response->body();
+    }
+
     private function gingrHeaders(bool $fresh = false): array
     {
         if ($fresh) Cache::forget('gingr_session_cookies');
@@ -283,11 +344,11 @@ class FetchDataService
         $cookieHeader = collect($cookies)->map(fn($v, $n) => "$n=$v")->implode('; ');
 
         return [
-            'Cookie'           => $cookieHeader,
+            'Cookie' => $cookieHeader,
             'X-Requested-With' => 'XMLHttpRequest',
-            'Accept'           => 'application/json, text/javascript, */*; q=0.01',
-            'User-Agent'       => self::USER_AGENT,
-            'Referer'          => config('services.gingr.uris.dashboard'),
+            'Accept' => 'application/json, text/javascript, */*; q=0.01',
+            'User-Agent' => self::USER_AGENT,
+            'Referer' => config('services.gingr.uris.dashboard'),
         ];
     }
 

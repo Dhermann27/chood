@@ -61,11 +61,11 @@ const moveDogEnabled = computed(() => openYards.value.length >= 3);
 const feedingCabinEnabled = computed(() => dogsWithCabinMates.value.length > 0);
 const dogsWithCabinMates = computed(() => {
     if (!dogs.value) return [];
+    const assignedNames = new Set(dogs.value.filter(d => d.pet_id === null).map(d => d.display_name));
+    const eligible = dogs.value.filter(d => d.cabin_id && d.is_boarding && d.pet_id !== null && !d.checked_out_at && !assignedNames.has(d.display_name));
     const counts = {};
-    dogs.value.forEach(dog => {
-        if (dog.cabin_id && dog.is_boarding && dog.pet_id !== null && !dog.checked_out_at) counts[dog.cabin_id] = (counts[dog.cabin_id] || 0) + 1;
-    });
-    return dogs.value.filter(dog => dog.cabin_id && dog.is_boarding && dog.pet_id !== null && !dog.checked_out_at && counts[dog.cabin_id] > 1);
+    eligible.forEach(d => { counts[d.cabin_id] = (counts[d.cabin_id] || 0) + 1; });
+    return eligible.filter(d => counts[d.cabin_id] > 1);
 });
 const markReturnedIsWalked = computed(() => {
     const dog = targets.value.dogsToAssign;

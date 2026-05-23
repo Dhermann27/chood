@@ -11,6 +11,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('pet_id');
             $table->unsignedInteger('icon_id');
             $table->primary(['pet_id', 'icon_id']);
+            $table->foreign('pet_id')->references('pet_id')->on('dogs')->cascadeOnDelete();
             $table->foreign('icon_id')->references('id')->on('icons')->cascadeOnDelete();
         });
     }
