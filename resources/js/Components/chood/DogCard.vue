@@ -114,12 +114,10 @@ function preloadImage(dog) {
 
 watch(() => props.dogs, (newDogs) => {
     newDogs.forEach(dog => preloadImage(dog));
-    intervals.forEach((i, index) => {
-        if (i) {
-            clearInterval(i);
-            intervals[index] = null;
-        }
-    });
+    if (intervals[0]) {
+        clearInterval(intervals[0]);
+        intervals[0] = null;
+    }
 
     if (newDogs.length > 0) {
         currentDogIndex.value = 0;
