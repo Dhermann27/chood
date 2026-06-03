@@ -20,7 +20,11 @@ class MarkCabinsForCleaningJob implements ShouldQueue
 
         $deleted = Dog::whereNotNull('checked_out_at')->where('checked_out_at', '<', Carbon::today())->delete();
         Log::info("Deleted {$deleted} checked-out dog records from previous day(s)");
-        Dog::whereNull('pet_id')->delete();
+
+        // Only remove feeding blocks whose dog has already checked out; boarding dogs keep theirs.
+        $activeAccountIds = Dog::whereNotNull('pet_id')->whereNull('checked_out_at')
+            ->pluck('account_id')->filter()->unique();
+        Dog::whereNull('pet_id')->whereNotIn('account_id', $activeAccountIds)->delete();
 
         $cabins = Cabin::whereHas('dogs')->with(['dogs', 'cleaningStatus'])->get();
 

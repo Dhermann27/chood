@@ -36,6 +36,8 @@ const targets = ref({
 const step = ref(1);
 const localChecksum = ref('');
 const showNoCabinWarning = ref(false);
+const savedBreakDogs = ref([]);
+const savedNoCabinDog = ref(null);
 const is1pmOrLater = ref(false);
 const restColumns = computed(() => Math.ceil(Math.sqrt((16 / 9) * (dogsOnBreak.value.length + 1))));
 const restRows = computed(() => Math.ceil((dogsOnBreak.value.length + 1) / restColumns.value));
@@ -206,9 +208,11 @@ function handleBreakDogUpdate(breakTypeId) {
 
 function handleNoCabinAssign() {
     showNoCabinWarning.value = false;
+    savedNoCabinDog.value = targets.value.dogsToAssign.find(d => !d.cabin_id) ?? null;
+    savedBreakDogs.value = targets.value.dogsToAssign.filter(d => d.cabin_id);
     targets.value = {
         ...targets.value,
-        dogsToAssign: [],
+        dogsToAssign: savedNoCabinDog.value ? [savedNoCabinDog.value] : [],
         cabin_id: 0,
         cabin_short_name: '',
         break_type_id: null,
@@ -282,6 +286,13 @@ async function handleFinishAction(action) {
     if (todo.value.includes('markReturned')) todo.value = 'startBreak';
     if (todo.value === 'clearFeedingCabin') todo.value = 'assignFeedingCabin';
     step.value = action === 'Done' ? 1 : 3;
+    if (savedBreakDogs.value.length > 0 || savedNoCabinDog.value) {
+        targets.value.dogsToAssign = [...savedBreakDogs.value, ...(savedNoCabinDog.value ? [savedNoCabinDog.value] : [])];
+        savedBreakDogs.value = [];
+        savedNoCabinDog.value = null;
+        todo.value = 'startBreak';
+        step.value = 3;
+    }
 }
 
 onMounted(() => {

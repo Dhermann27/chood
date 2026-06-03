@@ -308,7 +308,6 @@ class DataController extends Controller
 
         $assignments = EmployeeYardRotation::join('rotations', 'employee_yard_rotations.rotation_id', '=', 'rotations.id')
             ->join('yards', 'employee_yard_rotations.yard_id', '=', 'yards.id')
-            ->whereIn('yards.id', $preset->allowedYards(true))
             ->whereTime('rotations.start_time', '<=', $now)
             ->whereTime('rotations.end_time', '>=', $now)
             ->orderBy('yards.display_order')->with('employee', 'rotation', 'yard')->get();
