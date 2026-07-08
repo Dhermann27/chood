@@ -178,7 +178,11 @@ class DataController extends Controller
                 'overwrite' => 'required|boolean'
             ]);
 
-            RotationSettings::put(YardCodes::from($validatedData['preset']));
+            $newPreset = YardCodes::from($validatedData['preset']);
+            RotationSettings::put($newPreset);
+
+            $allowedYardIds = $newPreset->allowedYards(false);
+            EmployeeYardRotation::whereNotIn('yard_id', $allowedYardIds)->delete();
 
             if ($validatedData['overwrite']) {
                 GoFetchShiftsJob::dispatchSync();
