@@ -8,6 +8,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TaskController;
 use App\Jobs\GoFetchListJob;
 use App\Jobs\MarkCabinsForCleaningJob;
+use App\Jobs\WIW\GoFetchShiftsJob;
 use App\Models\Cabin;
 use App\Models\CleaningStatus;
 use Illuminate\Foundation\Application;
@@ -32,7 +33,10 @@ Route::get('/mealmap', [MapController::class, 'mealmap']);
 Route::get('/groommap', [MapController::class, 'groommap']);
 
 
-Route::get('/dailyreports/{date?}', [ReportController::class, 'dailyReports'])->where('date', '\d{4}-\d{2}-\d{2}');
+Route::prefix('dailyreports')->group(function () {
+    Route::get('/{date?}', [ReportController::class, 'dailyReports'])->where('date', '\d{4}-\d{2}-\d{2}');
+    Route::get('/{date}/dogs', [ReportController::class, 'reportDogData'])->where('date', '\d{4}-\d{2}-\d{2}');
+});
 
 Route::prefix('journalmaker')->group(function () {
     Route::get('/', [ReportController::class, 'journalMaker']);
@@ -106,6 +110,10 @@ if (app()->environment('local')) {
     Route::get('/sync', function () {
         GoFetchListJob::dispatchSync();
         return 'Sync complete';
+    });
+    Route::get('/syncShifts', function () {
+        GoFetchShiftsJob::dispatchSync();
+        return 'Shifts synced';
     });
 }
 

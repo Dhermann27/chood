@@ -64,6 +64,7 @@ trait ChoodTrait
         }
         $result = $dogs->orderBy('firstname')->get();
         $result->each->makeHidden(['created_at', 'updated_at']);
+        $result->each(fn($dog) => $dog->icons->each->makeHidden(['created_at', 'updated_at']));
 
         if ($size === 'small') {
             return $result->filter(fn($dog) => str_contains($dog->size_letter, 'S') || str_contains($dog->size_letter, 'T'))->values();

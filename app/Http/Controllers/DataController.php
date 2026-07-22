@@ -286,10 +286,8 @@ class DataController extends Controller
 
         $yardCount = count($preset->allowedYards($isMidday));
         $groupBy = ($yardCount >= 4 || ($yardCount === 3 && $size === 'large')) ? function ($dog) use ($size) {
-            if ($dog->size_letter === 'LS') {
-                if ($size === 'large' && in_array($dog->yard_id, [YardIds::SMALL->value, YardIds::MEDIUM->value])) return YardIds::LARGE->value;
-                if ($size !== 'large' && in_array($dog->yard_id, [YardIds::LARGE->value, YardIds::ACTIVE->value])) return YardIds::SMALL->value;
-            }
+            if ($size === 'large' && in_array($dog->yard_id, [YardIds::SMALL->value, YardIds::MEDIUM->value])) return YardIds::LARGE->value;
+            if ($size !== 'large' && in_array($dog->yard_id, [YardIds::LARGE->value, YardIds::ACTIVE->value])) return YardIds::SMALL->value;
             return $dog->yard_id ?? ($size === 'large' ? 1001 : 1000);
         } : fn($dog) => 'all';
         $dogsByGroup = $dogs->values()->groupBy($groupBy);

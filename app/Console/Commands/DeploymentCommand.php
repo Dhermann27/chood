@@ -56,19 +56,12 @@ class DeploymentCommand extends Command
                 s.updated_at        = NOW()
         ", 'Breaks restored');
 
-        $this->tryStatement("
-            UPDATE employee_yard_rotations AS eyr
-            JOIN {$db}.employee_yard_rotations AS eyrp
-                ON eyr.wiw_user_id = eyrp.wiw_user_id AND eyr.rotation_id = eyrp.rotation_id
-            SET eyr.yard_id = eyrp.yard_id
-            WHERE eyrp.yard_id != 999
-        ");
+        $this->tryStatement("DELETE FROM employee_yard_rotations");
 
         $this->tryStatement("
-            DELETE eyr FROM employee_yard_rotations AS eyr
-            JOIN {$db}.employee_yard_rotations AS eyrp
-                ON eyr.wiw_user_id = eyrp.wiw_user_id AND eyr.rotation_id = eyrp.rotation_id
-            WHERE eyr.yard_id = 999 AND eyrp.yard_id != 999
+            INSERT INTO employee_yard_rotations (wiw_user_id, yard_id, rotation_id, created_at, updated_at)
+            SELECT wiw_user_id, yard_id, rotation_id, created_at, updated_at
+            FROM {$db}.employee_yard_rotations
         ", 'Yard rotations restored');
     }
 

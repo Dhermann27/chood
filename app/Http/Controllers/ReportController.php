@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Enums\HousingServiceCodes;
 use App\Enums\ReportCategory;
+use App\Jobs\GoFetchReportDogJob;
 use App\Jobs\Report\GoFetchReports;
 use App\Models\Dog;
 use App\Models\Report;
-use App\Models\Service;
 use App\Services\FetchDataService;
 use App\Services\JournalEntryTransformer;
 use App\Traits\ParsesServiceCategory;
@@ -17,6 +17,7 @@ use DOMXPath;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -34,32 +35,27 @@ class ReportController extends Controller
 
     public function report(): Response
     {
-        return Inertia::render('DepositFinder/Report', [
-            'sbUser' => config('services.gingr.sandbox_username'),
-            'sbPass' => config('services.gingr.sandbox_password'),
-        ]);
+        return Inertia::render('DepositFinder/Report');
     }
 
     public function overall(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'username' => 'required|string|max:255',
-            'password' => 'required|string|max:255',
             'date' => 'required|date',
         ]);
 
         try {
             $cookies = $this->fetchDataService->authenticateUser(
-                $validated['username'],
-                $validated['password']
+                config('services.gingr.username'),
+                config('services.gingr.password')
             );
 
             $report = Report::updateOrCreate(
-                ['username' => $validated['username'], 'report_date' => $validated['date']],
+                ['username' => config('services.gingr.username'), 'report_date' => $validated['date']],
                 ['data' => []]
             );
 
-            GoFetchReports::dispatch($report->id, $cookies);
+            GoFetchReports::dispatch((string) $report->id, $cookies);
 
             return response()->json($report);
 
@@ -138,32 +134,40 @@ class ReportController extends Controller
     public function dailyReports(string $date = null): Response
     {
         $today = $date ? Carbon::parse($date)->startOfDay() : Carbon::today();
-        $serviceIds = Service::where('is_active', true)->whereNotNull('gingr_id')->pluck('gingr_id')->toArray();
+        $isoDate = $today->toDateString();
 
         $rows = [];
-        if (!empty($serviceIds)) {
-            try {
-                $html = $this->fetchDataService->fetchServicesByDate($today->format('m/d/Y'), $serviceIds);
-                $rows = $this->parseServicesByDate($html);
-            } catch (Exception $e) {
-                Log::warning('dailyReports: fetch failed: ' . $e->getMessage());
-            }
+        try {
+            $html = $this->fetchDataService->fetchServicesByDate($today->format('m/d/Y'));
+            $rows = $this->parseServicesByDate($html);
+        } catch (Exception $e) {
+            Log::warning('dailyReports: fetch failed: ' . $e->getMessage());
         }
 
         $petIds = collect($rows)->pluck('pet_id')->unique();
-        $dogs = Dog::whereIn('pet_id', $petIds)->with('allergies', 'cabin')->get()->keyBy('pet_id');
+        $dogs = Dog::whereIn('pet_id', $petIds)->with(['allergies', 'cabin'])->get()->keyBy('pet_id');
 
-        $buildEntry = function (array $row) use ($dogs): array {
+        $pendingPetIds = [];
+        $buildEntry = function (array $row) use ($dogs, $isoDate, &$pendingPetIds): array {
             $dog = $dogs->get($row['pet_id']);
+            $cached = Cache::get("report_dog_{$row['pet_id']}_{$isoDate}");
+
+            if (!$cached) {
+                $pendingPetIds[] = $row['pet_id'];
+                if ($dog?->account_id) {
+                    GoFetchReportDogJob::dispatch($dog->account_id, $isoDate, [$row['pet_id']]);
+                }
+            }
+
             return [
                 'pet_id' => $row['pet_id'],
                 'display_name' => trim(preg_replace('/\s*\(.+\)\s*$/', '', $dog?->display_name ?? $row['pet_name'])),
                 'breed' => $row['breed'],
-                'gender' => $dog?->gender,
-                'weight' => $dog?->weight,
-                'size_letter' => $dog?->size_letter,
+                'gender' => $cached['gender'] ?? $dog?->gender,
+                'weight' => $cached['weight'] ?? $dog?->weight,
+                'size_letter' => $cached['size_letter'] ?? $dog?->size_letter,
                 'cabin' => $dog?->cabin,
-                'allergies' => $dog?->allergies ?? collect(),
+                'allergies' => $cached ? collect($cached['allergies']) : ($dog?->allergies ?? collect()),
                 'report_category' => ReportCategory::fromServiceName($row['service_name'])->value,
                 'service_name' => $row['service_name'],
                 'assigned_to' => $row['assigned_to'],
@@ -178,18 +182,51 @@ class ReportController extends Controller
             ->sortBy(fn($e) => $e['scheduled_start'] ?? '9999-99-99')
             ->values();
 
-        $interviews = Dog::with('allergies')
+        $interviews = Dog::with(['allergies'])
             ->where('housing_code', HousingServiceCodes::INTV->value)
             ->whereDate('checkin', $today)
             ->get();
 
+        $boarding = Dog::inHouse()
+            ->whereIn('housing_code', [HousingServiceCodes::BRDC->value, HousingServiceCodes::BRDL->value])
+            ->whereDate('checkin', $today)
+            ->with(['allergies', 'cabin'])
+            ->get()
+            ->sortBy('firstname')
+            ->values();
+
+        $daycare = Dog::inHouse()
+            ->whereIn('housing_code', [HousingServiceCodes::DCFD->value, HousingServiceCodes::DCHD->value])
+            ->whereDate('checkin', $today)
+            ->with(['allergies', 'cabin'])
+            ->get()
+            ->sortBy('firstname')
+            ->values();
+
         return Inertia::render('DailyReports', [
             'date' => $today->format('l, F j, Y'),
+            'iso_date' => $isoDate,
+            'pending_pet_ids' => $pendingPetIds,
             'fsg' => $sortByTimeThenName($entries->filter(fn($e) => $e['report_category'] === ReportCategory::FSG->value)),
             'enrichment' => $sortByTimeThenName($entries->filter(fn($e) => $e['report_category'] === ReportCategory::Enrichment->value)),
             'bath' => $sortByTimeThenName($entries->filter(fn($e) => in_array($e['report_category'], [ReportCategory::Bath->value, ReportCategory::Nail->value]))),
             'interviews' => $interviews->sortBy('display_name')->sortBy('checkin')->values(),
+            'boarding' => $boarding,
+            'daycare' => $daycare,
         ]);
+    }
+
+    public function reportDogData(string $date, Request $request): JsonResponse
+    {
+        $ids = $request->query('ids', []);
+        $result = [];
+        foreach ($ids as $petId) {
+            $data = Cache::get("report_dog_{$petId}_{$date}");
+            if ($data) {
+                $result[$petId] = $data;
+            }
+        }
+        return response()->json($result);
     }
 
     private function parseServicesByDate(string $html): array
