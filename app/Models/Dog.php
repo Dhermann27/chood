@@ -75,6 +75,11 @@ class Dog extends Model
         return $icons;
     }
 
+    public function scopeInHouse($query)
+    {
+        return $query->whereNull('checked_out_at');
+    }
+
     public function getIsBoardingAttribute(): bool
     {
         return $this->housing_code === HousingServiceCodes::BRDC->value || $this->housing_code === HousingServiceCodes::BRDL->value;

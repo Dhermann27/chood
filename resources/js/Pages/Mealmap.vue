@@ -1,16 +1,16 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {computed, onBeforeUnmount, onMounted, ref, watchEffect} from "vue";
+import {computed, onMounted, ref, watchEffect} from "vue";
 import DogCard from "@/Components/chood/DogCard.vue";
 import {ControlSchemes} from "@/controlSchemes.js";
 import {formatTime} from "@/utils.js";
+import {useMapPolling} from "@/composables/useMapPolling.js";
 import Multiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.css';
 import VueTimepicker from 'vue3-timepicker';
 import 'vue3-timepicker/dist/VueTimepicker.css';
 
 const props = defineProps({
-    dogsPerPage: Number,
     rotations: Array,
     yards: Array,
     yardPresets: Array,
@@ -32,12 +32,9 @@ const assignments = ref({});
 const headerYardIds = ref([]);
 const openYardIdsByRotation = ref({});
 const uiAssignments = ref({});
-const localChecksum = ref('');
 const shiftsRefreshing = ref(false);
 const overscheduled = ref([]);
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
-let refreshInterval;
-
 const cardHeight = computed(() => Math.min(300, 800 / (lunchDogs.value.length + medicatedDogs.value.length)));
 const employeesById = computed(() => {
     const map = new Map();
@@ -57,30 +54,20 @@ function setInputRef(key, el) {
     inputRefs.value[key] = el;
 }
 
-async function updateData() {
-    try {
-        const response = await axios.get(`/api/mealmap/${localChecksum.value}`);
-
-        if (response.data && localChecksum.value !== response.data.checksum) {
-            assignments.value = {...response.data.assignments};
-            breaks.value = {...response.data.breaks};
-            lunchDogs.value = response.data.lunchDogs;
-            medicatedDogs.value = response.data.medicatedDogs;
-            employees.value = response.data.employees;
-            fohStaff.value = response.data.fohStaff;
-            selectedYardPreset.value = response.data.preset;
-            headerYardIds.value = response.data.headerYards;
-            openYardIdsByRotation.value = response.data.openYardsByRotation;
-            overscheduled.value = response.data.overscheduled ?? [];
-            sectionCounts.value = response.data.sectionCounts ?? sectionCounts.value;
-            localChecksum.value = response.data.checksum;
-
-            hydrateUiAssignments();
-        }
-    } catch (error) {
-        console.error('Error fetching data:', error);
-    }
-}
+const {poll} = useMapPolling('/api/mealmap/', 15000, (data) => {
+    assignments.value = {...data.assignments};
+    breaks.value = {...data.breaks};
+    lunchDogs.value = data.lunchDogs;
+    medicatedDogs.value = data.medicatedDogs;
+    employees.value = data.employees;
+    fohStaff.value = data.fohStaff;
+    selectedYardPreset.value = data.preset;
+    headerYardIds.value = data.headerYards;
+    openYardIdsByRotation.value = data.openYardsByRotation;
+    overscheduled.value = data.overscheduled ?? [];
+    sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
+    hydrateUiAssignments();
+});
 
 function onYardPresetChange(e) {
     const preset = e.target.value;
@@ -92,7 +79,7 @@ function onYardPresetChange(e) {
         try {
             await axios.post('/api/mealmap/markActive', {preset, overwrite});
             selectedYardPreset.value = preset;
-            await updateData();
+            await poll();
         } finally {
             isUpdatingPreset.value = false;
         }
@@ -246,13 +233,6 @@ onMounted(() => {
     if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
         controls.value = !navigator.userAgent.includes('Linux') ? ControlSchemes.MODAL : ControlSchemes.NONE;
     }
-
-    updateData();
-    refreshInterval = setInterval(updateData, 15000);
-});
-
-onBeforeUnmount(() => {
-    clearInterval(refreshInterval);
 });
 </script>
 

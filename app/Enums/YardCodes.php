@@ -13,7 +13,7 @@ enum YardCodes: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::DEFAULT => '2 yards, all day',
             self::THREE_TWO => '3 yards, 2 11am-1pm',
             self::THREE => '3 yards, all day',
@@ -25,13 +25,18 @@ enum YardCodes: string
 
     public function allowedYards(bool $isMidday): array
     {
+        $s = YardIds::SMALL->value;
+        $l = YardIds::LARGE->value;
+        $a = YardIds::ACTIVE->value;
+        $m = YardIds::MEDIUM->value;
+
         return match ($this) {
-            self::DEFAULT => [1000, 1001],
-            self::THREE_TWO => $isMidday ? [1000, 1001] : [1000, 1001, 1002],
-            self::THREE => [1000, 1001, 1002],
-            self::FOUR_TWO => $isMidday ? [1000, 1001] : [1000, 1001, 1002, 1003],
-            self::FOUR_THREE => $isMidday ? [1000, 1001, 1002] : [1000, 1001, 1002, 1003],
-            self::FOUR => [1000, 1001, 1002, 1003, 1004],
+            self::DEFAULT => [$s, $l],
+            self::THREE_TWO => $isMidday ? [$s, $l] : [$s, $l, $a],
+            self::THREE => [$s, $l, $a],
+            self::FOUR_TWO => $isMidday ? [$s, $l] : [$s, $l, $a, $m],
+            self::FOUR_THREE => $isMidday ? [$s, $l, $a] : [$s, $l, $a, $m],
+            self::FOUR => [$s, $l, $a, $m],
         };
     }
 

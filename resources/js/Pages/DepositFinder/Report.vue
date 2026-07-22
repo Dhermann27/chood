@@ -2,13 +2,6 @@
 import {ref} from 'vue'
 import axios from 'axios'
 
-const props = defineProps({
-    sbUser: String,
-    sbPass: String,
-});
-
-const username = ref(props.sbUser);
-const password = ref(props.sbPass);
 const date = ref(new Date().toLocaleDateString('en-CA'));
 const errorMessage = ref(null);
 const started = ref(false);
@@ -25,7 +18,7 @@ async function handleSubmit() {
     errorMessage.value = null;
     try {
         const response = await axios.post('/depositfinder/login',
-            {username: username.value, password: password.value, date: date.value},
+            {date: date.value},
             {headers: {'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')}}
         );
 
@@ -116,18 +109,6 @@ async function copyFullReport(e) {
                         the data is not collected in any way.</p>
                 </div>
                 <form @submit.prevent="handleSubmit" class="space-y-6">
-                    <div>
-                        <label for="username" class="block font-medium text-greyhound">Gingr Username</label>
-                        <input v-model="username" type="text" id="username" placeholder="Enter your Gingr username"
-                               required
-                               class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"/>
-                    </div>
-                    <div>
-                        <label for="password" class="block font-medium text-greyhound">Gingr Password</label>
-                        <input v-model="password" type="password" id="password" placeholder="Enter your Gingr password"
-                               required
-                               class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"/>
-                    </div>
                     <div>
                         <label for="date" class="block font-medium text-greyhound">Date</label>
                         <input v-model="date" type="date" id="date" required

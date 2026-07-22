@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\YardCodes;
+use App\Enums\YardIds;
 use App\Jobs\WIW\GoFetchShiftsJob;
 use App\Models\CleaningStatus;
 use App\Models\Dog;
@@ -12,6 +13,7 @@ use App\Models\Feeding;
 use App\Models\Rotation;
 use App\Models\RotationYardView;
 use App\Models\Shift;
+use App\Models\Timeslot;
 use App\Models\Yard;
 use App\Services\RotationSettings;
 use App\Traits\ChoodTrait;
@@ -20,6 +22,7 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
@@ -29,7 +32,7 @@ class DataController extends Controller
     use ChoodTrait;
 
     // TODO: add a dedicated endpoint to fetch unassigned non-boarding dogs fresh when the assignment modal opens
-    function fullmap(string $checksum = null): JsonResponse
+    public function fullmap(?string $checksum = null): JsonResponse
     {
         $dogs = $this->getDogsByCabin();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
@@ -40,7 +43,7 @@ class DataController extends Controller
                 'statuses' => $statuses,
                 'sectionCounts' => array_merge(
                     Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
-                    ['in_house' => Dog::whereNull('checked_out_at')->count()]
+                    ['in_house' => Dog::inHouse()->count()]
                 ),
                 'checksum' => $new_checksum,
             ];
@@ -50,7 +53,7 @@ class DataController extends Controller
         return response()->json(false);
     }
 
-    function mealmap(string $checksum = null): JsonResponse
+    public function mealmap(?string $checksum = null): JsonResponse
     {
         $preset = RotationSettings::get();
 
@@ -60,7 +63,7 @@ class DataController extends Controller
 
         $openByRotation = $rotations->mapWithKeys(function ($r) use ($preset) {
             $allowed = $preset->allowedYards(false); // (bool)$r->is_midday); Display all assignments
-            $allowed[] = 999;
+            $allowed[] = YardIds::FLOAT->value;
             return [$r->id => array_values(array_unique($allowed))];
         });
 
@@ -88,7 +91,7 @@ class DataController extends Controller
             })->sortBy('first_name')->values();
 
         $lunchDogs = Feeding::select('id', 'pet_id', 'description')->whereHas('dog')->where(function ($query) {
-            $query->where('is_task', 1)->orWhere('timeslot_id', 1001);
+            $query->where('is_task', 1)->orWhere('timeslot_id', Timeslot::LUNCH);
         })->with('dog')->get()->unique('pet_id')->map(function ($feeding) {
             $dog = $feeding->dog;
             if (!$dog) return null; // safety
@@ -107,9 +110,9 @@ class DataController extends Controller
                 return ['status' => $status, 'employees' => $group];
             })->sortBy(fn($group) => $group['status'] === 'Scheduled' ? 0 : 1)->values()->all();
 
-        // In DD's infinite wisdom, child tables updated_at are being continually updated
+        // Gingr continually bumps updated_at on dogs and child tables; exclude all timestamps from checksum
         $md5Dogs = $medicatedDogs->map(function ($dog) {
-            $dogData = collect($dog->toArray());
+            $dogData = collect($dog->toArray())->except(['created_at', 'updated_at']);
             $dogData['medications'] = collect($dogData['medications'])->map(function ($medication) {
                 return collect($medication)->except(['created_at', 'updated_at'])->toArray();
             });
@@ -120,30 +123,11 @@ class DataController extends Controller
         });
         $largeYardIds = Yard::where('is_large', true)->pluck('id');
 
-        $rotationList = $rotations->values();
-        $overscheduled = [];
-        for ($i = 2; $i < $rotationList->count(); $i++) {
-            $r2 = $rotationList[$i]->id;
-            $r1 = $rotationList[$i - 1]->id;
-            $r0 = $rotationList[$i - 2]->id;
-
-            $firstIsEight = $rotationList[$i - 2]->start_time === '08:00:00';
-            $lastIsFive = $rotationList[$i]->start_time === '17:00:00';
-            if ($firstIsEight || $lastIsFive) continue;
-
-            foreach ($largeYardIds as $yardId) {
-                $userId = $assignments->get($r2)?->get($yardId)['wiw_user_id'] ?? null;
-                if (!$userId) continue;
-
-                $inLargeR1 = $largeYardIds->contains(fn($lid) => ($assignments->get($r1)?->get($lid)['wiw_user_id'] ?? null) == $userId);
-                $inLargeR0 = $largeYardIds->contains(fn($lid) => ($assignments->get($r0)?->get($lid)['wiw_user_id'] ?? null) == $userId);
-
-                if ($inLargeR1 && $inLargeR0) $overscheduled[] = "{$r2}-{$yardId}";
-            }
-        }
+        $assignmentsFlat = $assignments->map(fn($yardMap) => $yardMap->map(fn($d) => is_array($d) ? $d['wiw_user_id'] : null));
+        $overscheduled = $this->getOverscheduled($rotations->values(), $largeYardIds, $assignmentsFlat);
 
         $new_checksum = md5(json_encode($assignments) . json_encode($breaks) . json_encode($groupedEmployees)
-            . json_encode($lunchDogs) . $md5Dogs . $preset->value . json_encode($headerYardIds)
+            . json_encode($lunchDogs) . json_encode($md5Dogs) . $preset->value . json_encode($headerYardIds)
             . json_encode($openByRotation));
         if ($checksum !== $new_checksum) {
             $response = [
@@ -159,7 +143,7 @@ class DataController extends Controller
                 'overscheduled' => $overscheduled,
                 'sectionCounts' => array_merge(
                     Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
-                    ['in_house' => Dog::whereNull('checked_out_at')->count()]
+                    ['in_house' => Dog::inHouse()->count()]
                 ),
                 'checksum' => $new_checksum,
             ];
@@ -170,7 +154,7 @@ class DataController extends Controller
 
     }
 
-    function markActiveYards(Request $request): JsonResponse
+    public function markActiveYards(Request $request): JsonResponse
     {
         try {
             $validatedData = $request->validate([
@@ -246,7 +230,7 @@ class DataController extends Controller
         return response()->json(['message' => 'Joy.'], 200);
     }
 
-    function assignBreak(Request $request): JsonResponse
+    public function assignBreak(Request $request): JsonResponse
     {
         try {
             $validatedData = $request->validate([
@@ -283,14 +267,14 @@ class DataController extends Controller
         }
     }
 
-    function refreshShifts(Request $request): JsonResponse
+    public function refreshShifts(Request $request): JsonResponse
     {
         $recalculate = (bool)$request->input('recalculate', true);
         GoFetchShiftsJob::dispatch($recalculate)->onQueue('high');
         return response()->json(['message' => 'Shift refresh queued.'], 200);
     }
 
-    function yardmap(string $size, string $checksum = null): JsonResponse
+    public function yardmap(string $size, ?string $checksum = null): JsonResponse
     {
         $now = Carbon::now();
         $hour = $now->hour;
@@ -303,8 +287,8 @@ class DataController extends Controller
         $yardCount = count($preset->allowedYards($isMidday));
         $groupBy = ($yardCount >= 4 || ($yardCount === 3 && $size === 'large')) ? function ($dog) use ($size) {
             if ($dog->size_letter === 'LS') {
-                if ($size === 'large' && in_array($dog->yard_id, [1000, 1003])) return 1001;
-                if ($size !== 'large' && in_array($dog->yard_id, [1001, 1002])) return 1000;
+                if ($size === 'large' && in_array($dog->yard_id, [YardIds::SMALL->value, YardIds::MEDIUM->value])) return YardIds::LARGE->value;
+                if ($size !== 'large' && in_array($dog->yard_id, [YardIds::LARGE->value, YardIds::ACTIVE->value])) return YardIds::SMALL->value;
             }
             return $dog->yard_id ?? ($size === 'large' ? 1001 : 1000);
         } : fn($dog) => 'all';
@@ -360,21 +344,7 @@ class DataController extends Controller
             ->groupBy('rotation_id')->map(fn($group) => $group->mapWithKeys(fn($row) => [
                 $row->yard_id => $row->wiw_user_id,
             ]));
-        $rotationList = $allRotations->values();
-        $overscheduled = [];
-        for ($i = 2; $i < $rotationList->count(); $i++) {
-            $r2 = $rotationList[$i]->id;
-            $r1 = $rotationList[$i - 1]->id;
-            $r0 = $rotationList[$i - 2]->id;
-            if ($rotationList[$i - 2]->start_time === '08:00:00' || $rotationList[$i]->start_time === '17:00:00') continue;
-            foreach ($largeYardIds as $yardId) {
-                $userId = $allAssignments->get($r2)?->get($yardId) ?? null;
-                if (!$userId) continue;
-                $inLargeR1 = $largeYardIds->contains(fn($lid) => ($allAssignments->get($r1)?->get($lid) ?? null) == $userId);
-                $inLargeR0 = $largeYardIds->contains(fn($lid) => ($allAssignments->get($r0)?->get($lid) ?? null) == $userId);
-                if ($inLargeR1 && $inLargeR0) $overscheduled[] = "{$r2}-{$yardId}";
-            }
-        }
+        $overscheduled = $this->getOverscheduled($allRotations->values(), $largeYardIds, $allAssignments);
 
         $new_checksum = md5($dogs->toJson() . $assignments->toJson() . json_encode($nextBreak) .
             json_encode($nextLunch) . json_encode($overscheduled));
@@ -395,7 +365,7 @@ class DataController extends Controller
 
     }
 
-    function groommap(string $checksum = null): JsonResponse
+    public function groommap(?string $checksum = null): JsonResponse
     {
         $dogs = $this->getGroomingDogsToday();
         $new_checksum = md5($dogs->toJson());
@@ -406,5 +376,25 @@ class DataController extends Controller
             ]);
         }
         return response()->json(false);
+    }
+
+    private function getOverscheduled(Collection $rotationList, Collection $largeYardIds, Collection $assignments): array
+    {
+        $overscheduled = [];
+        for ($i = 2; $i < $rotationList->count(); $i++) {
+            $r2 = $rotationList[$i]->id;
+            $r1 = $rotationList[$i - 1]->id;
+            $r0 = $rotationList[$i - 2]->id;
+            if ($rotationList[$i - 2]->start_time === '08:00:00' || $rotationList[$i]->start_time === '17:00:00') continue;
+            foreach ($largeYardIds as $yardId) {
+                $userId = $assignments->get($r2)?->get($yardId) ?? null;
+                if (!$userId) continue;
+                $inLargeR1 = $largeYardIds->contains(fn($lid) => ($assignments->get($r1)?->get($lid) ?? null) == $userId);
+                $inLargeR0 = $largeYardIds->contains(fn($lid) => ($assignments->get($r0)?->get($lid) ?? null) == $userId);
+                if ($inLargeR1 && $inLargeR0) $overscheduled[] = "{$r2}-{$yardId}";
+            }
+        }
+
+        return $overscheduled;
     }
 }

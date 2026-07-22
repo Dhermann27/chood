@@ -2,6 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {computed, nextTick, onBeforeUnmount, onMounted, ref} from 'vue';
 import {formatTime, getFittedFontSize} from "@/utils.js";
+import {useMapPolling} from "@/composables/useMapPolling.js";
 import GroupGrid from './GroupGrid.vue';
 
 const DIVIDER_W = 40;
@@ -19,10 +20,9 @@ const overscheduled = ref([]);
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
 const currentGif = ref('/images/doggifs/dog1.webp');
 const randomPosition = ref({top: 0, left: 0});
-const localChecksum = ref('');
 const chyron = ref(null);
 const chyronFontSize = ref('60px');
-let refreshIntervals = [];
+let gifInterval;
 
 const chyronStyle = computed(() => ({
     height: '100px',
@@ -92,29 +92,19 @@ function getNewGifAndPosition() {
     };
 }
 
-async function updateData() {
+useMapPolling(`/api/yardmap${props.size}/`, 5000, async (data) => {
+    dogsByGroup.value = data.dogs;
+    assignments.value = data.assignments;
+    nextBreak.value = data.nextBreak;
+    nextLunch.value = data.nextLunch;
+    overscheduled.value = data.overscheduled ?? [];
+    sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
 
-    try {
-        const response = await axios.get(`/api/yardmap${props.size}/${localChecksum.value}`);
-
-        if (response.data && localChecksum.value !== response.data?.checksum) {
-            dogsByGroup.value = response.data.dogs;
-            assignments.value = response.data.assignments;
-            nextBreak.value = response.data.nextBreak;
-            nextLunch.value = response.data.nextLunch;
-            overscheduled.value = response.data.overscheduled ?? [];
-            sectionCounts.value = response.data.sectionCounts ?? sectionCounts.value;
-            localChecksum.value = response.data.checksum;
-
-            if (chyron.value) {
-                await nextTick();
-                chyronFontSize.value = getFittedFontSize(chyron.value, 1920);
-            }
-        }
-    } catch (error) {
-        console.error('Error fetching data:', error);
+    if (chyron.value) {
+        await nextTick();
+        chyronFontSize.value = getFittedFontSize(chyron.value, 1920, 10, 80);
     }
-}
+});
 
 async function updateGif() {
     if (allDogs.value.length === 0) {
@@ -125,15 +115,10 @@ async function updateGif() {
 }
 
 onMounted(() => {
-    updateData();
-    refreshIntervals[0] = setInterval(updateData, 5000);
-    refreshIntervals[1] = setInterval(updateGif, 60000);
+    gifInterval = setInterval(updateGif, 60000);
 });
 
-// Clear the interval when the component is unmounted
-onBeforeUnmount(() => {
-    refreshIntervals.forEach(intervalId => clearInterval(intervalId));
-});
+onBeforeUnmount(() => clearInterval(gifInterval));
 </script>
 
 <template>

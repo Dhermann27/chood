@@ -2,11 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Report;
-use Carbon\Carbon;
 use Exception;
 use GuzzleHttp\Cookie\CookieJar;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -49,8 +46,10 @@ class FetchDataService
     {
         $response = Http::withHeaders($this->gingrHeaders())->asForm()->post($url, $params);
 
-        if ($response->successful()) return $response->body();
-        if (!in_array($response->status(), [401, 403])) {
+        if ($response->successful() && !str_contains($response->body(), 'gingr_csrf_token')) {
+            return $response->body();
+        }
+        if (!$response->successful() && !in_array($response->status(), [401, 403])) {
             throw new Exception("Gingr HTML POST failed [{$response->status()}]: $url");
         }
 
@@ -66,7 +65,7 @@ class FetchDataService
      *
      * @throws Exception
      */
-    public function fetchServicesByDate(string $date, array $serviceIds): string
+    public function fetchServicesByDate(string $date): string
     {
         return $this->postHtmlWithSession(
             config('services.gingr.uris.servicesByDate'),
@@ -75,7 +74,6 @@ class FetchDataService
                 'date_to' => $date,
                 'locations' => [config('services.gingr.location_id')],
                 'service_type' => 'addl_services',
-                'service' => $serviceIds,
                 'type' => 'scheduled',
                 'checked_out' => 'true',
             ]
@@ -217,107 +215,6 @@ class FetchDataService
         return $response->body();
     }
 
-    // -------------------------------------------------------------------------
-    // DD (Data Dawg) — used by Deposit Finder only
-    // -------------------------------------------------------------------------
-
-    /**
-     * @throws Exception
-     */
-    public function fetchData(string $url, array $payload): JsonResponse
-    {
-        $username = $payload['username'];
-        if (Cache::has("{$username}_cookie") && Cache::has("{$username}_franchiseId")) {
-            $franchiseId = Cache::get("{$username}_franchiseId");
-            $cookies = Cache::get("{$username}_cookie");
-        } else {
-            $franchiseId = $this->authenticateDd($username, $payload['password']);
-            $cookies = Cache::get("{$username}_cookie");
-        }
-
-        $cookieHeader = collect($cookies)
-            ->map(fn($c) => "{$c['name']}={$c['value']}")
-            ->implode('; ');
-
-        $resolvedUrl = preg_replace('/FRANCHISE_ID/', $franchiseId, $url);
-
-        $response = !empty($payload['dataToPost'])
-            ? Http::withHeaders(['Cookie' => $cookieHeader])->post($resolvedUrl, $payload['dataToPost'])
-            : Http::withHeaders(['Cookie' => $cookieHeader])->get($resolvedUrl);
-
-        return response()->json($response->json(), $response->status());
-    }
-
-    public function createPayload(Report $report): array
-    {
-        return [
-            'username' => $report->username,
-            'dataToPost' => [
-                'timestamp' => time(),
-                'data' => [[
-                    'limit' => 50,
-                    'order' => [],
-                    'criteria' => [
-                        ['key' => 'dateFrom', 'operator' => 'gte', 'value' => $report->report_date],
-                        ['key' => 'dateTo', 'operator' => 'lte', 'value' => $report->report_date],
-                    ],
-                ]],
-            ],
-        ];
-    }
-
-    public function createConstrainedPayload(Report $report, string $key, string $operator, string $value): array
-    {
-        $payload = $this->createPayload($report);
-        $payload['dataToPost']['data'][0]['criteria'][] = ['key' => $key, 'operator' => $operator, 'value' => $value];
-        return $payload;
-    }
-
-    /**
-     * @throws Exception
-     */
-    private function authenticateDd(string $ddUser, string $ddPass): mixed
-    {
-        $response = Http::post(config('services.dd.uris.auth'), [
-            'timestamp' => microtime(true),
-            'data' => [['username' => $ddUser, 'password' => $ddPass]],
-        ]);
-
-        if (!$response->successful()) {
-            throw new Exception('DD auth request failed: ' . $response->status());
-        }
-
-        if ($error = $response->json('error')) {
-            throw new Exception('DD authentication failed: ' . $error['details']);
-        }
-
-        $cookies = [];
-        foreach (preg_split('/,\s*(?=\S+=)/', $response->header('set-cookie')) as $cookie) {
-            if (preg_match('/([^=]+)=([^;]+)(?:.*?expires=([^;]+))?(?:.*?domain=([^;]+))?/', $cookie, $m)) {
-                $cookies[] = ['name' => $m[1], 'value' => $m[2], 'expires' => $m[3], 'domain' => $m[4]];
-            }
-        }
-
-        $expiresAt = Carbon::now()->addMinutes(119);
-        foreach ($cookies as $c) {
-            if (!empty($c['expires']) && $c['expires'] !== '-1') {
-                $exp = Carbon::parse($c['expires']);
-                if ($exp->lt($expiresAt)) $expiresAt = $exp;
-            }
-        }
-
-        Cache::put("{$ddUser}_cookie", $cookies, $expiresAt);
-
-        $franchiseId = $response->json('data.franchises.0.id');
-        Cache::put("{$ddUser}_franchiseId", $franchiseId);
-
-        return $franchiseId;
-    }
-
-    // -------------------------------------------------------------------------
-    // Gingr
-    // -------------------------------------------------------------------------
-
     /**
      * @throws Exception
      */
@@ -325,8 +222,10 @@ class FetchDataService
     {
         $response = Http::withHeaders($this->gingrHeaders())->get($url);
 
-        if ($response->successful()) return $response->body();
-        if (!in_array($response->status(), [401, 403])) {
+        if ($response->successful() && !str_contains($response->body(), 'gingr_csrf_token')) {
+            return $response->body();
+        }
+        if (!$response->successful() && !in_array($response->status(), [401, 403])) {
             throw new Exception("Gingr HTML request failed [{$response->status()}]: $url");
         }
 

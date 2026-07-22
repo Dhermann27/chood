@@ -1,44 +1,28 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {ref, onMounted, onBeforeUnmount} from 'vue';
+import {ref, onMounted} from 'vue';
 import Map from "@/Components/chood/Map.vue";
-import {fetchMapData} from "@/utils.js";
 import {ControlSchemes} from "@/controlSchemes.js";
+import {useMapPolling} from "@/composables/useMapPolling.js";
 
 const props = defineProps({
     cabins: Array
 });
 const dogs = ref([]);
 const statuses = ref({});
-const localChecksum = ref('');
 const controls = ref(ControlSchemes.NONE);
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
-let refreshInterval;
 
-async function updateData() {
-    const response = await fetchMapData(`/api/fullmap/`, localChecksum.value);
+useMapPolling('/api/fullmap/', 5000, (data) => {
+    dogs.value = data.dogs;
+    statuses.value = data.statuses;
+    sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
+});
 
-    if (response && localChecksum.value !== response.checksum) {
-        dogs.value = response.dogs;
-        statuses.value = response.statuses;
-        sectionCounts.value = response.sectionCounts ?? sectionCounts.value;
-        localChecksum.value = response.checksum;
-    }
-}
-
-// Fetch data when the component is mounted
 onMounted(() => {
     if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
         controls.value = !navigator.userAgent.includes('Linux') ? ControlSchemes.MODAL : ControlSchemes.NONE;
     }
-
-    updateData();
-    refreshInterval = setInterval(updateData, 5000);
-});
-
-// Clear the interval when the component is unmounted
-onBeforeUnmount(() => {
-    clearInterval(refreshInterval);
 });
 </script>
 

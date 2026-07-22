@@ -8,4 +8,5 @@ class Timeslot extends Model
 {
     public $timestamps = false;
     protected $fillable = ['name', 'gingr_label', 'display_order'];
+    const int LUNCH = 1001;
 }

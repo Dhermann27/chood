@@ -1,13 +1,17 @@
 <script setup>
-import {computed} from 'vue';
+import {computed, onMounted, onUnmounted, ref} from 'vue';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 
 const props = defineProps({
     date: String,
+    iso_date: String,
+    pending_pet_ids: Array,
     fsg: Array,
     enrichment: Array,
     bath: Array,
     interviews: Array,
+    boarding: Array,
+    daycare: Array,
 });
 
 const sections = computed(() => [
@@ -15,7 +19,51 @@ const sections = computed(() => [
     {key: 'enrichment', title: 'Enrichment', dogs: props.enrichment},
     {key: 'bath', title: 'Bath & Basic Grooming', dogs: props.bath},
     {key: 'orientation', title: 'Orientation', dogs: props.interviews},
+    {key: 'boarding', title: 'Boarding Check-Ins', dogs: props.boarding},
+    {key: 'daycare', title: 'Daycare Check-Ins', dogs: props.daycare},
 ]);
+
+const pendingIds = ref(new Set(props.pending_pet_ids));
+const extraData = ref({});
+let pollInterval = null;
+const MAX_POLLS = 24; // 2 minutes at 5s intervals
+let pollCount = 0;
+
+function effectiveDog(dog) {
+    const extra = extraData.value[dog.pet_id];
+    return extra ? {...dog, ...extra} : dog;
+}
+
+function isPending(dog) {
+    return pendingIds.value.has(dog.pet_id);
+}
+
+async function poll() {
+    if (pendingIds.value.size === 0 || ++pollCount > MAX_POLLS) {
+        clearInterval(pollInterval);
+        return;
+    }
+    const ids = [...pendingIds.value];
+    const params = ids.map(id => `ids[]=${id}`).join('&');
+    try {
+        const res = await fetch(`/dailyreports/${props.iso_date}/dogs?${params}`);
+        const data = await res.json();
+        for (const [petId, dogData] of Object.entries(data)) {
+            extraData.value[parseInt(petId)] = dogData;
+            pendingIds.value.delete(parseInt(petId));
+        }
+    } catch (_) {
+        // silently retry next interval
+    }
+}
+
+onMounted(() => {
+    if (pendingIds.value.size > 0) {
+        pollInterval = setInterval(poll, 5000);
+    }
+});
+
+onUnmounted(() => clearInterval(pollInterval));
 
 function formatTime(dt) {
     if (!dt) return '—';
@@ -26,25 +74,26 @@ function print() {
     window.print();
 }
 
-
 function formatAllergies(allergies) {
     if (!allergies?.length) return '—';
     return allergies.map(a => a.description).join(', ');
 }
 
 function sectionTime(entry, key) {
-    if (key === 'orientation') return formatTime(entry.checkin);
+    if (['orientation', 'boarding', 'daycare'].includes(key)) return formatTime(entry.checkin ?? entry.scheduled_start);
     if (!entry.scheduled_start) return null;
     return formatTime(entry.scheduled_start);
 }
 
 function serviceNames(entry, key) {
     if (key === 'orientation') return '—';
+    if (key === 'boarding') return [entry.food_type, entry.feeding_notes].filter(Boolean).join(' — ') || '—';
+    if (key === 'daycare') return '—';
     return entry.service_name ?? '—';
 }
 
 function specialistFor(entry, key) {
-    if (key === 'orientation') return '—';
+    if (['orientation', 'boarding', 'daycare'].includes(key)) return '—';
     return entry.assigned_to || '—';
 }
 </script>
@@ -96,15 +145,31 @@ function specialistFor(entry, key) {
                             </span>
                     </td>
                     <td class="py-1 pr-4 font-medium">{{ dog.display_name }}</td>
-                    <td class="py-1 pr-4">{{ dog.gender ?? '—' }}</td>
-                    <td class="py-1 pr-4">{{ dog.weight ? dog.weight + ' lb' : '—' }}</td>
-                    <td class="py-1 pr-4">{{ dog.size_letter ?? '—' }}</td>
+                    <td class="py-1 pr-4">
+                        <FontAwesomeIcon v-if="isPending(dog) && effectiveDog(dog).gender === null"
+                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-gray-300"/>
+                        <template v-else>{{ effectiveDog(dog).gender ?? '—' }}</template>
+                    </td>
+                    <td class="py-1 pr-4">
+                        <FontAwesomeIcon v-if="isPending(dog) && effectiveDog(dog).weight === null"
+                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-gray-300"/>
+                        <template v-else>{{
+                                effectiveDog(dog).weight ? effectiveDog(dog).weight + ' lb' : '—'
+                            }}
+                        </template>
+                    </td>
+                    <td class="py-1 pr-4">
+                        <FontAwesomeIcon v-if="isPending(dog) && effectiveDog(dog).size_letter === null"
+                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-gray-300"/>
+                        <template v-else>{{ effectiveDog(dog).size_letter ?? '—' }}</template>
+                    </td>
                     <td class="py-1 pr-4">{{ dog.breed ?? '—' }}</td>
                     <td class="py-1 pr-4">{{ dog.cabin?.short_name ?? '—' }}</td>
                     <td class="py-1 pr-4">{{ serviceNames(dog, section.key) }}</td>
-                    <td class="py-1 pr-4 text-red-700 print:text-red-800 font-medium">{{
-                            formatAllergies(dog.allergies)
-                        }}
+                    <td class="py-1 pr-4 text-red-700 print:text-red-800 font-medium">
+                        <FontAwesomeIcon v-if="isPending(dog) && effectiveDog(dog).allergies === null"
+                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-gray-300"/>
+                        <template v-else>{{ formatAllergies(effectiveDog(dog).allergies) }}</template>
                     </td>
                     <td class="py-1">{{ specialistFor(dog, section.key) }}</td>
                 </tr>

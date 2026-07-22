@@ -8,6 +8,7 @@ use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\Employee;
 use App\Models\Feeding;
+use App\Models\Timeslot;
 use App\Models\Yard;
 use App\Services\RotationSettings;
 use App\Traits\ChoodTrait;
@@ -37,14 +38,14 @@ class TaskController extends Controller
     }
 
     // TODO: Add cool way to see status messages from others
-    public function getData(string $checksum = null): JsonResponse
+    public function getData(?string $checksum = null): JsonResponse
     {
         $dogs = $this->getDogs(false, null, true);
         $yards = Yard::whereIn('id', RotationSettings::get()->allowedYards(false))
             ->orderBy('display_order')->get();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
         $employees = Employee::whereHas('shifts', function ($query) {
-            $query->where('start_time', '<=', now())->where('end_time', '>=', now());
+            $query->where('start_time', '<=', now()->addHour())->where('end_time', '>=', now()->subHour());
         })->orderBy('first_name')->get();
         $new_checksum = md5($dogs->toJson() . $employees->toJson() . json_encode($statuses));
         if ($checksum !== $new_checksum) {
@@ -55,7 +56,7 @@ class TaskController extends Controller
                 'employees' => $employees,
                 'sectionCounts' => array_merge(
                     Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
-                    ['in_house' => Dog::whereNull('checked_out_at')->count()]
+                    ['in_house' => Dog::inHouse()->count()]
                 ),
                 'checksum' => $new_checksum,
             ];
@@ -156,7 +157,7 @@ class TaskController extends Controller
             foreach ($petIds as $petId) {
                 Feeding::updateOrCreate(
                     ['pet_id' => $petId, 'is_task' => 1],
-                    ['timeslot_id' => 1001, 'description' => $lunchNotes]
+                    ['timeslot_id' => Timeslot::LUNCH, 'description' => $lunchNotes]
                 );
             }
         } else {

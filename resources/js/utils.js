@@ -1,9 +1,9 @@
-export function getFittedFontSize(el, maxWidth, minFontSize = 10, decrement = 2) {
+export function getFittedFontSize(el, maxWidth, minFontSize = 10, maxFontSize = null, decrement = 2) {
     const canvas = getFittedFontSize.canvas || (getFittedFontSize.canvas = document.createElement('canvas'));
     const context = canvas.getContext('2d');
 
     const computed = window.getComputedStyle(el);
-    let fontSize = parseFloat(computed.fontSize);
+    let fontSize = maxFontSize ?? parseFloat(computed.fontSize);
 
     while (fontSize > minFontSize) {
         context.font = `${fontSize}px ${computed.fontFamily}`;
@@ -25,24 +25,6 @@ export function formatTime(time) {
         return `${hours}:${minutes}${suffix}`.replace(/:00/i, '');
     }
     return null;
-}
-
-export async function fetchMapData(uri, checksum) {
-    try {
-        const response = await axios.get(uri + checksum);
-
-        if (response.data && checksum !== response.data?.checksum) {
-            return {
-                dogs: response.data.dogs,
-                statuses: response.data.statuses,
-                sectionCounts: response.data.sectionCounts,
-                checksum: response.data.checksum,
-            }
-        }
-    } catch (error) {
-        console.error('Error fetching data:', error);
-    }
-    return false;
 }
 
 export function getYardGridStyle(rows, columns, includeFooter = true) {

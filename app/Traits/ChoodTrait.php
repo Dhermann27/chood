@@ -63,6 +63,7 @@ trait ChoodTrait
                 ->orWhere('checked_out_at', '>=', Carbon::now()->subSeconds(120)));
         }
         $result = $dogs->orderBy('firstname')->get();
+        $result->each->makeHidden(['created_at', 'updated_at']);
 
         if ($size === 'small') {
             return $result->filter(fn($dog) => str_contains($dog->size_letter, 'S') || str_contains($dog->size_letter, 'T'))->values();

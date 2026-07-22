@@ -47,12 +47,11 @@ class MapController extends Controller
     public function mealmap(): Response
     {
         return Inertia::render('Mealmap', [
-            'dogsPerPage' => intval(config('services.gingr.mealmap_dpp')),
             'rotations' => Rotation::when(now()->isSunday(), function ($query) {
                 $query->where('is_sunday_hour', 1);
             })->orderBy('start_time')->get(),
             'yards' => Yard::orderBy('display_order')->get(),
-            'yardPresets' => collect(YardCodes::cases())->map(fn ($case) => [
+            'yardPresets' => collect(YardCodes::cases())->map(fn($case) => [
                 'value' => $case->value,
                 'label' => $case->label(),
             ]),

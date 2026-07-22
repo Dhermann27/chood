@@ -55,7 +55,7 @@ class FetchBoardingJob implements ShouldQueue
 
         $data = $report->data ?? [];
 
-        $data['boarding_accrual'] = ['qty' => $qty, 'total' => round($total, 2)];
+        $data['boarding_accrual'] = ['qty' => $qty, 'total' => round($total, 2), 'breakdown' => $breakdown];
 
         $report->data = $data;
         $report->updated_at = now();
@@ -79,22 +79,21 @@ class FetchBoardingJob implements ShouldQueue
             $cells = $row->getElementsByTagName('td');
             if ($cells->length < 3) continue;
 
+            $lodging = trim($cells->item(0)->textContent ?? '');
+            if (strtolower($lodging) === 'totals') continue;
+
             $area = trim($cells->item(1)->textContent ?? '');
-            $code = str_contains(strtolower($area), 'luxury') ? HousingServiceCodes::BRDL->value : HousingServiceCodes::BRDC->value;
+            $isLuxury = str_contains(strtolower($area), 'luxury') || str_contains(strtolower($area), 'teacup');
+            $code = $isLuxury ? HousingServiceCodes::BRDL->value : HousingServiceCodes::BRDC->value;
             $base = self::BASE_RATES[$code];
 
-            // Date column is index 2 — extract count from number-reservations span direct text
+            // Date column is index 2 — first number in the span text is the dog count
             $dateCell = $cells->item(2);
             $countSpan = $xpath->query('.//span[@class="number-reservations"]', $dateCell)->item(0);
             if (!$countSpan) continue;
 
-            $count = 0;
-            foreach ($countSpan->childNodes as $node) {
-                if ($node->nodeType === XML_TEXT_NODE) {
-                    $count = (int)trim($node->textContent);
-                    break;
-                }
-            }
+            $spanText = preg_replace('/\s+/', ' ', trim($countSpan->textContent ?? ''));
+            $count = preg_match('/^(\d+)/', $spanText, $m) ? (int)$m[1] : 0;
             if ($count === 0) continue;
 
             $discounts = self::MULTI_DOG_DISCOUNTS[$code];
@@ -102,11 +101,10 @@ class FetchBoardingJob implements ShouldQueue
             $rate = $base - $discount;
             $cabinTotal = $rate * $count;
 
-            $lodging = trim($cells->item(0)->textContent ?? '');
             $qty += $count;
             $total += $cabinTotal;
             $breakdown[] = [
-                'label' => 'Boarding: ' . $lodging . ($count > 1 ? " ({$count} dogs)" : ''),
+                'label' => 'Boarding: ' . preg_replace('/\s+/', ' ', $lodging) . ($count > 1 ? " ({$count} dogs)" : ''),
                 'qty' => $count,
                 'total' => $cabinTotal,
             ];

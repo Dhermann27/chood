@@ -2,6 +2,7 @@
 
 namespace App\Jobs\WIW;
 
+use App\Enums\YardIds;
 use App\Models\Dog;
 use App\Models\Employee;
 use App\Models\EmployeeYardRotation;
@@ -32,6 +33,8 @@ class GoFetchShiftsJob implements ShouldQueue
     const int    START_HOUR_OF_DAY = 6;
     const int    HOURS_IN_DAY = 13;
     const int    START_LUNCHES_AT_INDEX = 2 * 12 + 6; // 10:30am
+    const int    PM_SHIFT_START_INDEX = 7 * 12;       // 1:00pm: shifts starting here or later get afternoon floor
+    const int    AFTERNOON_BREAK_FLOOR = 10 * 12 + 6;  // 4:30pm: earliest break for PM crew
 
     const array SKIPPED_POSITIONS = ['Event Staff'];
     const array QUALIFIED_POSITIONS = ['Camp Counselor', 'Camp Counselor In Training', 'Shift Supervisor'];
@@ -81,7 +84,7 @@ class GoFetchShiftsJob implements ShouldQueue
 
             $supervisors = $wiwShifts
                 ->filter(fn($s) => in_array($positionMap->get($s['position_id']), self::SUPERVISOR_POSITIONS))
-                ->map(function ($s) use ($positionMap, $userMap) {
+                ->map(function ($s) use ($userMap) {
                     $startAt = Carbon::parse($s['start_time']);
                     $endAt = Carbon::parse($s['end_time']);
                     $startFmt = $startAt->minute === 0 ? $startAt->format('ga') : $startAt->format('g:ia');
@@ -168,7 +171,7 @@ class GoFetchShiftsJob implements ShouldQueue
         $shift->role = in_array($positionName, self::SUPERVISOR_POSITIONS) ? self::SUPERVISOR : $positionName;
         $isSyo = $smallMediumOnly->contains($shift->first_name);
         $shift->yardHoursWorked = $yards->mapWithKeys(fn($yard) => [
-            $yard->id => ($isSyo && !$yard->is_large && $yard->id !== 999) ? -1 : 0,
+            $yard->id => ($isSyo && !$yard->is_large && $yard->id !== YardIds::FLOAT->value) ? -1 : 0,
         ])->toArray();
         $shift->next_lunch_break = null;
         $shift->fairness_score = 0;
@@ -321,22 +324,22 @@ class GoFetchShiftsJob implements ShouldQueue
         $allDogs = Dog::with('icons')->orderBy('id')->get();
         $largeDogs = $allDogs->filter(fn($d) => str_contains($d->size_letter, 'L'))->pluck('id');
 
-        if (in_array(1002, $allowed, true)) {
+        if (in_array(YardIds::ACTIVE->value, $allowed, true)) {
             $half = intdiv($largeDogs->count(), 2);
-            Dog::whereIn('id', $largeDogs->slice(0, $half))->update(['yard_id' => 1001]);
-            Dog::whereIn('id', $largeDogs->slice($half))->update(['yard_id' => 1002]);
+            Dog::whereIn('id', $largeDogs->slice(0, $half))->update(['yard_id' => YardIds::LARGE->value]);
+            Dog::whereIn('id', $largeDogs->slice($half))->update(['yard_id' => YardIds::ACTIVE->value]);
         } else {
-            Dog::whereIn('id', $largeDogs)->update(['yard_id' => 1001]);
+            Dog::whereIn('id', $largeDogs)->update(['yard_id' => YardIds::LARGE->value]);
         }
 
         $smallDogs = $allDogs->filter(fn($d) => str_contains($d->size_letter, 'S') || str_contains($d->size_letter, 'T'))->pluck('id');
 
-        if (in_array(1003, $allowed, true)) {
+        if (in_array(YardIds::MEDIUM->value, $allowed, true)) {
             $half = intdiv($smallDogs->count(), 2);
-            Dog::whereIn('id', $smallDogs->slice(0, $half))->update(['yard_id' => 1000]);
-            Dog::whereIn('id', $smallDogs->slice($half))->update(['yard_id' => 1003]);
+            Dog::whereIn('id', $smallDogs->slice(0, $half))->update(['yard_id' => YardIds::SMALL->value]);
+            Dog::whereIn('id', $smallDogs->slice($half))->update(['yard_id' => YardIds::MEDIUM->value]);
         } else {
-            Dog::whereIn('id', $smallDogs)->update(['yard_id' => 1000]);
+            Dog::whereIn('id', $smallDogs)->update(['yard_id' => YardIds::SMALL->value]);
         }
 
         $rotations = Rotation::query()->when(Carbon::now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))->get();
@@ -349,7 +352,7 @@ class GoFetchShiftsJob implements ShouldQueue
             $endOfHour = Carbon::today()->setTimeFromTimeString($rotation->end_time);
             Log::info("Assigning Hour: {$startOfHour->format('h:ia')}");
 
-            $availableShifts = $shifts->filter(function ($shift) use ($startOfHour, $endOfHour, $rotation) {
+            $availableShifts = $shifts->filter(function ($shift) use ($startOfHour, $endOfHour) {
                 $isWorking = Carbon::parse($shift->start_at)->lessThanOrEqualTo($startOfHour) &&
                     Carbon::parse($shift->end_at)->greaterThanOrEqualTo($endOfHour);
 
@@ -364,7 +367,7 @@ class GoFetchShiftsJob implements ShouldQueue
             })->values();
 
             $openYardIds = $openYardCodes->allowedYards((bool)$rotation->is_midday);
-            $openYardIds[] = 999;
+            $openYardIds[] = YardIds::FLOAT->value;
             $openYards = $yards->whereIn('id', $openYardIds)->values();
 
             foreach ($openYards as $yard) {
@@ -378,7 +381,7 @@ class GoFetchShiftsJob implements ShouldQueue
 
                 Log::info("Available employees: {$names->only($pool->pluck('user_id')->all())->values()->implode(', ')}");
 
-                $chosen = $pool->first(fn($s) => $yard->id === 999 ||
+                $chosen = $pool->first(fn($s) => $yard->id === YardIds::FLOAT->value ||
                     $smallMediumOnly->contains($s->first_name) ||
                     !isset($lastYardHourIds[$s->user_id][$yard->id]) ||
                     !$lastYardHourId ||
@@ -431,6 +434,9 @@ class GoFetchShiftsJob implements ShouldQueue
         $firstBreakTarget = $startIndex + ($duration >= 8 * 12
                 ? $duration / 4
                 : ($duration >= 6.5 * 12 ? $duration / 3 : $duration / 2));
+        if ($startIndex >= self::PM_SHIFT_START_INDEX) {
+            $firstBreakTarget = max($firstBreakTarget, self::AFTERNOON_BREAK_FLOOR);
+        }
         Log::info("Searching for first break at {$this->convertIndexToTime(round($firstBreakTarget))->format('g:i a')}");
         return $this->findBreakIndex(round($firstBreakTarget), 3, $breakMatrix);
     }
@@ -460,7 +466,8 @@ class GoFetchShiftsJob implements ShouldQueue
 
     private function convertTimeToIndex(Carbon $shiftTime): int
     {
-        return ($shiftTime->hour - self::START_HOUR_OF_DAY) * 12 + ($shiftTime->minute / 5);
+        $local = $shiftTime->copy()->setTimezone(config('app.timezone'));
+        return ($local->hour - self::START_HOUR_OF_DAY) * 12 + ($local->minute / 5);
     }
 
     private function isLunchAnchor(int $startIndex): bool

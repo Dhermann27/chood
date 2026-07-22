@@ -1,38 +1,20 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {ref, onMounted, onBeforeUnmount} from 'vue';
+import {ref} from 'vue';
 import Map from "@/Components/chood/Map.vue";
-import {fetchMapData} from "@/utils.js";
+import {useMapPolling} from "@/composables/useMapPolling.js";
 
 const props = defineProps({
     cabins: Array,
-    dogs: Object,
-    checksum: String
 });
 const dogs = ref([]);
 const statuses = ref([]);
-const localChecksum = ref('');
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
-let refreshInterval;
 
-async function updateData() {
-    const response = await fetchMapData(`/api/fullmap/`, localChecksum.value);
-
-    if (response && localChecksum.value !== response.checksum) {
-        dogs.value = response.dogs;
-        statuses.value = response.statuses;
-        sectionCounts.value = response.sectionCounts ?? sectionCounts.value;
-        localChecksum.value = response.checksum;
-    }
-}
-
-onMounted(() => {
-    updateData();
-    refreshInterval = setInterval(updateData, 5000);
-});
-
-onBeforeUnmount(() => {
-    clearInterval(refreshInterval);
+useMapPolling('/api/fullmap/', 5000, (data) => {
+    dogs.value = data.dogs;
+    statuses.value = data.statuses;
+    sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
 });
 </script>
 
@@ -50,7 +32,7 @@ onBeforeUnmount(() => {
                   class="flex items-center justify-center gap-1 leading-none"
                   style="font-size: 39px;">
                 {{ sectionCounts.checkin_today }}
-                <FontAwesomeIcon :icon="['fas', 'left-right']" />
+                <FontAwesomeIcon :icon="['fas', 'left-right']"/>
                 {{ sectionCounts.checkout_today }}
             </span>
             <span style="font-size: 108px; line-height: 1;">{{ sectionCounts.in_house }}</span>
