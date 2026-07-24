@@ -137,11 +137,24 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
             $resolved = false;
 
             for ($i = 1; $i <= $maxLen; $i++) {
-                $names = $group->map(fn($d) => $firstname . ' ' . ucfirst(strtolower(substr(trim($d->lastname ?? ''), 0, $i))));
+                $names = $group->map(fn($d) => strtolower(substr(trim($d->lastname ?? ''), 0, $i)));
                 if ($names->unique()->count() === $group->count()) {
-                    $group->each(fn($d) => $d->update([
-                        'display_name' => $firstname . ' ' . ucfirst(strtolower(substr(trim($d->lastname ?? ''), 0, $i))),
-                    ]));
+                    $group->each(function ($d) use ($firstname, $group) {
+                        $last = trim($d->lastname ?? '');
+                        $minLen = 1;
+                        foreach ($group as $other) {
+                            if ($other->id === $d->id) continue;
+                            $otherLast = trim($other->lastname ?? '');
+                            $j = 0;
+                            while ($j < strlen($last) && $j < strlen($otherLast) &&
+                                   strtolower($last[$j]) === strtolower($otherLast[$j])) {
+                                $j++;
+                            }
+                            $minLen = max($minLen, $j + 1);
+                        }
+                        $abbrev = ucfirst(strtolower(substr($last, 0, $minLen)));
+                        $d->update(['display_name' => $abbrev ? "$firstname {$abbrev}." : $firstname]);
+                    });
                     $resolved = true;
                     break;
                 }
