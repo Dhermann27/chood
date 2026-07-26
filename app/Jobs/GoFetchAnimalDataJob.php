@@ -10,19 +10,21 @@ use App\Models\Timeslot;
 use App\Services\FetchDataService;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(protected string $ownerId) {}
+    public function __construct(protected string $ownerId)
+    {
+    }
 
     public function uniqueId(): string
     {
@@ -59,18 +61,18 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
             if (!$dog) continue;
 
             $dog->update([
-                'gender' => match($animal['gender'] ?? null) {
-                    'Male'   => 'M',
+                'gender' => match ($animal['gender'] ?? null) {
+                    'Male' => 'M',
                     'Female' => 'F',
-                    default  => null,
+                    default => null,
                 },
             ]);
 
             $feedingSchedule = $animal['feeding_schedule'] ?? null;
             $dog->update([
-                'food_type'      => $feedingSchedule['foodType']['label'] ?? null,
+                'food_type' => $feedingSchedule['foodType']['label'] ?? null,
                 'feeding_method' => $feedingSchedule['feedingMethod']['label'] ?? null,
-                'feeding_notes'  => trim($feedingSchedule['feedingNotes'] ?? '') ?: null,
+                'feeding_notes' => trim($feedingSchedule['feedingNotes'] ?? '') ?: null,
             ]);
 
             $this->getAllergies($petId, $animal['allergies'] ?? null);
@@ -106,8 +108,8 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
         $condition = trim($animal['medical_condition'] ?? '');
         if ($condition !== '' && !$this->isBoilerplate($condition)) {
             Medication::create([
-                'pet_id'      => $petId,
-                'type'        => 'Medical Condition',
+                'pet_id' => $petId,
+                'type' => 'Medical Condition',
                 'description' => $condition,
             ]);
         }
@@ -116,8 +118,8 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
         $otherCondition = trim($animal['medical_conditions_please_explain'] ?? '');
         if ($otherCondition !== '' && !$this->isBoilerplate($otherCondition)) {
             Medication::create([
-                'pet_id'      => $petId,
-                'type'        => 'Medical Condition',
+                'pet_id' => $petId,
+                'type' => 'Medical Condition',
                 'description' => $otherCondition,
             ]);
         }
@@ -126,8 +128,8 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
         $handlingNote = trim($animal['medication_schedule']['medicationNotes'] ?? '');
         if ($handlingNote !== '' && !$this->isBoilerplate($handlingNote)) {
             Medication::create([
-                'pet_id'      => $petId,
-                'type'        => 'Handling',
+                'pet_id' => $petId,
+                'type' => 'Handling',
                 'description' => $handlingNote,
             ]);
         }
@@ -139,23 +141,28 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
             foreach ($schedule['medications'] ?? [] as $med) {
                 Medication::create([
                     'medication_id' => $med['id'],
-                    'pet_id'        => $petId,
-                    'type_id'       => $med['medicationType']['value'] ?? null,
-                    'type'          => $med['medicationType']['label'] ?? '',
-                    'timeslot_id'   => $timeslotId,
-                    'quantity'      => $med['medicationAmount']['label'] ?? null,
-                    'unit'          => $med['medicationUnit']['label'] ?? null,
-                    'start_date'    => $med['start_date'] ?: null,
-                    'end_date'      => $med['end_date'] ?: null,
-                    'description'   => trim($med['medicationNotes'] ?? '') ?: null,
+                    'pet_id' => $petId,
+                    'type_id' => $med['medicationType']['value'] ?? null,
+                    'type' => $med['medicationType']['label'] ?? '',
+                    'timeslot_id' => $timeslotId,
+                    'quantity' => $med['medicationAmount']['label'] ?? null,
+                    'unit' => $med['medicationUnit']['label'] ?? null,
+                    'start_date' => $med['start_date'] ?: null,
+                    'end_date' => $med['end_date'] ?: null,
+                    'description' => $this->cleanHtml($med['medicationNotes'] ?? '') ?: null,
                 ]);
             }
         }
     }
 
+    private function cleanHtml(string $text): string
+    {
+        return trim(html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+
     private function isBoilerplate(string $text): bool
     {
-        return (bool) preg_match('/^(none|no \w+ needed|none no \w+ needed)$/i', $text);
+        return (bool)preg_match('/^(none|no \w+ needed|none no \w+ needed)$/i', $text);
     }
 
     private function getFeedings(string $petId, ?array $feedingSchedule, $timeslots): void
@@ -166,12 +173,12 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
 
         foreach ($feedingSchedule['feedingSchedules'] ?? [] as $schedule) {
             Feeding::create([
-                'feeding_id'  => $schedule['id'],
-                'pet_id'      => $petId,
+                'feeding_id' => $schedule['id'],
+                'pet_id' => $petId,
                 'timeslot_id' => $this->resolveTimeslot($schedule['feedingSchedule']['label'] ?? '', $timeslots),
-                'quantity'    => $schedule['feedingAmount']['label'] ?? null,
-                'unit'        => $schedule['feedingUnit']['label'] ?? null,
-                'description' => trim($schedule['feedingInstructions'] ?? '') ?: null,
+                'quantity' => $schedule['feedingAmount']['label'] ?? null,
+                'unit' => $schedule['feedingUnit']['label'] ?? null,
+                'description' => $this->cleanHtml($schedule['feedingInstructions'] ?? '') ?: null,
             ]);
         }
     }

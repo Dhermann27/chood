@@ -15,7 +15,7 @@ class Dog extends Model
 
     protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'display_name', 'gender', 'photoUri',
         'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout', 'checked_out_at',
-        'rest_starts_at', 'break_type_id', 'food_type', 'feeding_method', 'feeding_notes', 'services_string',
+        'rest_starts_at', 'break_type_id', 'rest_minutes', 'food_type', 'feeding_method', 'feeding_notes', 'services_string',
     ];
 
     protected $casts = ['checkin' => 'datetime', 'checkout' => 'datetime',
@@ -77,7 +77,7 @@ class Dog extends Model
 
     public function scopeInHouse($query)
     {
-        return $query->whereNull('checked_out_at');
+        return $query->whereNull('checked_out_at')->whereNotNull('pet_id');
     }
 
     public function getIsBoardingAttribute(): bool

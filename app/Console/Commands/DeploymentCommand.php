@@ -42,8 +42,8 @@ class DeploymentCommand extends Command
         ", 'Cleaning_status restored');
 
         $this->tryStatement("
-            INSERT INTO dogs (pet_id, cabin_id, rest_starts_at, break_type_id, yard_id)
-            SELECT pet_id, cabin_id, rest_starts_at, break_type_id, yard_id
+            INSERT INTO dogs (pet_id, cabin_id, rest_starts_at, break_type_id, rest_minutes, yard_id)
+            SELECT pet_id, cabin_id, rest_starts_at, break_type_id, rest_minutes, yard_id
             FROM {$db}.dogs WHERE pet_id IS NOT NULL
         ", 'Dogs restored');
 

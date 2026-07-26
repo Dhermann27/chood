@@ -25,12 +25,14 @@ const statusMessage = ref(null);
 const statusClass = ref('text-greyhound');
 const wiwId = ref(null);
 const todo = ref(null);
+const restMinutes = ref('');
 const targets = ref({
     'dogsToAssign': [],
     'yardsToAssign': [],
     'cabin_id': 0,
     'cabin_short_name': '',
     'break_type_id': null,
+    'rest_minutes': null,
     'lunch_notes': '1 Bag'
 });
 const step = ref(1);
@@ -66,7 +68,9 @@ const dogsWithCabinMates = computed(() => {
     const assignedNames = new Set(dogs.value.filter(d => d.pet_id === null).map(d => d.display_name));
     const eligible = dogs.value.filter(d => d.cabin_id && d.is_boarding && d.pet_id !== null && !d.checked_out_at && !assignedNames.has(d.display_name));
     const counts = {};
-    eligible.forEach(d => { counts[d.cabin_id] = (counts[d.cabin_id] || 0) + 1; });
+    eligible.forEach(d => {
+        counts[d.cabin_id] = (counts[d.cabin_id] || 0) + 1;
+    });
     return eligible.filter(d => counts[d.cabin_id] > 1);
 });
 const markReturnedIsWalked = computed(() => {
@@ -81,7 +85,7 @@ const breakStatus = computed(() => {
     if (bt.behavior === 'lunch') return 'on lunch break';
     if (bt.behavior === 'unlimited') return `in ${bt.label}`;
     if (bt.behavior === 'walks_only') return 'marked as walks only';
-    return `resting for ${bt.duration_minutes} minutes`;
+    return `resting for ${targets.value.rest_minutes ?? bt.duration_minutes} minutes`;
 });
 
 let counter = 0;
@@ -203,6 +207,19 @@ function handleBreakDogSelect(dog) {
 function handleBreakDogUpdate(breakTypeId) {
     counter = 0;
     targets.value.break_type_id = breakTypeId;
+    targets.value.rest_minutes = null;
+    if (targets.value['dogsToAssign'].length > 0) nextStep();
+}
+
+function handleTimerStart() {
+    const mins = parseInt(restMinutes.value);
+    if (!mins || mins < 1) return;
+    const timerType = props.breakTypes?.find(bt => bt.behavior === 'countdown' && bt.duration_minutes === null);
+    if (!timerType) return;
+    restMinutes.value = '';
+    counter = 0;
+    targets.value.break_type_id = timerType.id;
+    targets.value.rest_minutes = mins;
     if (targets.value['dogsToAssign'].length > 0) nextStep();
 }
 
@@ -280,6 +297,7 @@ async function handleFinishAction(action) {
         'cabin_id': 0,
         'cabin_short_name': '',
         'break_type_id': null,
+        'rest_minutes': null,
         'lunch_notes': '1 Bag'
     };
     counter = 0;
@@ -494,8 +512,17 @@ onUnmounted(() => {
                         <FontAwesomeIcon :icon="['fas', 'bed']"/>
                     </button>
                 </div>
-                <div class="flex gap-2 text-white text-xl">
-                    <button v-for="bt in breakTypes" :key="bt.id"
+                <div class="flex gap-2 text-white text-xl flex-wrap">
+                    <button
+                        v-for="bt in breakTypes.filter(bt => bt.behavior === 'countdown' && bt.duration_minutes !== null)"
+                        :key="bt.id" class="bg-caregiver py-4 px-6 rounded-2xl hover:bg-blue-500"
+                        @click="handleBreakDogUpdate(bt.id)">
+                        {{ bt.label }}
+                    </button>
+                    <input v-model="restMinutes" type="number" min="1" max="480" placeholder="Minutes"
+                           @keydown.enter="handleTimerStart" @blur="handleTimerStart"
+                           class="bg-caregiver py-4 px-6 rounded-2xl text-white placeholder-blue-200 w-36 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
+                    <button v-for="bt in breakTypes.filter(bt => bt.behavior !== 'countdown')" :key="bt.id"
                             :disabled="bt.behavior === 'lunch' && is1pmOrLater"
                             class="bg-caregiver py-4 px-6 rounded-2xl hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             @click="handleBreakDogUpdate(bt.id)">
@@ -577,7 +604,8 @@ onUnmounted(() => {
                 <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']" class="text-5xl text-alerted mb-4"/>
                 <h3 class="text-2xl mb-2">
                     {{ targets.dogsToAssign.filter(d => !d.cabin_id).map(d => d.display_name).join(', ') }}
-                    {{ targets.dogsToAssign.filter(d => !d.cabin_id).length === 1 ? "doesn't" : "don't" }} have a cabin assigned!
+                    {{ targets.dogsToAssign.filter(d => !d.cabin_id).length === 1 ? "doesn't" : "don't" }} have a cabin
+                    assigned!
                 </h3>
                 <p class="text-xl text-gray-600 mb-6">Assign a cabin first, then start the rest break.</p>
                 <div class="flex justify-center gap-6 text-2xl">

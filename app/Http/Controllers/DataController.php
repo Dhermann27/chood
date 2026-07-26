@@ -36,15 +36,13 @@ class DataController extends Controller
     {
         $dogs = $this->getDogsByCabin();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
-        $new_checksum = md5($dogs->toJson() . json_encode($statuses));
+        $sectionCounts = Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]);
+        $new_checksum = md5($dogs->toJson() . json_encode($statuses) . json_encode($sectionCounts));
         if ($checksum !== $new_checksum) {
             $response = [
                 'dogs' => $dogs,
                 'statuses' => $statuses,
-                'sectionCounts' => array_merge(
-                    Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
-                    ['in_house' => Dog::inHouse()->count()]
-                ),
+                'sectionCounts' => array_merge($sectionCounts, ['in_house' => Dog::inHouse()->count()]),
                 'checksum' => $new_checksum,
             ];
 
@@ -90,7 +88,7 @@ class DataController extends Controller
                 ];
             })->sortBy('first_name')->values();
 
-        $lunchDogs = Feeding::select('id', 'pet_id', 'description')->whereHas('dog')->where(function ($query) {
+        $lunchDogs = Feeding::select('id', 'pet_id', 'description')->whereHas('dog', fn($q) => $q->inHouse())->where(function ($query) {
             $query->where('is_task', 1)->orWhere('timeslot_id', Timeslot::LUNCH);
         })->with('dog')->get()->unique('pet_id')->map(function ($feeding) {
             $dog = $feeding->dog;
@@ -344,8 +342,9 @@ class DataController extends Controller
             ]));
         $overscheduled = $this->getOverscheduled($allRotations->values(), $largeYardIds, $allAssignments);
 
+        $sectionCounts = Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]);
         $new_checksum = md5($dogs->toJson() . $assignments->toJson() . json_encode($nextBreak) .
-            json_encode($nextLunch) . json_encode($overscheduled));
+            json_encode($nextLunch) . json_encode($overscheduled) . json_encode($sectionCounts));
         if ($checksum !== $new_checksum) {
             $response = [
                 'dogs' => $dogsByGroup,
@@ -353,7 +352,7 @@ class DataController extends Controller
                 'nextBreak' => $nextBreak,
                 'nextLunch' => $nextLunch,
                 'overscheduled' => $overscheduled,
-                'sectionCounts' => Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
+                'sectionCounts' => $sectionCounts,
                 'checksum' => $new_checksum,
             ];
 

@@ -65,12 +65,13 @@ const breakTimeLeft = computed(() => {
     const start = new Date(dog.rest_starts_at);
 
     if (bt.behavior === 'countdown') {
-        const end = new Date(start.getTime() + bt.duration_minutes * 60 * 1000);
+        const duration = dog.rest_minutes ?? bt.duration_minutes;
+        const end = new Date(start.getTime() + duration * 60 * 1000);
         const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
         return {
             minutesLeft,
-            percentElapsed: 1 - minutesLeft / bt.duration_minutes,
-            percentRemaining: minutesLeft / bt.duration_minutes,
+            percentElapsed: 1 - minutesLeft / duration,
+            percentRemaining: minutesLeft / duration,
             expired: minutesLeft === 0,
         };
     }

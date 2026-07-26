@@ -47,17 +47,15 @@ class TaskController extends Controller
         $employees = Employee::whereHas('shifts', function ($query) {
             $query->where('start_time', '<=', now()->addHour())->where('end_time', '>=', now()->subHour());
         })->orderBy('first_name')->get();
-        $new_checksum = md5($dogs->toJson() . $employees->toJson() . json_encode($statuses));
+        $sectionCounts = Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]);
+        $new_checksum = md5($dogs->toJson() . $employees->toJson() . json_encode($statuses) . json_encode($sectionCounts));
         if ($checksum !== $new_checksum) {
             $response = [
                 'dogs' => $dogs,
                 'openYards' => $yards,
                 'statuses' => $statuses,
                 'employees' => $employees,
-                'sectionCounts' => array_merge(
-                    Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
-                    ['in_house' => Dog::inHouse()->count()]
-                ),
+                'sectionCounts' => array_merge($sectionCounts, ['in_house' => Dog::inHouse()->count()]),
                 'checksum' => $new_checksum,
             ];
 
@@ -173,11 +171,13 @@ class TaskController extends Controller
         $validatedData = $request->validate([
             'dogsToAssign.*.id' => 'required|exists:dogs,id',
             'break_type_id' => 'required|exists:break_types,id',
+            'rest_minutes' => 'nullable|integer|min:1|max:480',
         ]);
 
         Dog::whereIn('id', collect($validatedData['dogsToAssign'])->pluck('id'))->update([
             'rest_starts_at' => now()->startOfMinute(),
             'break_type_id' => $validatedData['break_type_id'],
+            'rest_minutes' => $validatedData['rest_minutes'] ?? null,
         ]);
 
         $names = implode(',', collect($request->input('dogsToAssign'))->pluck('firstname')->filter()->values()->toArray());
@@ -197,7 +197,7 @@ class TaskController extends Controller
             }
         }
 
-        $dog->update(['rest_starts_at' => null, 'break_type_id' => null]);
+        $dog->update(['rest_starts_at' => null, 'break_type_id' => null, 'rest_minutes' => null]);
         return response()->json(['message' => "Marked {$dog->firstname} as returned to yard"]);
     }
 

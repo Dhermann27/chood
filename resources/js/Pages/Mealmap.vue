@@ -49,6 +49,22 @@ const openYards = computed(() => {
     return (props.yards ?? []).filter(e => ids.includes(Number(e.id)));
 });
 
+function mergedMedications(medications) {
+    const map = new Map();
+    for (const med of medications) {
+        const key = [med.medication_id, med.type, med.quantity, med.unit, med.description].join('|');
+        if (map.has(key)) {
+            map.get(key).timeslotNames.push(med.timeslot?.name);
+        } else {
+            map.set(key, {...med, timeslotNames: [med.timeslot?.name]});
+        }
+    }
+    return Array.from(map.values()).map(med => ({
+        ...med,
+        timeslotLabel: med.timeslotNames.filter(Boolean).join('/'),
+    }));
+}
+
 function setInputRef(key, el) {
     if (!inputRefs.value) inputRefs.value = {};
     inputRefs.value[key] = el;
@@ -250,12 +266,12 @@ onMounted(() => {
                         </div>
 
                         <div class="flex-grow flex flex-col items-start justify-center p-1 text-xl">
-                            <div v-for="medication in dog.medications" :key="medication.id"
+                            <div v-for="medication in mergedMedications(dog.medications)" :key="medication.id"
                                  class="flex-col justify-center">
                                 <FontAwesomeIcon v-if="medication.medication_id"
                                                  :icon="['fas', 'prescription-bottle-pill']" class="me-1"/>
                                 <FontAwesomeIcon v-else :icon="['fas', 'stethoscope']" class="me-1"/>
-                                {{ medication.timeslot?.name }}
+                                {{ medication.timeslotLabel }}
                                 {{ medication.type?.trim() }}
                                 <span v-if="medication.quantity || medication.unit">
                                     — {{ medication.quantity }} {{ medication.unit }}

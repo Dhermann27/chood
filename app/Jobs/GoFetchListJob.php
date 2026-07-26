@@ -6,6 +6,7 @@ use App\Enums\HousingServiceCodes;
 use App\Models\Cabin;
 use App\Models\CleaningStatus;
 use App\Models\Dog;
+use App\Models\Feeding;
 use App\Models\Service;
 use App\Services\FetchDataService;
 use Carbon\Carbon;
@@ -91,7 +92,9 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         $newlyGoneDogs = Dog::whereNotNull('pet_id')->whereNull('checked_out_at')->whereNotIn('pet_id', $activePetIds)->get(['pet_id', 'cabin_id', 'account_id']);
         Dog::whereIn('pet_id', $newlyGoneDogs->pluck('pet_id'))->update(['checked_out_at' => now()]);
         if ($newlyGoneDogs->isNotEmpty()) {
-            DB::table('dog_icons')->whereIn('pet_id', $newlyGoneDogs->pluck('pet_id'))->delete();
+            $gonePetIds = $newlyGoneDogs->pluck('pet_id');
+            DB::table('dog_icons')->whereIn('pet_id', $gonePetIds)->delete();
+            Feeding::whereIn('pet_id', $gonePetIds)->where('is_task', 1)->delete();
         }
 
         if ($listChanged || $newlyGoneDogs->isNotEmpty() || !Cache::has('section_counts')) {
@@ -147,7 +150,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
                             $otherLast = trim($other->lastname ?? '');
                             $j = 0;
                             while ($j < strlen($last) && $j < strlen($otherLast) &&
-                                   strtolower($last[$j]) === strtolower($otherLast[$j])) {
+                                strtolower($last[$j]) === strtolower($otherLast[$j])) {
                                 $j++;
                             }
                             $minLen = max($minLen, $j + 1);
