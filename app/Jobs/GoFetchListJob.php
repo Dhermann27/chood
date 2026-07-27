@@ -88,12 +88,17 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         $this->resolveDisplayNames($activePetIds);
         GoFetchIconsJob::dispatch($activePetIds, $activeOwnerIds);
 
+        // Remove icons for dogs past the 120s yardmap grace period so size_letter stays accurate while visible
+        DB::table('dog_icons')->whereIn('pet_id',
+            Dog::select('pet_id')->whereNotNull('pet_id')->whereNotNull('checked_out_at')
+                ->where('checked_out_at', '<', Carbon::now()->subSeconds(120))
+        )->delete();
+
         // Mark newly departed dogs (first time missing from Gingr feed)
         $newlyGoneDogs = Dog::whereNotNull('pet_id')->whereNull('checked_out_at')->whereNotIn('pet_id', $activePetIds)->get(['pet_id', 'cabin_id', 'account_id']);
         Dog::whereIn('pet_id', $newlyGoneDogs->pluck('pet_id'))->update(['checked_out_at' => now()]);
         if ($newlyGoneDogs->isNotEmpty()) {
             $gonePetIds = $newlyGoneDogs->pluck('pet_id');
-            DB::table('dog_icons')->whereIn('pet_id', $gonePetIds)->delete();
             Feeding::whereIn('pet_id', $gonePetIds)->where('is_task', 1)->delete();
         }
 
