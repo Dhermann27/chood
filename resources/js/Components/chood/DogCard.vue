@@ -93,7 +93,7 @@ const breakTimeLeft = computed(() => {
         const elapsed = Math.floor((now.value - start.getTime()) / (60 * 1000));
         const timeForWalk = elapsed >= bt.duration_minutes;
         return {
-            minutesLeft: timeForWalk ? 'Walk!' : 'EOD',
+            minutesLeft: timeForWalk ? 'Walk!' : (bt.short_label ?? 'EOD'),
             percentElapsed: 0,
             percentRemaining: 1,
             expired: timeForWalk

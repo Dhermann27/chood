@@ -26,6 +26,7 @@ const statusClass = ref('text-greyhound');
 const wiwId = ref(null);
 const todo = ref(null);
 const restMinutes = ref('');
+const photoErrors = ref(new Set());
 const targets = ref({
     'dogsToAssign': [],
     'yardsToAssign': [],
@@ -41,6 +42,8 @@ const showNoCabinWarning = ref(false);
 const savedBreakDogs = ref([]);
 const savedNoCabinDog = ref(null);
 const is1pmOrLater = ref(false);
+const empColumns = computed(() => Math.max(1, Math.ceil(Math.sqrt((4 / 3) * (employees.value?.length ?? 0)))));
+const empRows = computed(() => Math.max(1, Math.ceil((employees.value?.length ?? 0) / empColumns.value)));
 const restColumns = computed(() => Math.ceil(Math.sqrt((16 / 9) * (dogsOnBreak.value.length + 1))));
 const restRows = computed(() => Math.ceil((dogsOnBreak.value.length + 1) / restColumns.value));
 const restGridStyle = computed(() => getYardGridStyle(restRows.value, restColumns.value, false));
@@ -90,6 +93,10 @@ const breakStatus = computed(() => {
 
 let counter = 0;
 let refreshInterval;
+
+function handlePhotoError(wiwId) {
+    photoErrors.value = new Set([...photoErrors.value, wiwId]);
+}
 
 function preloadDogPhotos(dogs) {
     if (!dogs) return;
@@ -223,6 +230,18 @@ function handleTimerStart() {
     if (targets.value['dogsToAssign'].length > 0) nextStep();
 }
 
+function handleRotateStart() {
+    const m = new Date().getMinutes();
+    const until = m < 30 ? 30 - m : 90 - m;
+    const mins = until < 10 ? until + 60 : until;
+    const timerType = props.breakTypes?.find(bt => bt.behavior === 'countdown' && bt.duration_minutes === null);
+    if (!timerType) return;
+    counter = 0;
+    targets.value.break_type_id = timerType.id;
+    targets.value.rest_minutes = mins;
+    if (targets.value['dogsToAssign'].length > 0) nextStep();
+}
+
 function handleNoCabinAssign() {
     showNoCabinWarning.value = false;
     savedNoCabinDog.value = targets.value.dogsToAssign.find(d => !d.cabin_id) ?? null;
@@ -328,20 +347,25 @@ onUnmounted(() => {
     <div class="flex flex-col items-center h-screen p-4">
         <template v-if="step === 1">
             <h1 class="text-3xl font-header mb-4">Hi! Huaryoo?</h1>
-            <div class="grid grid-cols-4 gap-4 w-full h-full overflow-y-auto">
-                <button
-                    v-for="employee in employees"
-                    :key="employee.id"
-                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex flex-col items-center justify-center w-full"
-                    @click="handleEmployeeClick(employee)">
-
-                    <img
-                        :src="`/images/staff/${employee.wiw_user_id}.png`"
-                        :alt="employee.first_name"
-                        class="w-[80%] h-[80%] rounded-full object-cover mb-4"
-                    />
-                    <span>{{ employee.first_name }}</span>
-                </button>
+            <div
+                :style="{display: 'grid', gridTemplateColumns: `repeat(${empColumns}, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(${empRows}, minmax(0, 1fr))`,gap: '1rem'}"
+                class="w-full flex-1 min-h-0">
+                <div v-for="employee in employees" :key="employee.id" role="button"
+                     class="flex items-center justify-center w-full h-full cursor-pointer"
+                     @click="handleEmployeeClick(employee)">
+                    <div v-if="!photoErrors.has(employee.wiw_user_id)"
+                         class="relative w-full h-full rounded-2xl overflow-hidden ring-[3px] ring-caregiver">
+                        <img
+                            :src="`/images/staff/${employee.wiw_user_id}.png`" :alt="employee.first_name"
+                            class="w-full h-full object-cover" @error="handlePhotoError(employee.wiw_user_id)"
+                        />
+                    </div>
+                    <div v-else
+                         class="w-full h-full bg-caregiver rounded-2xl flex items-center justify-center text-white text-5xl font-semibold">
+                        {{ employee.first_name }}
+                    </div>
+                </div>
             </div>
         </template>
 
@@ -515,16 +539,20 @@ onUnmounted(() => {
                 <div class="flex gap-2 text-white text-xl flex-wrap">
                     <button
                         v-for="bt in breakTypes.filter(bt => bt.behavior === 'countdown' && bt.duration_minutes !== null)"
-                        :key="bt.id" class="bg-caregiver py-4 px-6 rounded-2xl hover:bg-blue-500"
+                        :key="bt.id" class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500"
                         @click="handleBreakDogUpdate(bt.id)">
                         {{ bt.label }}
                     </button>
                     <input v-model="restMinutes" type="number" min="1" max="480" placeholder="Minutes"
                            @keydown.enter="handleTimerStart" @blur="handleTimerStart"
-                           class="bg-caregiver py-4 px-6 rounded-2xl text-white placeholder-blue-200 w-36 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
+                           class="bg-caregiver py-2 px-4 rounded-2xl text-white placeholder-blue-200 w-36 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
+                    <button @click="handleRotateStart"
+                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500">
+                        Rotate
+                    </button>
                     <button v-for="bt in breakTypes.filter(bt => bt.behavior !== 'countdown')" :key="bt.id"
                             :disabled="bt.behavior === 'lunch' && is1pmOrLater"
-                            class="bg-caregiver py-4 px-6 rounded-2xl hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             @click="handleBreakDogUpdate(bt.id)">
                         {{ bt.label }}
                     </button>
