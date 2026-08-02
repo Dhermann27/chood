@@ -211,7 +211,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 $lunchTime = $this->convertIndexToTime($result['index']);
                 $shift->next_lunch_break = $lunchTime;
                 $shift->fairness_score = ($shift->fairness_score ?? 0) + $result['deviation'];
-                Log::info("Assigned lunch for {$shift->first_name} at {$lunchTime->format('g:i a')} @ {$result['deviation']}");
+                Log::warning("Assigned lunch for {$shift->first_name} at {$lunchTime->format('g:i a')} @ {$result['deviation']}");
             }
         }
     }
@@ -228,7 +228,7 @@ class GoFetchShiftsJob implements ShouldQueue
                     $breakTime = $this->convertIndexToTime($result['index']);
                     $shift->next_first_break = $breakTime;
                     $shift->fairness_score = ($shift->fairness_score ?? 0) + $result['deviation'];
-                    Log::info("Assigned first break for {$shift->first_name} at {$breakTime->format('g:i a')} @ {$result['deviation']}");
+                    Log::warning("Assigned first break for {$shift->first_name} at {$breakTime->format('g:i a')} @ {$result['deviation']}");
                 }
             }
 
@@ -239,7 +239,7 @@ class GoFetchShiftsJob implements ShouldQueue
                     $breakTime = $this->convertIndexToTime($result['index']);
                     $shift->next_second_break = $breakTime;
                     $shift->fairness_score = ($shift->fairness_score ?? 0) + $result['deviation'];
-                    Log::info("Assigned second break for {$shift->first_name} at {$breakTime->format('g:i a')} @ {$result['deviation']}");
+                    Log::warning("Assigned second break for {$shift->first_name} at {$breakTime->format('g:i a')} @ {$result['deviation']}");
                 }
             }
         }
@@ -350,7 +350,7 @@ class GoFetchShiftsJob implements ShouldQueue
         foreach ($rotations as $rotation) {
             $startOfHour = Carbon::today()->setTimeFromTimeString($rotation->start_time);
             $endOfHour = Carbon::today()->setTimeFromTimeString($rotation->end_time);
-            Log::info("Assigning Hour: {$startOfHour->format('h:ia')}");
+            Log::warning("Assigning Hour: {$startOfHour->format('h:ia')}");
 
             $availableShifts = $shifts->filter(function ($shift) use ($startOfHour, $endOfHour) {
                 $isWorking = Carbon::parse($shift->start_at)->lessThanOrEqualTo($startOfHour) &&
@@ -379,7 +379,7 @@ class GoFetchShiftsJob implements ShouldQueue
                     ->sortBy(fn($s) => [$s->yardHoursWorked[$yard->id], $smallMediumOnly->contains($s->first_name) ? 0 : 1, $s->start_at])
                     ->values();
 
-                Log::info("Available employees: {$names->only($pool->pluck('user_id')->all())->values()->implode(', ')}");
+                Log::warning("Available employees: {$names->only($pool->pluck('user_id')->all())->values()->implode(', ')}");
 
                 $chosen = $pool->first(fn($s) => $yard->id === YardIds::FLOAT->value ||
                     $smallMediumOnly->contains($s->first_name) ||
@@ -391,7 +391,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 if (!$chosen) continue;
 
                 $hoursWorked = $chosen->yardHoursWorked[$yard->id] ?? 0;
-                Log::info("{$names[$chosen->user_id]} assigned, having {$hoursWorked} hours in {$yard->name}");
+                Log::warning("{$names[$chosen->user_id]} assigned, having {$hoursWorked} hours in {$yard->name}");
 
                 $this->assignEmployee($yard, $rotation, $chosen, $shifts, $lastYardHourIds);
                 $availableShifts = $availableShifts->reject(fn($s) => $s->user_id === $chosen->user_id)->values();
@@ -437,7 +437,7 @@ class GoFetchShiftsJob implements ShouldQueue
         if ($startIndex >= self::PM_SHIFT_START_INDEX) {
             $firstBreakTarget = max($firstBreakTarget, self::AFTERNOON_BREAK_FLOOR);
         }
-        Log::info("Searching for first break at {$this->convertIndexToTime(round($firstBreakTarget))->format('g:i a')}");
+        Log::warning("Searching for first break at {$this->convertIndexToTime(round($firstBreakTarget))->format('g:i a')}");
         return $this->findBreakIndex(round($firstBreakTarget), 3, $breakMatrix);
     }
 
@@ -447,7 +447,7 @@ class GoFetchShiftsJob implements ShouldQueue
         $startIndex = $this->convertTimeToIndex(Carbon::parse($shift->start_at));
         $endIndex = $this->convertTimeToIndex(Carbon::parse($shift->end_at));
         $secondBreakTarget = min($startIndex + round($duration * 3 / 4), $endIndex - 4);
-        Log::info("Searching for second break at {$this->convertIndexToTime(round($secondBreakTarget))->format('g:i a')}");
+        Log::warning("Searching for second break at {$this->convertIndexToTime(round($secondBreakTarget))->format('g:i a')}");
         return $this->findBreakIndex(round($secondBreakTarget), 3, $breakMatrix);
     }
 

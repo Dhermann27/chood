@@ -3,7 +3,7 @@ import {Head} from '@inertiajs/vue3';
 import {computed, onMounted, ref, watchEffect} from "vue";
 import DogCard from "@/Components/chood/DogCard.vue";
 import {ControlSchemes} from "@/controlSchemes.js";
-import {formatTime} from "@/utils.js";
+import {formatTime, datetimeToMinutes} from "@/utils.js";
 import {useMapPolling} from "@/composables/useMapPolling.js";
 import Multiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.css';
@@ -33,7 +33,8 @@ const headerYardIds = ref([]);
 const openYardIdsByRotation = ref({});
 const uiAssignments = ref({});
 const shiftsRefreshing = ref(false);
-const overscheduled = ref([]);
+const timepickerOpen = ref({});
+const overscheduled = ref({});
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
 const cardHeight = computed(() => Math.min(300, 800 / (lunchDogs.value.length + medicatedDogs.value.length)));
 const employeesById = computed(() => {
@@ -49,10 +50,75 @@ const openYards = computed(() => {
     return (props.yards ?? []).filter(e => ids.includes(Number(e.id)));
 });
 
+const LUNCH_FLOOR_MIN = 8 * 60 + 30;       // 8:30am
+const PM_SHIFT_START_MIN = 13 * 60;         // 1:00pm — PM shift floor trigger
+const AFTERNOON_FLOOR_MIN = 16 * 60 + 30;  // 4:30pm — PM shift first-break floor
+
+
+function parseBreakTimeToMinutes(str) {
+    if (!str) return null;
+    const match = str.match(/^(\d{1,2}):(\d{2})(am|pm)$/i);
+    if (!match) return null;
+    let h = parseInt(match[1]);
+    const m = parseInt(match[2]);
+    if (match[3].toLowerCase() === 'pm' && h !== 12) h += 12;
+    if (match[3].toLowerCase() === 'am' && h === 12) h = 0;
+    return h * 60 + m;
+}
+
+function minutesToTimeStr(min) {
+    const h24 = Math.floor(min / 60) % 24;
+    const m = Math.round(min % 60);
+    const h12 = h24 % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')}${h24 >= 12 ? 'pm' : 'am'}`;
+}
+
+function breakIdealMinutes(employee, breakKey) {
+    const startMin = datetimeToMinutes(employee.shift_start);
+    const endMin = datetimeToMinutes(employee.shift_end);
+    if (startMin === null || endMin === null) return null;
+    const dur = endMin - startMin;
+    if (dur <= 0) return null;
+    if (breakKey === 'next_lunch_break') {
+        if (dur < 6.5 * 60) return null;
+        const target = dur >= 8 * 60 ? startMin + dur / 2 : startMin + dur * 2 / 3;
+        return Math.max(target, LUNCH_FLOOR_MIN);
+    }
+    if (breakKey === 'next_first_break') {
+        if (dur < 4 * 60) return null;
+        const fraction = dur >= 8 * 60 ? 1 / 4 : dur >= 6.5 * 60 ? 1 / 3 : 1 / 2;
+        const target = startMin + dur * fraction;
+        return startMin >= PM_SHIFT_START_MIN ? Math.max(target, AFTERNOON_FLOOR_MIN) : target;
+    }
+    if (breakKey === 'next_second_break') {
+        if (dur < 8 * 60) return null;
+        return startMin + dur * 3 / 4;
+    }
+    return null;
+}
+
+function breakFairnessColor(employee, breakKey) {
+    const actual = parseBreakTimeToMinutes(employee[breakKey]);
+    if (actual === null) return null;
+    const ideal = breakIdealMinutes(employee, breakKey);
+    if (ideal === null) return null;
+
+    const t = Math.min(Math.abs(actual - ideal) / 120, 1);
+    const r = Math.round(0x87 + t * (0xFF - 0x87));
+    const g = Math.round(0xB3 + t * (0xDE - 0xB3));
+    const b = Math.round(0xD1 + t * (0x17 - 0xD1));
+    return `rgb(${r},${g},${b})`;
+}
+
+function breakFairnessTooltip(employee, breakKey) {
+    const ideal = breakIdealMinutes(employee, breakKey);
+    return ideal !== null ? `Ideal: ${minutesToTimeStr(ideal)}` : null;
+}
+
 function mergedMedications(medications) {
     const map = new Map();
     for (const med of medications) {
-        const key = [med.medication_id, med.type, med.quantity, med.unit, med.description].join('|');
+        const key = [med.type, med.quantity, med.unit, med.description].join('|');
         if (map.has(key)) {
             map.get(key).timeslotNames.push(med.timeslot?.name);
         } else {
@@ -80,7 +146,7 @@ const {poll} = useMapPolling('/api/mealmap/', 15000, (data) => {
     selectedYardPreset.value = data.preset;
     headerYardIds.value = data.headerYards;
     openYardIdsByRotation.value = data.openYardsByRotation;
-    overscheduled.value = data.overscheduled ?? [];
+    overscheduled.value = data.overscheduled ?? {};
     sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
     hydrateUiAssignments();
 });
@@ -147,13 +213,6 @@ function isYardOpen(rotationId, yardId) {
 function slot(rotationId, yardId) {
     return assignments.value?.[String(rotationId)]?.[String(yardId)] ?? null;
 }
-
-// const getFairnessColor = (score) => {
-//     if (!score || score <= 0) return '';
-//     const intensity = Math.min(Math.ceil(score) * 100, 800);
-//     return `bg-red-${intensity}`;
-// };
-
 
 // Next three methods are all so Vue3 detects changes inside the nested objects
 function matchEmployeeInGroups(employee) {
@@ -336,12 +395,13 @@ onMounted(() => {
 
                         <td v-for="yardId in headerYardIds" :key="yardId"
                             class="border border-DEFAULT px-4 py-2"
-                            :class="{ 'bg-orange-300': overscheduled.includes(`${rotation.id}-${yardId}`) }">
+                            :class="{ 'bg-orange-300': `${rotation.id}-${yardId}` in overscheduled }"
+                            :title="overscheduled[`${rotation.id}-${yardId}`] ?? null">
 
                             <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                               <span v-if="slot(rotation.id, yardId)">
                                 {{ slot(rotation.id, yardId).first_name }}
-                                  <FontAwesomeIcon v-if="overscheduled.includes(`${rotation.id}-${yardId}`)"
+                                  <FontAwesomeIcon v-if="`${rotation.id}-${yardId}` in overscheduled"
                                                    :icon="['fas', 'clock']" class="me-1"/>
                               </span>
                             </div>
@@ -388,7 +448,9 @@ onMounted(() => {
                                 </template>
                             </td>
                             <td class="border border-DEFAULT px-4 py-2"
-                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_first_break`, el)">
+                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_first_break`, el)"
+                                :style="{ backgroundColor: breakFairnessColor(employee, 'next_first_break') }"
+                                :title="timepickerOpen[`${employee.wiw_user_id}-next_first_break`] ? null : breakFairnessTooltip(employee, 'next_first_break')">
                                 <div
                                     :class="[controls !== ControlSchemes.NONE  && employee.first_name !== 'Everyone' ? 'hidden' : '', 'print:block']">
                                     {{ employee.next_first_break }}
@@ -399,12 +461,15 @@ onMounted(() => {
                                     class="print-hide" placeholder="None"
                                     v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
                                     :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
+                                    @open="timepickerOpen[`${employee.wiw_user_id}-next_first_break`] = true"
+                                    @close="delete timepickerOpen[`${employee.wiw_user_id}-next_first_break`]"
                                     @change="handleBreakChange($event, employee.wiw_user_id, 'next_first_break')"
                                 />
-                                <!--                                :class="getFairnessColor(employee.fairness_score)"-->
                             </td>
                             <td class="border border-DEFAULT px-4 py-2"
-                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_lunch_break`, el)">
+                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_lunch_break`, el)"
+                                :style="{ backgroundColor: breakFairnessColor(employee, 'next_lunch_break') }"
+                                :title="timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`] ? null : breakFairnessTooltip(employee, 'next_lunch_break')">
                                 <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                                     {{ employee.next_lunch_break }}
                                 </div>
@@ -413,10 +478,14 @@ onMounted(() => {
                                                v-model="employee.next_lunch_break" format="HH:mma" :minute-interval="5"
                                                :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
                                                placeholder="None"
+                                               @open="timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`] = true"
+                                               @close="delete timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`]"
                                                @change="handleBreakChange($event, employee.wiw_user_id, 'next_lunch_break')"/>
                             </td>
                             <td class="border border-DEFAULT px-4 py-2"
-                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_second_break`, el)">
+                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_second_break`, el)"
+                                :style="{ backgroundColor: breakFairnessColor(employee, 'next_second_break') }"
+                                :title="timepickerOpen[`${employee.wiw_user_id}-next_second_break`] ? null : breakFairnessTooltip(employee, 'next_second_break')">
                                 <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
                                     {{ employee.next_second_break }}
                                 </div>
@@ -425,6 +494,8 @@ onMounted(() => {
                                                v-model="employee.next_second_break" format="HH:mma" :minute-interval="5"
                                                :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
                                                placeholder="None"
+                                               @open="timepickerOpen[`${employee.wiw_user_id}-next_second_break`] = true"
+                                               @close="delete timepickerOpen[`${employee.wiw_user_id}-next_second_break`]"
                                                @change="handleBreakChange($event, employee.wiw_user_id, 'next_second_break')"/>
                             </td>
                         </tr>

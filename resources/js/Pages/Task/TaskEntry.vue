@@ -569,7 +569,7 @@ onUnmounted(() => {
             <template v-else-if="todo === 'moveDog'">
                 <MoveDogs
                     :dogs="dogs.filter(d => (d.is_daycare || d.is_boarding || d.is_interview) && !d.checked_out_at && d.pet_id !== null)"
-                    :yards="openYards" @changed="counter = 0;" @submit="handleYardChange" style="height: 650px;"/>
+                    :yards="openYards" @changed="counter = 0;" @submit="handleYardChange" style="height: calc(100vh - 220px);"/>
             </template>
 
             <button class="px-16 py-6 text-2xl bg-gray-500 text-white mt-4" @click="prevStep">Back</button>

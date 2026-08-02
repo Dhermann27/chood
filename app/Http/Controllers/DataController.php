@@ -103,7 +103,7 @@ class DataController extends Controller
 
         $groupedEmployees = Employee::with('shifts')->orderBy('first_name')->get()
             ->groupBy(function ($employee) {
-                return $employee->shifts->contains(fn($s) => now()->between($s->start_time, $s->end_time)) ? 'Scheduled' : 'Unscheduled';
+                return $employee->shifts->contains(fn($s) => Carbon::parse($s->start_time)->isToday()) ? 'Scheduled' : 'Unscheduled';
             })->map(function ($group, $status) {
                 return ['status' => $status, 'employees' => $group];
             })->sortBy(fn($group) => $group['status'] === 'Scheduled' ? 0 : 1)->values()->all();
@@ -375,20 +375,50 @@ class DataController extends Controller
         return response()->json(false);
     }
 
+    private function wasInYard(mixed $userId, int $rotationId, Collection $assignments, ?Collection $restrictToYards = null): bool
+    {
+        $row = $assignments->get($rotationId) ?? collect();
+        return $restrictToYards
+            ? $restrictToYards->contains(fn($lid) => ($row->get($lid) ?? null) == $userId)
+            : $row->contains($userId);
+    }
+
+    private function consecutiveInYard(mixed $userId, int $i, int $lookback, Collection $rotations, Collection $assignments, ?Collection $restrictToYards = null): bool
+    {
+        $prev = array_map(
+            fn($j) => $this->wasInYard($userId, $rotations[$i - $j]->id, $assignments, $restrictToYards),
+            range(1, $lookback)
+        );
+        return !in_array(false, $prev, true);
+    }
+
     private function getOverscheduled(Collection $rotationList, Collection $largeYardIds, Collection $assignments): array
     {
+        $rotations = $rotationList->slice(1, -1)->values();
         $overscheduled = [];
-        for ($i = 2; $i < $rotationList->count(); $i++) {
-            $r2 = $rotationList[$i]->id;
-            $r1 = $rotationList[$i - 1]->id;
-            $r0 = $rotationList[$i - 2]->id;
-            if ($rotationList[$i - 2]->start_time === '08:00:00' || $rotationList[$i]->start_time === '17:00:00') continue;
-            foreach ($largeYardIds as $yardId) {
-                $userId = $assignments->get($r2)?->get($yardId) ?? null;
-                if (!$userId) continue;
-                $inLargeR1 = $largeYardIds->contains(fn($lid) => ($assignments->get($r1)?->get($lid) ?? null) == $userId);
-                $inLargeR0 = $largeYardIds->contains(fn($lid) => ($assignments->get($r0)?->get($lid) ?? null) == $userId);
-                if ($inLargeR1 && $inLargeR0) $overscheduled[] = "{$r2}-{$yardId}";
+        $count = $rotations->count();
+
+        for ($i = 0; $i < $count; $i++) {
+            $r = $rotations[$i]->id;
+
+            // Large yard: flag at 3+ consecutive hours
+            if ($i >= 2) {
+                foreach ($largeYardIds as $yardId) {
+                    $userId = $assignments->get($r)?->get($yardId) ?? null;
+                    if (!$userId) continue;
+                    if ($this->consecutiveInYard($userId, $i, 2, $rotations, $assignments, $largeYardIds))
+                        $overscheduled["{$r}-{$yardId}"] = 'Large yard: 3+ hrs';
+                }
+            }
+
+            // Any yard: flag at 5+ consecutive hours
+            if ($i >= 4) {
+                foreach (($assignments->get($r) ?? collect())->keys() as $yardId) {
+                    $userId = $assignments->get($r)?->get($yardId) ?? null;
+                    if (!$userId) continue;
+                    if ($this->consecutiveInYard($userId, $i, 4, $rotations, $assignments))
+                        $overscheduled["{$r}-{$yardId}"] = 'Any yard: 5+ hrs';
+                }
             }
         }
 

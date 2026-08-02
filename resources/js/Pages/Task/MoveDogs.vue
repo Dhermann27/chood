@@ -1,5 +1,5 @@
 <script setup>
-import {computed, ref, watch} from 'vue';
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
 import Draggable from 'vuedraggable';
 import {getYardGridStyle} from '@/utils.js';
 import MoveDogCard from "./MoveDogCard.vue";
@@ -13,10 +13,29 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['changed', 'submit']);
-const yardTiles = ref({});       // { [yardId]: tiles[] }
-const pendingMoves = ref({});    // { [dogId]: yardId }
+const yardTiles = ref({});
+const pendingMoves = ref({});
 const LARGE_YARD_IDS = [1001, 1002];
 const SMALL_YARD_IDS = [1000, 1003];
+const TILE_HEADER_HEIGHT = 68; // p-3 (24px) + border-2 (4px) + text-2xl+mb-2 (40px)
+const GRID_GAP = 8; // gap-2
+
+const containerRef = ref(null);
+const buttonRowRef = ref(null);
+const containerHeight = ref(0);
+const buttonRowHeight = ref(0);
+let resizeObserver = null;
+
+onMounted(() => {
+    resizeObserver = new ResizeObserver(() => {
+        containerHeight.value = containerRef.value?.offsetHeight ?? 0;
+        buttonRowHeight.value = buttonRowRef.value?.offsetHeight ?? 0;
+    });
+    if (containerRef.value) resizeObserver.observe(containerRef.value);
+    if (buttonRowRef.value) resizeObserver.observe(buttonRowRef.value);
+});
+
+onUnmounted(() => resizeObserver?.disconnect());
 
 const openYards = computed(() => props.yards ?? []);
 const moveDogYards = computed(() => {
@@ -33,7 +52,11 @@ const maxTiles = computed(() =>
 const columns = computed(() => Math.ceil(Math.sqrt(ASPECT_RATIO * maxTiles.value)));
 const rows = computed(() => Math.ceil(maxTiles.value / columns.value));
 const gridStyle = computed(() => getYardGridStyle(rows.value, columns.value));
-const innerHeight = computed(() => moveDogYards.value.length === 4 ? 200 : 410);
+const gridHeight = computed(() => Math.max(0, containerHeight.value - buttonRowHeight.value));
+const tileHeight = computed(() => moveDogYards.value.length === 4
+    ? Math.floor((gridHeight.value - GRID_GAP) / 2)
+    : gridHeight.value);
+const innerHeight = computed(() => Math.max(0, tileHeight.value - TILE_HEADER_HEIGHT));
 const cardHeight = computed(() => (innerHeight.value - (rows.value - 1) * GAP) / rows.value);
 const pendingCount = computed(() => Object.keys(pendingMoves.value).length);
 
@@ -122,13 +145,13 @@ watch(() => [moveDogYards.value, props.dogs], rebuildYardTiles, {deep: true, imm
 </script>
 
 <template>
-    <div class="w-full h-full flex flex-col">
+    <div ref="containerRef" class="w-full h-full flex flex-col">
         <div class="flex-1 min-h-0 overflow-hidden">
-            <div class="grid gap-4 w-full"
+            <div class="grid gap-2 w-full"
                  :class="moveDogYards.length === 4 ? 'grid-cols-2 grid-rows-2' : 'grid-cols-2'">
                 <div v-for="yard in moveDogYards" :key="yard.id"
                      class="bg-white rounded-2xl p-3 border-2 flex flex-col overflow-hidden"
-                     :class="moveDogYards.length === 4 ? 'h-[260px]' : 'h-[460px]'">
+                     :style="{ height: tileHeight + 'px' }">
                     <div class="mb-2 shrink-0">
                         <div class="text-2xl font-header">{{ yard.name }}</div>
                     </div>
@@ -149,27 +172,27 @@ watch(() => [moveDogYards.value, props.dogs], rebuildYardTiles, {deep: true, imm
             </div>
         </div>
 
-        <div class="shrink-0 pt-4">
-            <div class="mx-auto w-full max-w-[900px] flex items-center justify-center gap-10">
+        <div ref="buttonRowRef" class="shrink-0 pt-2">
+            <div class="mx-auto w-full max-w-[900px] flex items-center justify-center gap-6">
                 <div class="text-2xl">
                     Pending moves: <span class="font-bold">{{ pendingCount }}</span>
                 </div>
 
                 <div class="flex gap-3">
                     <button
-                        class="px-10 py-4 text-2xl rounded-2xl bg-greyhound text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="px-8 py-2 text-2xl rounded-2xl bg-greyhound text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         :disabled="pendingCount === 0" @click="undoMoves">
                         Clear All
                     </button>
 
                     <button
-                        class="px-10 py-4 text-2xl rounded-2xl bg-caregiver text-white"
+                        class="px-8 py-2 text-2xl rounded-2xl bg-caregiver text-white"
                         @click="moveAll">
                         Move All
                     </button>
 
                     <button
-                        class="px-10 py-4 text-2xl rounded-2xl bg-crimson text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="px-8 py-2 text-2xl rounded-2xl bg-crimson text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         :disabled="pendingCount === 0" @click="submitMoves">
                         Save
                     </button>

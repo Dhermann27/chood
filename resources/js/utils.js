@@ -13,18 +13,21 @@ export function getFittedFontSize(el, maxWidth, minFontSize = 10, maxFontSize = 
     return `${fontSize}px`;
 }
 
-export function formatTime(time) {
-    if (time && typeof time === 'string') {
-        // Extract time part if the string contains a date
-        const timeString = time.includes(' ') ? time.split(' ')[1] : time;
+export function datetimeToMinutes(str) {
+    if (!str || typeof str !== 'string') return null;
+    const time = str.includes(' ') ? str.split(' ')[1] : str;
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+}
 
-        let [hours, minutes] = timeString.split(":");
-        hours = parseInt(hours, 10);
-        const suffix = hours >= 12 ? "pm" : "am";
-        hours = hours % 12 || 12; // Convert to 12-hour format (0 becomes 12)
-        return `${hours}:${minutes}${suffix}`.replace(/:00/i, '');
-    }
-    return null;
+export function formatTime(time) {
+    const totalMin = datetimeToMinutes(time);
+    if (totalMin === null) return null;
+    const hours = Math.floor(totalMin / 60);
+    const minutes = String(totalMin % 60).padStart(2, '0');
+    const suffix = hours >= 12 ? 'pm' : 'am';
+    const h12 = hours % 12 || 12;
+    return `${h12}:${minutes}${suffix}`.replace(/:00/i, '');
 }
 
 export function getYardGridStyle(rows, columns, includeFooter = true) {
