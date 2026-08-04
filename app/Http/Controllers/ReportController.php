@@ -96,11 +96,12 @@ class ReportController extends Controller
             ];
         }
 
-        // Boarding Used also includes overnight occupancy (not yet charged)
+        // Boarding Used = tonight's boarders (accrual), not today's paid charges
         if (isset($data['boarding_accrual'])) {
-            $usedServices['Boarding'] ??= ['qty' => 0, 'total' => 0.0];
-            $usedServices['Boarding']['qty'] += $data['boarding_accrual']['qty'];
-            $usedServices['Boarding']['total'] += $data['boarding_accrual']['total'];
+            $usedServices['Boarding'] = [
+                'qty' => $data['boarding_accrual']['qty'],
+                'total' => $data['boarding_accrual']['total'],
+            ];
         }
 
         $combined = $this->mergeGroups($services, $usedServices);

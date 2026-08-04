@@ -1,4 +1,5 @@
 <script setup>
+import {Head} from '@inertiajs/vue3';
 import {computed, onMounted, onUnmounted, ref} from 'vue';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 
@@ -99,6 +100,7 @@ function specialistFor(entry, key) {
 </script>
 
 <template>
+    <Head title="Daily Reports"/>
     <div class="p-6 print:p-0">
         <div class="no-print flex items-center gap-6 mb-6">
             <h1 class="text-2xl font-bold">Daily Reports — {{ date }}</h1>

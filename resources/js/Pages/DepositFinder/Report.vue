@@ -1,4 +1,5 @@
 <script setup>
+import {Head} from '@inertiajs/vue3';
 import {ref} from 'vue'
 import axios from 'axios'
 
@@ -98,6 +99,7 @@ async function copyFullReport(e) {
 </script>
 
 <template>
+    <Head title="Deposit Finder"/>
     <div class="flex items-center justify-center min-h-screen bg-greyhound">
         <div class="w-full max-w-full flex flex-col items-center">
             <div class="w-1/2 max-w-full min-w-0 p-8 space-y-8 bg-white shadow-md rounded-lg">
@@ -295,6 +297,29 @@ async function copyFullReport(e) {
                     </tbody>
                 </table>
             </div>
+
+            <table v-if="results?.boarding_accrual?.breakdown?.length"
+                   class="w-2/3 max-w-full min-w-0 table-auto bg-white rounded-lg mt-8">
+                <thead>
+                <tr class="bg-greyhound">
+                    <td colspan="4" class="text-lg text-white font-subheader uppercase px-4 py-2">Boarding Accrual Breakdown</td>
+                </tr>
+                <tr class="bg-greyhound border-b text-sm text-white font-subheader uppercase whitespace-nowrap">
+                    <th class="px-4 py-2 text-left">Cabin</th>
+                    <th class="px-4 py-2 text-center">Dogs</th>
+                    <th class="px-4 py-2 text-right">Rate</th>
+                    <th class="px-4 py-2 text-right">Amount</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="(row, i) in results.boarding_accrual.breakdown" :key="i" class="border-b">
+                    <td class="px-4 py-1">{{ row.label }}</td>
+                    <td class="text-center px-4 py-1">{{ row.qty }}</td>
+                    <td class="text-right px-4 py-1">{{ formatCurrency(row.rate) }}</td>
+                    <td class="text-right px-4 py-1">{{ formatCurrency(row.total) }}</td>
+                </tr>
+                </tbody>
+            </table>
 
             <table v-if="results?.cash_transactions && Object.keys(results.cash_transactions).length > 0"
                    class="w-2/3 max-w-full min-w-0 table-auto bg-white rounded-lg mt-8">

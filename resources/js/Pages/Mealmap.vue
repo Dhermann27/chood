@@ -282,7 +282,7 @@ function onRefreshShiftsClick() {
     showOverwriteModal.value = true;
 }
 
-async function handleBreakChange(eventData, wiw_user_id, break_name) {
+async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name) {
     const select = inputRefs.value[`timepick-${wiw_user_id}-${break_name}`];
     const redClasses = Array.from({length: 9}, (_, i) => `bg-red-${(i + 1) * 100}`);
 
@@ -292,6 +292,7 @@ async function handleBreakChange(eventData, wiw_user_id, break_name) {
         await axios.post('/api/mealmap/break', {
             [break_name]: `${eventData.displayTime}`,
             wiw_user_id: wiw_user_id,
+            shift_start: shift_start,
         });
         select.style.backgroundColor = 'green';
     } catch (error) {
@@ -463,7 +464,7 @@ onMounted(() => {
                                     :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
                                     @open="timepickerOpen[`${employee.wiw_user_id}-next_first_break`] = true"
                                     @close="delete timepickerOpen[`${employee.wiw_user_id}-next_first_break`]"
-                                    @change="handleBreakChange($event, employee.wiw_user_id, 'next_first_break')"
+                                    @change="handleBreakChange($event, employee.wiw_user_id, employee.shift_start, 'next_first_break')"
                                 />
                             </td>
                             <td class="border border-DEFAULT px-4 py-2"
@@ -480,7 +481,7 @@ onMounted(() => {
                                                placeholder="None"
                                                @open="timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`] = true"
                                                @close="delete timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`]"
-                                               @change="handleBreakChange($event, employee.wiw_user_id, 'next_lunch_break')"/>
+                                               @change="handleBreakChange($event, employee.wiw_user_id, employee.shift_start, 'next_lunch_break')"/>
                             </td>
                             <td class="border border-DEFAULT px-4 py-2"
                                 :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_second_break`, el)"
@@ -496,7 +497,7 @@ onMounted(() => {
                                                placeholder="None"
                                                @open="timepickerOpen[`${employee.wiw_user_id}-next_second_break`] = true"
                                                @close="delete timepickerOpen[`${employee.wiw_user_id}-next_second_break`]"
-                                               @change="handleBreakChange($event, employee.wiw_user_id, 'next_second_break')"/>
+                                               @change="handleBreakChange($event, employee.wiw_user_id, employee.shift_start, 'next_second_break')"/>
                             </td>
                         </tr>
                         </tbody>

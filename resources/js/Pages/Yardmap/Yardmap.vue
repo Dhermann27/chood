@@ -16,7 +16,7 @@ const dogsByGroup = ref({});
 const assignments = ref([]);
 const nextBreak = ref(null);
 const nextLunch = ref(null);
-const overscheduled = ref([]);
+const overscheduled = ref({});
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
 const currentGif = ref('/images/doggifs/dog1.webp');
 const randomPosition = ref({top: 0, left: 0});
@@ -97,7 +97,7 @@ useMapPolling(`/api/yardmap${props.size}/`, 5000, async (data) => {
     assignments.value = data.assignments;
     nextBreak.value = data.nextBreak;
     nextLunch.value = data.nextLunch;
-    overscheduled.value = data.overscheduled ?? [];
+    overscheduled.value = data.overscheduled ?? {};
     sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
 
     if (chyron.value) {
@@ -151,7 +151,7 @@ onBeforeUnmount(() => clearInterval(gifInterval));
                 <span v-for="assignment in assignments" class="pe-8 whitespace-nowrap">
                     {{ assignment.yard?.name }}:
                     {{ assignment.employee?.first_name ?? 'None' }}
-                    <FontAwesomeIcon v-if="overscheduled.includes(`${assignment.rotation_id}-${assignment.yard_id}`)"
+                    <FontAwesomeIcon v-if="`${assignment.rotation_id}-${assignment.yard_id}` in overscheduled"
                                      :icon="['fas', 'clock']"/>
                 </span>
             <span v-if="nextBreak" class="pe-8 whitespace-nowrap">

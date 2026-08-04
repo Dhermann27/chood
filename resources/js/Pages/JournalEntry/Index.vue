@@ -1,4 +1,5 @@
 <script setup>
+import {Head} from '@inertiajs/vue3';
 import {ref} from 'vue'
 import axios from 'axios'
 
@@ -71,6 +72,7 @@ function downloadCsv() {
 </script>
 
 <template>
+    <Head title="Journal Entry"/>
     <div class="flex items-center justify-center min-h-screen bg-greyhound">
         <div class="w-full max-w-full flex flex-col items-center">
             <div class="w-1/2 max-w-full min-w-0 p-8 space-y-8 bg-white shadow-md rounded-lg">

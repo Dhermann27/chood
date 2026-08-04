@@ -88,12 +88,13 @@ class DataController extends Controller
                 ];
             })->sortBy('first_name')->values();
 
-        $lunchDogs = Feeding::select('id', 'pet_id', 'description')->whereHas('dog', fn($q) => $q->inHouse())->where(function ($query) {
+        $lunchDogs = Feeding::select('id', 'pet_id', 'quantity', 'unit', 'description')->whereHas('dog', fn($q) => $q->inHouse())->where(function ($query) {
             $query->where('is_task', 1)->orWhere('timeslot_id', Timeslot::LUNCH);
         })->with('dog')->get()->unique('pet_id')->map(function ($feeding) {
             $dog = $feeding->dog;
             if (!$dog) return null; // safety
-            $dog->lunch_notes = $feeding->description;
+            $parts = array_filter([$feeding->quantity, $feeding->unit, $feeding->description]);
+            $dog->lunch_notes = implode(' ', $parts);
             return $dog;
         })->filter()->sortBy('cabin_id')->values();
 
@@ -236,6 +237,7 @@ class DataController extends Controller
                 'next_lunch_break' => 'nullable|date_format:h:ia',
                 'next_second_break' => 'nullable|date_format:h:ia',
                 'wiw_user_id' => 'required|exists:employees,wiw_user_id',
+                'shift_start' => 'required|string',
             ]);
 
             foreach (self::BREAK_COLUMNS as $field) {
@@ -246,6 +248,7 @@ class DataController extends Controller
             }
 
             Shift::where('wiw_user_id', $validatedData['wiw_user_id'])
+                ->whereTime('start_time', Carbon::parse($validatedData['shift_start'])->format('H:i:s'))
                 ->update(Arr::only($validatedData, self::BREAK_COLUMNS));
 
             return response()->json([
