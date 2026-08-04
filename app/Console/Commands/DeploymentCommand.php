@@ -56,6 +56,14 @@ class DeploymentCommand extends Command
                 s.updated_at        = NOW()
         ", 'Breaks restored');
 
+        $this->tryStatement("
+            INSERT INTO cache (key, value, expiration)
+            SELECT key, value, expiration
+            FROM {$db}.cache
+            WHERE key LIKE '%yard_preset:%'
+            ON DUPLICATE KEY UPDATE value = VALUES(value), expiration = VALUES(expiration)
+        ", 'Yard preset cache restored');
+
         $this->tryStatement("DELETE FROM employee_yard_rotations");
 
         $this->tryStatement("
