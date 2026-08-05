@@ -378,6 +378,8 @@ class DataController extends Controller
         return response()->json(false);
     }
 
+    private const FLOATER_YARD_ID = 999;
+
     private function wasInYard(mixed $userId, int $rotationId, Collection $assignments, ?Collection $restrictToYards = null): bool
     {
         $row = $assignments->get($rotationId) ?? collect();
@@ -386,13 +388,25 @@ class DataController extends Controller
             : $row->contains($userId);
     }
 
+    private function isFloaterRotation(mixed $userId, int $rotationId, Collection $assignments): bool
+    {
+        return ($assignments->get($rotationId)?->get(self::FLOATER_YARD_ID) ?? null) == $userId;
+    }
+
     private function consecutiveInYard(mixed $userId, int $i, int $lookback, Collection $rotations, Collection $assignments, ?Collection $restrictToYards = null): bool
     {
-        $prev = array_map(
-            fn($j) => $this->wasInYard($userId, $rotations[$i - $j]->id, $assignments, $restrictToYards),
-            range(1, $lookback)
-        );
-        return !in_array(false, $prev, true);
+        $found = 0;
+        for ($j = $i - 1; $j >= 0 && $found < $lookback; $j--) {
+            $rotId = $rotations[$j]->id;
+            if ($this->isFloaterRotation($userId, $rotId, $assignments)) {
+                continue;
+            }
+            if (!$this->wasInYard($userId, $rotId, $assignments, $restrictToYards)) {
+                return false;
+            }
+            $found++;
+        }
+        return $found >= $lookback;
     }
 
     private function getOverscheduled(Collection $rotationList, Collection $largeYardIds, Collection $assignments): array
@@ -417,6 +431,7 @@ class DataController extends Controller
             // Any yard: flag at 5+ consecutive hours
             if ($i >= 4) {
                 foreach (($assignments->get($r) ?? collect())->keys() as $yardId) {
+                    if ($yardId == self::FLOATER_YARD_ID) continue;
                     $userId = $assignments->get($r)?->get($yardId) ?? null;
                     if (!$userId) continue;
                     if ($this->consecutiveInYard($userId, $i, 4, $rotations, $assignments))
