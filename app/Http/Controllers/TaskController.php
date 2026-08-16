@@ -8,6 +8,7 @@ use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\Employee;
 use App\Models\Feeding;
+use App\Models\Rotation;
 use App\Models\Timeslot;
 use App\Models\Yard;
 use App\Services\RotationSettings;
@@ -30,11 +31,29 @@ class TaskController extends Controller
 
     public function index(): Response
     {
-        return Inertia::render('Task/TaskEntry', [
-            'cabins' => $this->getCabins(),
-            'photoUri' => config('services.gingr.uris.photo'),
+        return Inertia::render('Task/TaskEntry', $this->sharedProps());
+    }
+
+    public function supervisor(): Response
+    {
+        return Inertia::render('Supervisor/Index', array_merge($this->sharedProps(), [
+            'rotations' => Rotation::when(now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))
+                ->orderBy('start_time')->get(),
+            'yards' => Yard::orderBy('display_order')->get(),
+        ]));
+    }
+
+    const array SUPERVISOR_ROLES = ['Supervisor', 'Marketing Coordinator', 'General Manager', 'Top Dog'];
+
+    private function sharedProps(): array
+    {
+        return [
+            'cabins'     => $this->getCabins(),
+            'photoUri'   => config('services.gingr.uris.photo'),
+            'gingrUrl'      => config('services.gingr.uris.base'),
+            'barkboardUrl'  => config('services.barkboard.url'),
             'breakTypes' => BreakType::orderBy('display_order')->get(),
-        ]);
+        ];
     }
 
     // TODO: Add cool way to see status messages from others
@@ -62,6 +81,34 @@ class TaskController extends Controller
             return response()->json($response);
         }
         return response()->json(false);
+    }
+
+    public function supervisorData(?string $checksum = null): JsonResponse
+    {
+        $dogs = $this->getDogs(false, null, true);
+        $yards = Yard::whereIn('id', RotationSettings::get()->allowedYards(false))
+            ->orderBy('display_order')->get();
+        $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
+        $employees = Employee::whereHas('shifts', function ($query) {
+            $query->where('start_time', '<=', now()->addHour())
+                ->where('end_time', '>=', now()->subHour())
+                ->whereIn('role', self::SUPERVISOR_ROLES);
+        })->orderBy('first_name')->get();
+        $sectionCounts = Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]);
+
+        $new_checksum = md5($dogs->toJson() . $employees->toJson() . json_encode($statuses) . json_encode($sectionCounts));
+        if ($checksum === $new_checksum) {
+            return response()->json(false);
+        }
+
+        return response()->json([
+            'dogs'          => $dogs,
+            'openYards'     => $yards,
+            'statuses'      => $statuses,
+            'employees'     => $employees,
+            'sectionCounts' => array_merge($sectionCounts, ['in_house' => Dog::inHouse()->count()]),
+            'checksum'      => $new_checksum,
+        ]);
     }
 
     public function markCleaned(Request $request): JsonResponse

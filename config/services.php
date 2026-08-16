@@ -47,6 +47,7 @@ return [
         'location_id' => env('GINGR_LOCATION_ID', 3),
         'service_type_ids' => array_map('intval', array_filter(array_map('trim', explode(',', env('GINGR_SERVICE_TYPE_IDS', ''))))),
         'uris' => [
+            'base' => env('GINGR_BASE_URL'),
             'login' => env('GINGR_BASE_URL') . env('GINGR_LOGIN_URI'),
             'dashboard' => env('GINGR_BASE_URL') . env('GINGR_DASHBOARD_URI'),
             'icons' => env('GINGR_BASE_URL') . env('GINGR_ICONS_URI'),
@@ -60,6 +61,10 @@ return [
             'payments_refunds_raw' => env('GINGR_BASE_URL') . env('GINGR_PAYMENTS_REFUNDS_URI'),
             'lodging_occupancy' => env('GINGR_BASE_URL') . env('GINGR_LODGING_OCCUPANCY_URI'),
         ],
+    ],
+
+    'barkboard' => [
+        'url' => env('BARKBOARD_URL'),
     ],
 
     'wiw' => [

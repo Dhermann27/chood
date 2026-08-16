@@ -6,6 +6,7 @@ const props = defineProps({
     sectionCounts: {type: Object, default: () => ({checkin_today: null, checkout_today: null})},
     fontSize: {type: Number, required: true},
     maxWidth: {type: Number, default: null},
+    showInHouse: {type: Boolean, default: true},
 });
 
 const spanRef = ref(null);
@@ -26,7 +27,7 @@ watch(() => [props.sectionCounts, props.fontSize, props.maxWidth], fit, {deep: t
     <span v-if="sectionCounts?.checkin_today !== null" ref="spanRef"
           class="flex items-center gap-1 leading-none font-bold"
           :style="{ fontSize: fittedSize }">
-        <template v-if="sectionCounts.in_house != null">{{ sectionCounts.in_house }}</template>
+        <template v-if="showInHouse && sectionCounts.in_house != null">{{ sectionCounts.in_house }}</template>
         {{ sectionCounts.checkin_today }}
         <FontAwesomeIcon :icon="['fas', 'left-right']"/>
         {{ sectionCounts.checkout_today }}

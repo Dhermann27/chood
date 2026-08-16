@@ -1,0 +1,828 @@
+<script setup>
+import {Head} from '@inertiajs/vue3';
+import {computed, ref} from 'vue';
+import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
+import Map from "@/Components/chood/Map.vue";
+import Multiselect from "vue-multiselect";
+import {ControlSchemes} from "@/controlSchemes.js";
+import DogCard from "@/Components/chood/DogCard.vue";
+import {getYardGridStyle} from "@/utils.js";
+import MoveDogs from "@/Pages/Task/MoveDogs.vue";
+import {useMapPolling} from "../../Composables/useMapPolling.js";
+import YardRotationTable from "@/Components/chood/YardRotationTable.vue";
+import BreakScheduleTable from "@/Components/chood/BreakScheduleTable.vue";
+
+const props = defineProps({
+    cabins: Array,
+    photoUri: String,
+    gingrUrl: String,
+    barkboardUrl: String,
+    breakTypes: Array,
+    rotations: Array,
+    yards: Array,
+});
+
+// --- Task data state ---
+const dogs = ref(null);
+const employees = ref(null);
+const openYards = ref(null);
+const statuses = ref(null);
+const sectionCounts = ref({checkin_today: null, checkout_today: null});
+const statusMessage = ref(null);
+const statusClass = ref('text-greyhound');
+
+// --- UI / step state ---
+const wiwId = ref(null);
+const todo = ref(null);
+const restMinutes = ref('');
+const photoErrors = ref(new Set());
+const targets = ref({
+    'dogsToAssign': [],
+    'yardsToAssign': [],
+    'cabin_id': 0,
+    'cabin_short_name': '',
+    'break_type_id': null,
+    'rest_minutes': null,
+    'lunch_notes': '1 Bag'
+});
+const step = ref(1);
+const showNoCabinWarning = ref(false);
+const savedBreakDogs = ref([]);
+const savedNoCabinDog = ref(null);
+const is1pmOrLater = ref(false);
+
+// --- Mealmap state ---
+const mealmapAssignments = ref({});
+const mealmapBreaks = ref({});
+const mealmapRotations = ref(props.rotations ?? []);
+const mealmapYards = ref(props.yards ?? []);
+const mealmapHeaderYardIds = ref([]);
+const mealmapOpenYardsByRotation = ref({});
+const mealmapOverscheduled = ref({});
+const mealmapEmployees = ref([]);
+const mealmapFohStaff = ref('');
+const mealmapShiftsRefreshing = ref(false);
+
+// --- Overwrite modal state ---
+const showOverwriteModal = ref(false);
+const pendingConfirmAction = ref(null);
+
+// --- Computeds ---
+const empColumns = computed(() => Math.max(1, Math.ceil(Math.sqrt((4 / 3) * (employees.value?.length ?? 0)))));
+const empRows = computed(() => Math.max(1, Math.ceil((employees.value?.length ?? 0) / empColumns.value)));
+const restColumns = computed(() => Math.ceil(Math.sqrt((16 / 9) * (dogsOnBreak.value.length + 1))));
+const restRows = computed(() => Math.ceil((dogsOnBreak.value.length + 1) / restColumns.value));
+const restGridStyle = computed(() => getYardGridStyle(restRows.value, restColumns.value, false));
+const restCardWidth = computed(() => (770 - (restColumns.value - 1) * 10) / restColumns.value);
+const restCardHeight = computed(() => (290 - (restRows.value - 1) * 10) / restRows.value);
+const dogsOnBreak = computed(() => {
+    if (!dogs.value) return [];
+    return dogs.value.filter(dog => dog.rest_starts_at !== null && !dog.checked_out_at);
+});
+const dogsNotOnBreak = computed(() => {
+    if (!dogs.value) return [];
+    return dogs.value.filter(dog => dog.rest_starts_at === null && dog.pet_id !== null && !dog.checked_out_at);
+});
+const dogsByCabin = computed(() => {
+    const grouped = {};
+    if (!dogs.value) return grouped;
+    dogs.value.forEach(dog => {
+        const key = dog.cabin_id ?? 'unassigned';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(dog);
+    });
+    return grouped;
+});
+const moveDogEnabled = computed(() => (openYards.value?.length ?? 0) >= 3);
+const feedingCabinEnabled = computed(() => dogsWithCabinMates.value.length > 0);
+const dogsWithCabinMates = computed(() => {
+    if (!dogs.value) return [];
+    const assignedNames = new Set(dogs.value.filter(d => d.pet_id === null).map(d => d.display_name));
+    const eligible = dogs.value.filter(d => d.cabin_id && d.is_boarding && d.pet_id !== null && !d.checked_out_at && !assignedNames.has(d.display_name));
+    const counts = {};
+    eligible.forEach(d => {
+        counts[d.cabin_id] = (counts[d.cabin_id] || 0) + 1;
+    });
+    return eligible.filter(d => counts[d.cabin_id] > 1);
+});
+const markReturnedIsWalked = computed(() => {
+    const dog = targets.value.dogsToAssign;
+    if (dog?.break_type?.behavior !== 'walks_only' || !dog?.rest_starts_at) return false;
+    const elapsed = (Date.now() - new Date(dog.rest_starts_at).getTime()) / 60000;
+    return elapsed >= dog.break_type.duration_minutes;
+});
+const breakStatus = computed(() => {
+    const bt = props.breakTypes?.find(t => t.id === targets.value.break_type_id);
+    if (!bt) return 'on break';
+    if (bt.behavior === 'lunch') return 'on lunch break';
+    if (bt.behavior === 'unlimited') return `in ${bt.label}`;
+    if (bt.behavior === 'walks_only') return 'marked as walks only';
+    return `resting for ${targets.value.rest_minutes ?? bt.duration_minutes} minutes`;
+});
+
+// --- Polling ---
+function preloadDogPhotos(dogList) {
+    if (!dogList) return;
+    dogList.forEach(dog => {
+        if (!dog?.photoUri) return;
+        const img = new Image();
+        img.src = dog.photoUri;
+    });
+}
+
+const {restart: restartTask} = useMapPolling('/supervisor/data/', 10000, (data) => {
+    dogs.value = data.dogs;
+    openYards.value = data.openYards;
+    employees.value = data.employees;
+    statuses.value = data.statuses;
+    sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
+    preloadDogPhotos(dogs.value);
+});
+
+const {poll: pollMealmap} = useMapPolling('/api/mealmap/', 15000, (data) => {
+    mealmapAssignments.value = {...(data.assignments ?? {})};
+    mealmapBreaks.value = {...(data.breaks ?? {})};
+    mealmapEmployees.value = data.employees ?? [];
+    mealmapFohStaff.value = data.fohStaff ?? '';
+    mealmapHeaderYardIds.value = data.headerYards ?? [];
+    mealmapOpenYardsByRotation.value = data.openYardsByRotation ?? {};
+    mealmapOverscheduled.value = data.overscheduled ?? {};
+});
+
+// --- Navigation ---
+function prevStep() {
+    statusMessage.value = null;
+    if (step.value > 1) step.value--;
+}
+
+function nextStep() {
+    statusMessage.value = null;
+    if (step.value < 4) step.value++;
+}
+
+function handlePhotoError(id) {
+    photoErrors.value = new Set([...photoErrors.value, id]);
+}
+
+function handleEmployeeClick(employee) {
+    wiwId.value = employee.wiw_user_id;
+    nextStep();
+}
+
+function handleTaskClick(thisTodo) {
+    is1pmOrLater.value = new Date().getHours() >= 13;
+    todo.value = thisTodo;
+    nextStep();
+}
+
+// --- Task step 3 handlers ---
+function handleTargetClick(cabin) {
+    if (todo.value === 'assignCabin') {
+        targets.value = {
+            ...targets.value,
+            cabin_id: cabin.id,
+            cabin_short_name: cabin.short_name
+        };
+        if (targets.value['dogsToAssign'].length > 0) nextStep();
+    } else if (todo.value === 'assignFeedingCabin') {
+        const dummy = (dogsByCabin.value[cabin.id] ?? []).find(d => d.pet_id === null);
+        if (dummy) {
+            todo.value = 'clearFeedingCabin';
+            targets.value = {
+                ...targets.value,
+                cabin_id: cabin.id,
+                cabin_short_name: cabin.short_name,
+                dummy_display_name: dummy.display_name
+            };
+            nextStep();
+            return;
+        }
+        targets.value = {
+            ...targets.value,
+            cabin_id: cabin.id,
+            cabin_short_name: cabin.short_name,
+        };
+        if (targets.value.dogsToAssign?.id) nextStep();
+    } else if (todo.value === 'cleanCabin') {
+        targets.value = {
+            wiw_user_id: wiwId.value,
+            cabin_id: cabin.id,
+            cabin_short_name: cabin.short_name,
+            is_cleaned: statuses.value.hasOwnProperty(cabin.id)
+        };
+        nextStep();
+    }
+}
+
+function handleFeedingDogUpdate() {
+    if (targets.value.dogsToAssign?.id && targets.value.cabin_id > 0) nextStep();
+}
+
+function handleAssignDogUpdate() {
+    if (targets.value['dogsToAssign'].length > 0 && targets.value['cabin_id'] > 0) nextStep();
+}
+
+function addAllBoarders() {
+    const existingIds = new Set(targets.value.dogsToAssign.map(d => d.id));
+    const boarders = dogsNotOnBreak.value.filter(d => d.is_boarding && d.pet_id !== null && !existingIds.has(d.id));
+    targets.value.dogsToAssign = [...targets.value.dogsToAssign, ...boarders];
+}
+
+function handleBreakDogSelect(dog) {
+    if (!dog.cabin_id) showNoCabinWarning.value = true;
+}
+
+function handleBreakDogUpdate(breakTypeId) {
+    targets.value.break_type_id = breakTypeId;
+    targets.value.rest_minutes = null;
+    if (targets.value['dogsToAssign'].length > 0) nextStep();
+}
+
+function handleTimerStart() {
+    const mins = parseInt(restMinutes.value);
+    if (!mins || mins < 1) return;
+    const timerType = props.breakTypes?.find(bt => bt.behavior === 'countdown' && bt.duration_minutes === null);
+    if (!timerType) return;
+    restMinutes.value = '';
+    targets.value.break_type_id = timerType.id;
+    targets.value.rest_minutes = mins;
+    if (targets.value['dogsToAssign'].length > 0) nextStep();
+}
+
+function handleRotateStart() {
+    const m = new Date().getMinutes();
+    const until = m < 30 ? 30 - m : 90 - m;
+    const mins = until < 10 ? until + 60 : until;
+    const timerType = props.breakTypes?.find(bt => bt.behavior === 'countdown' && bt.duration_minutes === null);
+    if (!timerType) return;
+    targets.value.break_type_id = timerType.id;
+    targets.value.rest_minutes = mins;
+    if (targets.value['dogsToAssign'].length > 0) nextStep();
+}
+
+function handleNoCabinAssign() {
+    showNoCabinWarning.value = false;
+    savedNoCabinDog.value = targets.value.dogsToAssign.find(d => !d.cabin_id) ?? null;
+    savedBreakDogs.value = targets.value.dogsToAssign.filter(d => d.cabin_id);
+    targets.value = {
+        ...targets.value,
+        dogsToAssign: savedNoCabinDog.value ? [savedNoCabinDog.value] : [],
+        cabin_id: 0,
+        cabin_short_name: '',
+        break_type_id: null,
+    };
+    todo.value = 'assignCabin';
+}
+
+function handleNoCabinDismiss() {
+    showNoCabinWarning.value = false;
+    targets.value.dogsToAssign = targets.value.dogsToAssign.filter(d => d.cabin_id);
+}
+
+function handleBreakDogDelete(dog) {
+    targets.value['dogsToAssign'] = dog;
+    todo.value = `markReturned/${dog.id}`;
+    nextStep();
+}
+
+function handleYardChange(pendingMoves) {
+    const payload = Object.entries(pendingMoves).map(([dog_id, yard_id]) => ({
+        dog_id: Number(dog_id),
+        yard_id: Number(yard_id),
+    }));
+    if (!payload.length) return;
+    targets.value['yardsToAssign'] = payload;
+    nextStep();
+}
+
+async function handleFinishAction(action) {
+    if (action === 'Done' || action === 'More') {
+        const isClearFeeding = todo.value === 'clearFeedingCabin';
+        axios({
+            method: isClearFeeding ? 'DELETE' : 'POST',
+            url: isClearFeeding ? '/task/assignFeedingCabin' : `/task/${todo.value}`,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            },
+            data: targets.value,
+        }).then((response) => {
+            restartTask();
+            statusMessage.value = response.data?.message;
+            statusClass.value = 'text-meadow';
+        }).catch((error) => {
+            if (error.response && error.response.status === 419) {
+                if (confirm('Your session has expired due to inactivity. Would you like to reload the page?')) {
+                    window.location.reload();
+                }
+            } else {
+                statusMessage.value = `Error: ${error.response?.data?.message || 'Unable to complete action'}`;
+                statusClass.value = 'text-alerted';
+            }
+        });
+
+        statusMessage.value = `Processing ${action} action...`;
+        statusClass.value = 'text-greyhound';
+    }
+    targets.value = {
+        'dogsToAssign': [],
+        'yardsToAssign': [],
+        'cabin_id': 0,
+        'cabin_short_name': '',
+        'break_type_id': null,
+        'rest_minutes': null,
+        'lunch_notes': '1 Bag'
+    };
+    if (todo.value.includes('markReturned')) todo.value = 'startBreak';
+    if (todo.value === 'clearFeedingCabin') todo.value = 'assignFeedingCabin';
+    step.value = action === 'Done' ? 1 : 3;
+    if (savedBreakDogs.value.length > 0 || savedNoCabinDog.value) {
+        targets.value.dogsToAssign = [...savedBreakDogs.value, ...(savedNoCabinDog.value ? [savedNoCabinDog.value] : [])];
+        savedBreakDogs.value = [];
+        savedNoCabinDog.value = null;
+        todo.value = 'startBreak';
+        step.value = 3;
+    }
+}
+
+// --- Overwrite modal ---
+function cancelOverwrite() {
+    pendingConfirmAction.value = null;
+    showOverwriteModal.value = false;
+}
+
+async function confirmOverwrite(overwrite) {
+    showOverwriteModal.value = false;
+    await pendingConfirmAction.value?.(overwrite);
+    pendingConfirmAction.value = null;
+}
+
+function onRefreshShiftsClick() {
+    pendingConfirmAction.value = async (recalculate) => {
+        mealmapShiftsRefreshing.value = true;
+        try {
+            await axios.post('/api/mealmap/refreshShifts', {recalculate});
+            pollMealmap();
+        } finally {
+            mealmapShiftsRefreshing.value = false;
+        }
+    };
+    showOverwriteModal.value = true;
+}
+</script>
+
+<template>
+    <Head title="Supervisor"/>
+    <div class="flex flex-col items-center h-screen p-4">
+
+        <!-- Step 1: Employee picker -->
+        <template v-if="step === 1">
+            <h1 class="text-3xl font-header mb-4">Hi! Huaryoo?</h1>
+            <div
+                :style="{display: 'grid', gridTemplateColumns: `repeat(${empColumns}, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(${empRows}, minmax(0, 1fr))`, gap: '1rem'}"
+                class="w-full flex-1 min-h-0">
+                <div v-for="employee in employees" :key="employee.id" role="button"
+                     class="flex items-center justify-center w-full h-full cursor-pointer"
+                     @click="handleEmployeeClick(employee)">
+                    <div v-if="!photoErrors.has(employee.wiw_user_id)"
+                         class="relative w-full h-full rounded-2xl overflow-hidden ring-[3px] ring-caregiver">
+                        <img
+                            :src="`/images/staff/${employee.wiw_user_id}.png`" :alt="employee.first_name"
+                            class="w-full h-full object-cover" @error="handlePhotoError(employee.wiw_user_id)"/>
+                    </div>
+                    <div v-else
+                         class="w-full h-full bg-caregiver rounded-2xl flex items-center justify-center text-white text-5xl font-semibold">
+                        {{ employee.first_name }}
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Step 2: Task buttons -->
+        <template v-else-if="step === 2">
+            <h1 class="text-3xl font-header mb-4">So, watchadoin?</h1>
+            <div class="grid grid-cols-4 gap-4 w-[75vw] h-[75vh]">
+                <button
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
+                    @click="handleTaskClick('assignCabin')">
+                    <FontAwesomeIcon :icon="['fas', 'house-circle-check']" class="me-5"/>
+                    Assigning a Cabin
+                </button>
+                <button
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
+                    @click="handleTaskClick('cleanCabin')">
+                    <FontAwesomeIcon :icon="['fas', 'broom']" class="me-5"/>
+                    Cleaned a Cabin
+                </button>
+                <button
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
+                    @click="handleTaskClick('setLunch')">
+                    <FontAwesomeIcon :icon="['fas', 'turkey']" class="me-5"/>
+                    Set Lunch
+                </button>
+                <button
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
+                    @click="handleTaskClick('startBreak')">
+                    <FontAwesomeIcon :icon="['fas', 'alarm-clock']" class="me-5"/>
+                    Rest Break
+                </button>
+                <button class="text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition
+                bg-caregiver text-white hover:bg-blue-500 disabled:bg-gray-400 disabled:text-gray-200
+                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
+                        :disabled="!feedingCabinEnabled" @click="handleTaskClick('assignFeedingCabin')">
+                    <FontAwesomeIcon :icon="['fas', 'utensils']" class="me-5"/>
+                    <span v-if="feedingCabinEnabled">Assign Feeding Cabin</span>
+                    <span v-else>No cabin siblings</span>
+                </button>
+                <button class="text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition
+                bg-caregiver text-white hover:bg-blue-500 disabled:bg-gray-400 disabled:text-gray-200
+                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
+                        :disabled="!moveDogEnabled" @click="handleTaskClick('moveDog')">
+                    <FontAwesomeIcon :icon="['fas', 'arrows-up-down-left-right']" class="me-5"/>
+                    <span v-if="moveDogEnabled">Move Dogs between Yards</span>
+                    <span v-else>Only 2 yards open</span>
+                </button>
+                <a :href="props.gingrUrl" target="_blank" rel="noopener noreferrer"
+                   class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center">
+                    <FontAwesomeIcon :icon="['fas', 'paw']" class="me-5"/>
+                    Gingr
+                </a>
+                <a :href="props.barkboardUrl" target="_blank" rel="noopener noreferrer"
+                   class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center">
+                    <FontAwesomeIcon :icon="['fas', 'display-chart-up']" class="me-5"/>
+                    Barkboard
+                </a>
+                <button
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
+                    @click="handleTaskClick('yardRotation')">
+                    <FontAwesomeIcon :icon="['fas', 'rotate']" class="me-5"/>
+                    Yard Rotation
+                </button>
+                <button
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center"
+                    @click="handleTaskClick('breakSchedule')">
+                    <FontAwesomeIcon :icon="['fas', 'mug-saucer']" class="me-5"/>
+                    Break Schedule
+                </button>
+            </div>
+            <button class="px-16 py-6 text-2xl bg-gray-500 text-white mt-2" @click="prevStep">Back</button>
+        </template>
+
+        <!-- Step 3: Task-specific views -->
+        <template v-else-if="step === 3">
+            <h1 class="text-3xl font-header mb-4">Cool! Which one?</h1>
+
+            <!-- Standard task views (shared with TaskEntry) -->
+            <template v-if="todo === 'assignCabin'">
+                <multiselect
+                    class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
+                    v-model="targets.dogsToAssign" multiple track-by="id"
+                    :options="(dogsByCabin['unassigned'] ?? []).filter(d => !d.is_boarding && !d.checked_out_at)"
+                    label="display_name"
+                    placeholder="Select Dog(s) (Required)" @update:modelValue="handleAssignDogUpdate">
+                    <template #tag="{ option, remove }">
+                        <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{
+                                option.display_name
+                            }}</span>
+                    </template>
+                    <template #option="{ option }">
+                        <div class="dog-option-item">
+                            <div v-if="option.photoUri" class="dog-photo-wrap">
+                                <img :src="option.photoUri" :alt="option.display_name"
+                                     @error="e => e.target.parentElement.style.display = 'none'"/>
+                            </div>
+                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
+                        </div>
+                    </template>
+                </multiselect>
+                <div class="choodmap items-center justify-center p-1">
+                    <Map :cabins="cabins" :statuses="statuses" :dogs="dogsByCabin"
+                         :controls="ControlSchemes.SELECT_CABIN" :maxlength="6"
+                         :card-width="49" :card-height="58" @cabinClicked="handleTargetClick"/>
+                </div>
+            </template>
+
+            <template v-else-if="todo === 'cleanCabin'">
+                <div class="choodmap items-center justify-center p-1">
+                    <Map :cabins="cabins" :statuses="statuses" :dogs="[]" :controls="ControlSchemes.SELECT_CABIN"
+                         :card-width="49" :card-height="60" :maxlength="6" @cabinClicked="handleTargetClick"/>
+                </div>
+            </template>
+
+            <template v-else-if="todo === 'assignFeedingCabin'">
+                <multiselect
+                    class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
+                    v-model="targets.dogsToAssign" track-by="id" :options="dogsWithCabinMates" label="display_name"
+                    placeholder="Select Dog (Required)" @update:modelValue="handleFeedingDogUpdate">
+                    <template #option="{ option }">
+                        <div class="dog-option-item">
+                            <div v-if="option.photoUri" class="dog-photo-wrap">
+                                <img :src="option.photoUri" :alt="option.display_name"
+                                     @error="e => e.target.parentElement.style.display = 'none'"/>
+                            </div>
+                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
+                        </div>
+                    </template>
+                </multiselect>
+                <div class="choodmap items-center justify-center p-1">
+                    <Map :cabins="cabins" :statuses="statuses" :dogs="dogsByCabin"
+                         :controls="ControlSchemes.SELECT_CABIN" :maxlength="6"
+                         :card-width="49" :card-height="58" @cabinClicked="handleTargetClick"/>
+                </div>
+            </template>
+
+            <template v-else-if="todo === 'setLunch'">
+                <h3 class="text-xl font-subheader uppercase mb-4">Set a dog's lunch</h3>
+                <multiselect
+                    class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
+                    v-model="targets.dogsToAssign" multiple track-by="id"
+                    :options="dogs ? dogs.filter(d => d.pet_id !== null && !d.checked_out_at) : []"
+                    label="display_name"
+                    placeholder="Select Dog(s) (Required)">
+                    <template #tag="{ option, remove }">
+                        <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{
+                                option.display_name
+                            }}</span>
+                    </template>
+                    <template #option="{ option }">
+                        <div class="dog-option-item">
+                            <div v-if="option.photoUri" class="dog-photo-wrap">
+                                <img :src="option.photoUri" :alt="option.display_name"
+                                     @error="e => e.target.parentElement.style.display = 'none'"/>
+                            </div>
+                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
+                        </div>
+                    </template>
+                </multiselect>
+                <label for="lunch-notes" class="block text-lg mb-2">Lunch notes</label>
+                <form @submit.prevent="nextStep" class="flex items-stretch w-full max-w-3xl">
+                    <input id="lunch-notes" v-model="targets.lunch_notes" type="text"
+                           placeholder="Example: 1 cup kibble + 1/2 pouch wet" inputmode="text"
+                           autocapitalize="sentences" autocomplete="off"
+                           class="flex-1 h-16 px-5 text-2xl border-2 border-gray-300 rounded-l-2xl rounded-r-none border-r-0 focus:outline-none"/>
+                    <button type="submit"
+                            class="h-16 px-10 text-2xl bg-crimson text-white border-2 border-gray-300 border-l-0 rounded-r-2xl">
+                        Set
+                    </button>
+                </form>
+            </template>
+
+            <template v-else-if="todo === 'startBreak'">
+                <h3 class="text-xl font-subheader uppercase mb-4">Start a Break</h3>
+                <div class="flex items-start gap-2 w-2/3 mb-5">
+                    <multiselect
+                        class="dogsToAssign-multiselect border-2 bg-crimson placeholder:text-crimson"
+                        v-model="targets.dogsToAssign" multiple track-by="id" :options="dogsNotOnBreak"
+                        label="display_name"
+                        placeholder="Select Dog(s) (Required)" @select="handleBreakDogSelect">
+                        <template #tag="{ option, remove }">
+                            <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{
+                                    option.display_name
+                                }}</span>
+                        </template>
+                        <template #option="{ option }">
+                            <div class="dog-option-item">
+                                <div v-if="option.photoUri" class="dog-photo-wrap">
+                                    <img :src="option.photoUri" :alt="option.display_name"
+                                         @error="e => e.target.parentElement.style.display = 'none'"/>
+                                </div>
+                                <span class="text-3xl ml-10">{{ option.display_name }}</span>
+                            </div>
+                        </template>
+                    </multiselect>
+                    <button @click="addAllBoarders"
+                            class="bg-caregiver text-white px-4 py-3 rounded-xl shrink-0 text-xl">
+                        <FontAwesomeIcon :icon="['fas', 'bed']"/>
+                    </button>
+                </div>
+                <div class="flex gap-2 text-white text-xl flex-wrap">
+                    <button
+                        v-for="bt in breakTypes.filter(bt => bt.behavior === 'countdown' && bt.duration_minutes !== null)"
+                        :key="bt.id" class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500"
+                        @click="handleBreakDogUpdate(bt.id)">
+                        {{ bt.label }}
+                    </button>
+                    <input v-model="restMinutes" type="number" min="1" max="480" placeholder="Minutes"
+                           @keydown.enter="handleTimerStart" @blur="handleTimerStart"
+                           class="bg-caregiver py-2 px-4 rounded-2xl text-white placeholder-blue-200 w-36 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
+                    <button @click="handleRotateStart"
+                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500">
+                        Rotate
+                    </button>
+                    <button v-for="bt in breakTypes.filter(bt => bt.behavior !== 'countdown')" :key="bt.id"
+                            :disabled="bt.behavior === 'lunch' && is1pmOrLater"
+                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            @click="handleBreakDogUpdate(bt.id)">
+                        {{ bt.label }}
+                    </button>
+                </div>
+                <h3 class="text-xl font-subheader uppercase my-4">Mark dog as returned to yard</h3>
+                <div class="items-center justify-center p-1" :style="restGridStyle">
+                    <div v-for="(dog, index) in dogsOnBreak" :id="index"
+                         :style="{height: restCardHeight + 'px', width: restCardWidth + 'px'}">
+                        <DogCard :dogs="[dog]" @click="handleBreakDogDelete(dog)"
+                                 :card-width="restCardWidth" :card-height="restCardHeight"/>
+                    </div>
+                </div>
+            </template>
+
+            <template v-else-if="todo === 'moveDog'">
+                <MoveDogs
+                    :dogs="dogs ? dogs.filter(d => (d.is_daycare || d.is_boarding || d.is_interview) && !d.checked_out_at && d.pet_id !== null) : []"
+                    :yards="openYards ?? []" @submit="handleYardChange"
+                    style="height: calc(100vh - 220px);"/>
+            </template>
+
+            <!-- Supervisor-specific: Yard Rotation -->
+            <template v-else-if="todo === 'yardRotation'">
+                <div class="flex-1 min-h-0 overflow-auto flex items-center justify-center">
+                    <YardRotationTable
+                        :rotations="mealmapRotations"
+                        :yards="mealmapYards"
+                        :header-yard-ids="mealmapHeaderYardIds"
+                        :open-yard-ids-by-rotation="mealmapOpenYardsByRotation"
+                        :assignments="mealmapAssignments"
+                        :overscheduled="mealmapOverscheduled"
+                        :employees="mealmapEmployees"
+                        :readonly="false"
+                        :yard-presets="null"
+                        :foh-staff="mealmapFohStaff"
+                        @saved="pollMealmap()"/>
+                </div>
+            </template>
+
+            <!-- Supervisor-specific: Break Schedule -->
+            <template v-else-if="todo === 'breakSchedule'">
+                <div class="flex-1 min-h-0 overflow-auto flex items-center justify-center">
+                    <BreakScheduleTable
+                        :employees="mealmapBreaks"
+                        :readonly="false"
+                        :shifts-refreshing="mealmapShiftsRefreshing"
+                        @saved="pollMealmap()"
+                        @refresh-shifts="onRefreshShiftsClick"/>
+                </div>
+            </template>
+
+
+            <button class="px-16 py-6 text-2xl bg-gray-500 text-white mt-4" @click="prevStep">Back</button>
+        </template>
+
+        <!-- Step 4: Confirmation -->
+        <template v-else-if="step === 4">
+            <div class="fixed inset-0 bg-greyhound flex justify-center items-center">
+                <div class="bg-white p-6 rounded-lg w-2/3">
+                    <h3 class="text-2xl mb-4 text-center">
+                        <template v-if="todo === 'assignCabin'">
+                            {{ targets.dogsToAssign.map(dog => dog.display_name).join(', ') }}
+                            in Cabin {{ targets.cabin_short_name }}, right?
+                        </template>
+                        <template v-else-if="todo === 'assignFeedingCabin'">
+                            {{ targets.dogsToAssign.display_name }} eats in Cabin {{ targets.cabin_short_name }}, right?
+                        </template>
+                        <template v-else-if="todo === 'cleanCabin'">
+                            Cabin {{ targets.cabin_short_name }} is {{ targets.is_cleaned ? 'clean' : 'dirty' }}, right?
+                        </template>
+                        <template v-else-if="todo === 'setLunch'">
+                            {{ targets.dogsToAssign.map(dog => dog.display_name).join(', ') }} should get a lunch,
+                            right?
+                        </template>
+                        <template v-else-if="todo === 'startBreak'">
+                            {{ targets.dogsToAssign.map(dog => dog.display_name).join(', ') }} {{ breakStatus }}, right?
+                        </template>
+                        <template v-else-if="todo.includes('markReturned')">
+                            {{ targets.dogsToAssign.display_name }}
+                            {{ markReturnedIsWalked ? 'has been walked' : 'is back in yard' }}, right?
+                        </template>
+                        <template v-else-if="todo === 'clearFeedingCabin'">
+                            Clear {{ targets.dummy_display_name }}'s feeding cabin, right?
+                        </template>
+                        <template v-else-if="todo.includes('moveDog')">
+                            Assign dogs to yards, right?
+                        </template>
+                    </h3>
+                    <div class="flex justify-between mb-4 text-3xl">
+                        <button @click="handleFinishAction('Done')"
+                                class="px-6 py-10 bg-meadow text-white rounded-md flex items-center space-x-2">
+                            <FontAwesomeIcon :icon="['fas', 'badge-check']"/>
+                            <span>Done</span>
+                        </button>
+                        <button @click="handleFinishAction('Undo')"
+                                class="px-6 py-10 bg-gray-500 text-white rounded-md flex items-center space-x-2">
+                            <FontAwesomeIcon :icon="['fas', 'rotate-left']"/>
+                            <span>Undo</span>
+                        </button>
+                        <button @click="handleFinishAction('More')"
+                                class="px-6 py-10 bg-caregiver text-white rounded-md flex items-center space-x-2">
+                            <FontAwesomeIcon :icon="['fas', 'cowbell-circle-plus']"/>
+                            <span>More</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- No-cabin warning modal -->
+        <div v-if="showNoCabinWarning" class="fixed inset-0 bg-greyhound flex justify-center items-center z-50">
+            <div class="bg-white p-6 rounded-lg w-2/3 text-center">
+                <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']" class="text-5xl text-alerted mb-4"/>
+                <h3 class="text-2xl mb-2">
+                    {{ targets.dogsToAssign.filter(d => !d.cabin_id).map(d => d.display_name).join(', ') }}
+                    {{ targets.dogsToAssign.filter(d => !d.cabin_id).length === 1 ? "doesn't" : "don't" }} have a cabin
+                    assigned!
+                </h3>
+                <p class="text-xl text-gray-600 mb-6">Assign a cabin first, then start the rest break.</p>
+                <div class="flex justify-center gap-6 text-2xl">
+                    <button @click="handleNoCabinAssign"
+                            class="px-8 py-4 bg-caregiver text-white rounded-xl flex items-center gap-3">
+                        <FontAwesomeIcon :icon="['fas', 'house-circle-check']"/>
+                        Assign Cabin
+                    </button>
+                    <button @click="handleNoCabinDismiss"
+                            class="px-8 py-4 bg-gray-500 text-white rounded-xl flex items-center gap-3">
+                        <FontAwesomeIcon :icon="['fas', 'xmark']"/>
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status message -->
+        <div v-if="statusMessage" class="text-3xl mt-4 text-center" :class="statusClass">
+            {{ statusMessage }}
+        </div>
+    </div>
+
+    <!-- Overwrite / recalculate modal -->
+    <div v-if="showOverwriteModal" class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50" @click="cancelOverwrite"></div>
+        <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-700" @click="cancelOverwrite">
+                <FontAwesomeIcon :icon="['fas', 'xmark']" class="text-xl"/>
+            </button>
+            <div class="text-lg font-semibold mb-2">Recalculate?</div>
+            <div class="text-sm text-gray-600 mb-6">
+                Chood can recalculate yard rotation and breaks if needed. This process will overwrite any changes you
+                have made today.
+            </div>
+            <div class="flex justify-end gap-3">
+                <button
+                    class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-sm leading-tight w-48"
+                    @click="confirmOverwrite(false)">
+                    Do not recalculate<br>Assign manually
+                </button>
+                <button class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-red-700 text-sm leading-tight w-48"
+                        @click="confirmOverwrite(true)">
+                    <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']"
+                                     class="text-yellow-400 float-left text-2xl mr-2"/>
+                    Recalculate<br>Lose assignments
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <i class="cabin cabin-empty"></i>
+</template>
+
+<style>
+.choodmap {
+    display: grid;
+    text-align: center;
+    grid-template-columns: 1fr repeat(8, 10px 1fr 1fr) 10px 1fr;
+    grid-template-rows: repeat(4, 1fr) 10px repeat(5, 1fr);
+}
+
+.cabin {
+    border-width: 5px;
+}
+
+.cabin-empty {
+    font-size: 22px;
+}
+</style>
+<style scoped>
+.dog-photo-wrap {
+    width: 75px;
+    height: 75px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.dog-photo-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.dog-option-item {
+    display: flex;
+    align-items: center;
+}
+
+:deep(.multiselect__tag) {
+    padding: 12px 20px;
+    font-size: 1.25rem;
+    cursor: pointer;
+    user-select: none;
+}
+</style>

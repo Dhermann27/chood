@@ -37,8 +37,8 @@ class GoFetchShiftsJob implements ShouldQueue
     const int    AFTERNOON_BREAK_FLOOR = 10 * 12 + 6;  // 4:30pm: earliest break for PM crew
 
     const array SKIPPED_POSITIONS = ['Event Staff'];
-    const array QUALIFIED_POSITIONS = ['Camp Counselor', 'Camp Counselor In Training', 'Shift Supervisor'];
-    const array SUPERVISOR_POSITIONS = ['Shift Supervisor'];
+    const array QUALIFIED_POSITIONS = ['Camp Counselor', 'Camp Counselor In Training', 'Shift Supervisor', 'FOH Shift Supervisor'];
+    const array SUPERVISOR_POSITIONS = ['Shift Supervisor', 'FOH Shift Supervisor'];
 
     public function __construct(public bool $recalculateRotation = true)
     {

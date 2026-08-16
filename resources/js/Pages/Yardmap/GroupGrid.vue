@@ -17,14 +17,23 @@ const props = defineProps({
     cardWidth: {type: Number, required: true},
     cardHeight: {type: Number, required: true},
     sectionCounts: {type: Object, default: () => ({checkin_today: null, checkout_today: null})},
+    isDinnerTime: {type: Boolean, default: false},
 });
 
 const dogs = computed(() => props.dogsByGroup?.[props.groupKey] ?? []);
+const dinnerCount = computed(() => {
+    if (!props.isDinnerTime) return 0;
+    return dogs.value.filter(d => d.is_boarding && !d.rest_starts_at && !d.checked_out_at && d.pet_id !== null).length;
+});
 const activeCount = computed(() => {
-    return dogs.value.filter(d => !d.rest_starts_at && !d.checked_out_at).length;
+    const active = dogs.value.filter(d => !d.rest_starts_at && !d.checked_out_at);
+    if (!props.isDinnerTime) return active.length;
+    return active.filter(d => !d.is_boarding).length;
 });
 const lsActiveCount = computed(() => {
-    return dogs.value.filter(d => d.size_letter === 'LS' && !d.rest_starts_at && !d.checked_out_at).length;
+    const base = dogs.value.filter(d => d.size_letter === 'LS' && !d.rest_starts_at && !d.checked_out_at);
+    if (!props.isDinnerTime) return base.length;
+    return base.filter(d => !d.is_boarding).length;
 });
 const gridStyle = computed(() => {
     const rows = props.rowsByGroup?.[props.groupKey] ?? 1;
@@ -55,13 +64,18 @@ const gridStyle = computed(() => {
                 <span :style="{ fontSize: (cardHeight * 0.5) + 'px' }">
                     {{ activeCount }}
                 </span>
-                <span v-if="lsActiveCount > 0" class="absolute bottom-2 right-1 leading-none"
+                <span v-if="lsActiveCount > 0" class="absolute leading-none"
                       :style="{ fontSize: (cardHeight * 0.2) + 'px', bottom: '5px', right: '5px' }">
                     LS:{{ lsActiveCount }}
                 </span>
+                <div v-if="dinnerCount > 0" class="absolute leading-none flex items-center gap-1"
+                     :style="{ fontSize: (cardHeight * 0.18) + 'px', bottom: '5px', left: '5px' }">
+                    <FontAwesomeIcon :icon="['fas', 'bowl-food']"/>
+                    {{ dinnerCount }}
+                </div>
                 <div class="absolute top-2 left-0 right-0 flex items-center justify-center">
                     <SectionCounts :section-counts="sectionCounts" :font-size="cardHeight * 0.18"
-                                   :max-width="cardWidth"/>
+                                   :max-width="cardWidth" :show-in-house="false"/>
                 </div>
             </div>
         </div>

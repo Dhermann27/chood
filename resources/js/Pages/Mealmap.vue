@@ -1,14 +1,11 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {computed, onMounted, ref, watchEffect} from "vue";
+import {computed, onMounted, ref} from "vue";
 import DogCard from "@/Components/chood/DogCard.vue";
 import {ControlSchemes} from "@/controlSchemes.js";
-import {formatTime, datetimeToMinutes} from "@/utils.js";
-import {useMapPolling} from "@/composables/useMapPolling.js";
-import Multiselect from 'vue-multiselect';
-import 'vue-multiselect/dist/vue-multiselect.css';
-import VueTimepicker from 'vue3-timepicker';
-import 'vue3-timepicker/dist/VueTimepicker.css';
+import {useMapPolling} from "../Composables/useMapPolling.js";
+import YardRotationTable from "@/Components/chood/YardRotationTable.vue";
+import BreakScheduleTable from "@/Components/chood/BreakScheduleTable.vue";
 
 const props = defineProps({
     rotations: Array,
@@ -20,8 +17,7 @@ const props = defineProps({
 const controls = ref(ControlSchemes.NONE);
 const showOverwriteModal = ref(false);
 const pendingConfirmAction = ref(null);
-const inputRefs = ref({});
-const breaks = ref([]);
+const breaks = ref({});
 const lunchDogs = ref([]);
 const medicatedDogs = ref([]);
 const selectedYardPreset = ref(props.preset);
@@ -31,89 +27,15 @@ const fohStaff = ref('');
 const assignments = ref({});
 const headerYardIds = ref([]);
 const openYardIdsByRotation = ref({});
-const uiAssignments = ref({});
 const shiftsRefreshing = ref(false);
-const timepickerOpen = ref({});
 const overscheduled = ref({});
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
 const cardHeight = computed(() => Math.min(300, 800 / (lunchDogs.value.length + medicatedDogs.value.length)));
-const employeesById = computed(() => {
-    const map = new Map();
-    for (const group of employees.value ?? []) {
-        for (const e of (group.employees ?? [])) map.set(String(e.wiw_user_id), e);
-    }
-    return map;
-});
 const openYards = computed(() => {
     const ids = (headerYardIds.value ?? []).map(Number);
     if (!ids.length) return [];
     return (props.yards ?? []).filter(e => ids.includes(Number(e.id)));
 });
-
-const LUNCH_FLOOR_MIN = 8 * 60 + 30;       // 8:30am
-const PM_SHIFT_START_MIN = 13 * 60;         // 1:00pm — PM shift floor trigger
-const AFTERNOON_FLOOR_MIN = 16 * 60 + 30;  // 4:30pm — PM shift first-break floor
-
-
-function parseBreakTimeToMinutes(str) {
-    if (!str) return null;
-    const match = str.match(/^(\d{1,2}):(\d{2})(am|pm)$/i);
-    if (!match) return null;
-    let h = parseInt(match[1]);
-    const m = parseInt(match[2]);
-    if (match[3].toLowerCase() === 'pm' && h !== 12) h += 12;
-    if (match[3].toLowerCase() === 'am' && h === 12) h = 0;
-    return h * 60 + m;
-}
-
-function minutesToTimeStr(min) {
-    const h24 = Math.floor(min / 60) % 24;
-    const m = Math.round(min % 60);
-    const h12 = h24 % 12 || 12;
-    return `${h12}:${String(m).padStart(2, '0')}${h24 >= 12 ? 'pm' : 'am'}`;
-}
-
-function breakIdealMinutes(employee, breakKey) {
-    const startMin = datetimeToMinutes(employee.shift_start);
-    const endMin = datetimeToMinutes(employee.shift_end);
-    if (startMin === null || endMin === null) return null;
-    const dur = endMin - startMin;
-    if (dur <= 0) return null;
-    if (breakKey === 'next_lunch_break') {
-        if (dur < 6.5 * 60) return null;
-        const target = dur >= 8 * 60 ? startMin + dur / 2 : startMin + dur * 2 / 3;
-        return Math.max(target, LUNCH_FLOOR_MIN);
-    }
-    if (breakKey === 'next_first_break') {
-        if (dur < 4 * 60) return null;
-        const fraction = dur >= 8 * 60 ? 1 / 4 : dur >= 6.5 * 60 ? 1 / 3 : 1 / 2;
-        const target = startMin + dur * fraction;
-        return startMin >= PM_SHIFT_START_MIN ? Math.max(target, AFTERNOON_FLOOR_MIN) : target;
-    }
-    if (breakKey === 'next_second_break') {
-        if (dur < 8 * 60) return null;
-        return startMin + dur * 3 / 4;
-    }
-    return null;
-}
-
-function breakFairnessColor(employee, breakKey) {
-    const actual = parseBreakTimeToMinutes(employee[breakKey]);
-    if (actual === null) return null;
-    const ideal = breakIdealMinutes(employee, breakKey);
-    if (ideal === null) return null;
-
-    const t = Math.min(Math.abs(actual - ideal) / 120, 1);
-    const r = Math.round(0x87 + t * (0xFF - 0x87));
-    const g = Math.round(0xB3 + t * (0xDE - 0xB3));
-    const b = Math.round(0xD1 + t * (0x17 - 0xD1));
-    return `rgb(${r},${g},${b})`;
-}
-
-function breakFairnessTooltip(employee, breakKey) {
-    const ideal = breakIdealMinutes(employee, breakKey);
-    return ideal !== null ? `Ideal: ${minutesToTimeStr(ideal)}` : null;
-}
 
 function mergedMedications(medications) {
     const map = new Map();
@@ -131,11 +53,6 @@ function mergedMedications(medications) {
     }));
 }
 
-function setInputRef(key, el) {
-    if (!inputRefs.value) inputRefs.value = {};
-    inputRefs.value[key] = el;
-}
-
 const {poll} = useMapPolling('/api/mealmap/', 15000, (data) => {
     assignments.value = {...data.assignments};
     breaks.value = {...data.breaks};
@@ -148,7 +65,6 @@ const {poll} = useMapPolling('/api/mealmap/', 15000, (data) => {
     openYardIdsByRotation.value = data.openYardsByRotation;
     overscheduled.value = data.overscheduled ?? {};
     sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
-    hydrateUiAssignments();
 });
 
 function onYardPresetChange(e) {
@@ -180,96 +96,6 @@ async function confirmOverwrite(overwrite) {
     pendingConfirmAction.value = null;
 }
 
-function hydrateUiAssignments() {
-    const out = {};
-
-    for (const rotation of props.rotations ?? []) {
-        const r = String(rotation.id);
-        out[r] = {};
-
-        for (const yardId of headerYardIds.value ?? []) {
-            const y = String(yardId);
-
-            if (!isYardOpen(rotation.id, yardId)) {
-                out[r][y] = null;
-                continue;
-            }
-
-            const s = assignments.value?.[r]?.[y] ?? null;
-            const userId = s?.wiw_user_id ? String(s.wiw_user_id) : null;
-
-            out[r][y] = userId ? (employeesById.value.get(userId) ?? null) : null;
-        }
-    }
-
-    uiAssignments.value = out;
-}
-
-function isYardOpen(rotationId, yardId) {
-    const ids = openYardIdsByRotation.value?.[String(rotationId)] ?? [];
-    return ids.includes(Number(yardId));
-}
-
-function slot(rotationId, yardId) {
-    return assignments.value?.[String(rotationId)]?.[String(yardId)] ?? null;
-}
-
-// Next three methods are all so Vue3 detects changes inside the nested objects
-function matchEmployeeInGroups(employee) {
-    for (const group of employees.value) {
-        const match = group.employees.find(e => e.wiw_user_id === employee.wiw_user_id);
-        if (match) return match;
-    }
-    return null;
-}
-
-function matchByHour() {
-    for (const rotationId in assignments.value) {
-        for (const yardId in assignments.value[rotationId]) {
-            const slot = assignments.value?.[rotationId]?.[yardId] ?? null;
-            if (!slot || !slot.wiw_user_id) continue;
-
-            assignments.value[rotationId][yardId] = matchEmployeeInGroups(slot) ?? slot;
-        }
-    }
-}
-
-watchEffect(() => {
-    if (employees.value && Object.keys(assignments.value).length) matchByHour();
-});
-
-async function handleYardChange(rotationId, yardId) {
-    const select = inputRefs.value[`multiselect-${rotationId}-${yardId}`];
-    const r = String(rotationId);
-    const y = String(yardId);
-    const selected = uiAssignments.value?.[r]?.[y] ?? null;
-
-    if (!assignments.value[r]) assignments.value[r] = {};
-    assignments.value[r][y] = selected ? {
-        wiw_user_id: selected.wiw_user_id,
-        first_name: selected.first_name
-    } : null;
-
-    try {
-        if (select) select.style.backgroundColor = 'gray';
-
-        await axios.post('/api/mealmap/yard', {
-            rotation_id: Number(rotationId),
-            yard_id: Number(yardId),
-            wiw_user_id: selected ? selected.wiw_user_id : null,
-        });
-
-        if (select) select.style.backgroundColor = 'green';
-    } catch (error) {
-        console.log('Error handling Yard Change', error);
-        if (select) select.style.backgroundColor = 'red';
-    }
-
-    setTimeout(() => {
-        if (select) select.style.backgroundColor = '';
-    }, 5000);
-}
-
 function onRefreshShiftsClick() {
     pendingConfirmAction.value = async (recalculate) => {
         shiftsRefreshing.value = true;
@@ -282,29 +108,6 @@ function onRefreshShiftsClick() {
     showOverwriteModal.value = true;
 }
 
-async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name) {
-    const select = inputRefs.value[`timepick-${wiw_user_id}-${break_name}`];
-    const redClasses = Array.from({length: 9}, (_, i) => `bg-red-${(i + 1) * 100}`);
-
-    try {
-        select.classList.remove(...redClasses); // Remove any Tailwind red class
-        select.style.backgroundColor = 'gray';
-        await axios.post('/api/mealmap/break', {
-            [break_name]: `${eventData.displayTime}`,
-            wiw_user_id: wiw_user_id,
-            shift_start: shift_start,
-        });
-        select.style.backgroundColor = 'green';
-    } catch (error) {
-        console.log('Error handling Break Change ', error);
-        select.style.backgroundColor = 'red';
-    }
-    setTimeout(() => {
-        select.style.backgroundColor = '';
-    }, 5000);
-}
-
-
 onMounted(() => {
     if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
         controls.value = !navigator.userAgent.includes('Linux') ? ControlSchemes.MODAL : ControlSchemes.NONE;
@@ -315,8 +118,8 @@ onMounted(() => {
 
 <template>
     <Head title="Mealmap"/>
-    <div class="h-full w-full flex flex-col items-center justify-center">
-        <div class="w-full grid grid-cols-2 print:grid-cols-1 gap-4 h-full relative">
+    <div class="h-full print:h-auto w-full flex flex-col items-center justify-center">
+        <div class="w-full grid grid-cols-2 print:grid-cols-1 gap-4 h-full print:h-auto relative">
             <div class="flex flex-col ps-3 items-center divider pt-5 print:hidden">
                 <div class="text-3xl font-header mb-2">Medications</div>
                 <div class="grid grid-cols-1 w-full">
@@ -363,146 +166,28 @@ onMounted(() => {
             </div>
 
             <div class="mealmap-right flex flex-col items-center pt-5 print:flex relative">
-                <div class="absolute top-5 right-10">
-                    <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
-                        Yards: {{ openYards.filter(y => Number(y.id) >= 1000).map(y => y.name).join(', ') }}
-                    </div>
-                    <select
-                        v-if="controls !== ControlSchemes.NONE" :disabled="isUpdatingPreset"
-                        class="print:hidden text-sm rounded-md border border-gray-300 bg-white px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        v-model="selectedYardPreset" @change="onYardPresetChange($event)">
-                        <option v-for="preset in props.yardPresets" :key="preset.value" :value="preset.value">
-                            {{ preset.label }}
-                        </option>
-                    </select>
-                </div>
+                <YardRotationTable
+                    :rotations="props.rotations"
+                    :yards="props.yards"
+                    :header-yard-ids="headerYardIds"
+                    :open-yard-ids-by-rotation="openYardIdsByRotation"
+                    :assignments="assignments"
+                    :overscheduled="overscheduled"
+                    :employees="employees"
+                    :readonly="controls === ControlSchemes.NONE"
+                    :yard-presets="controls !== ControlSchemes.NONE ? props.yardPresets : null"
+                    :selected-preset="selectedYardPreset"
+                    :is-updating-preset="isUpdatingPreset"
+                    :foh-staff="fohStaff"
+                    @saved="poll()"
+                    @preset-change="onYardPresetChange"/>
 
-                <div class="text-3xl font-header mb-2">Daily Rotation</div>
-                <div v-if="fohStaff" class="text-base mb-2">{{ fohStaff }}</div>
-
-                <table class="mx-5 bg-amber-100">
-                    <thead>
-                    <tr>
-                        <th>&nbsp;</th>
-                        <th class="font-subheader uppercase" v-for="yardId in headerYardIds" :key="yardId">
-                            {{ (props.yards ?? []).find(y => y.id === Number(yardId))?.name ?? yardId }}
-                        </th>
-                    </tr>
-                    </thead>
-
-                    <tbody>
-                    <tr v-for="rotation in props.rotations" :key="rotation.id">
-                        <td class="border border-DEFAULT px-4 py-2">{{ rotation.label }}</td>
-
-                        <td v-for="yardId in headerYardIds" :key="yardId"
-                            class="border border-DEFAULT px-4 py-2"
-                            :class="{ 'bg-orange-300': `${rotation.id}-${yardId}` in overscheduled }"
-                            :title="overscheduled[`${rotation.id}-${yardId}`] ?? null">
-
-                            <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
-                              <span v-if="slot(rotation.id, yardId)">
-                                {{ slot(rotation.id, yardId).first_name }}
-                                  <FontAwesomeIcon v-if="`${rotation.id}-${yardId}` in overscheduled"
-                                                   :icon="['fas', 'clock']" class="me-1"/>
-                              </span>
-                            </div>
-
-                            <!-- editor -->
-                            <multiselect
-                                v-if="controls !== ControlSchemes.NONE"
-                                class="print-hide"
-                                :key="`multiselect-${rotation.id}-${yardId}`"
-                                :id="`multiselect-${rotation.id}-${yardId}`"
-                                v-model="uiAssignments[rotation.id][yardId]" :options="employees"
-                                group-label="status" group-values="employees" :group-select="true"
-                                label="first_name" track-by="wiw_user_id" :searchable="true"
-                                :clearable="true" placeholder="Unassigned"
-                                @select="() => handleYardChange(rotation.id, yardId)"
-                                @remove="() => handleYardChange(rotation.id, yardId)"/>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-
-                <div class="mx-5 m-10 inline-block">
-                    <div v-if="controls !== ControlSchemes.NONE" class="flex justify-end mb-1">
-                        <button @click="onRefreshShiftsClick" title="Refresh shift schedule"
-                                :disabled="shiftsRefreshing"
-                                class="w-10 h-10 bg-crimson text-white rounded text-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                            <FontAwesomeIcon :icon="['fas', 'rotate-right']" :spin="shiftsRefreshing"/>
-                        </button>
-                    </div>
-                    <table class="bg-caregiver">
-                        <thead>
-                        <tr class="font-subheader uppercase">
-                            <th>&nbsp;</th>
-                            <th>First Break</th>
-                            <th>Lunch</th>
-                            <th>Second Break</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr v-for="employee in breaks">
-                            <td class="border border-DEFAULT px-4 py-2">{{ employee.first_name }}
-                                <template v-if="employee.shift_start && employee.shift_end">
-                                    ({{ formatTime(employee.shift_start) }}-{{ formatTime(employee.shift_end) }})
-                                </template>
-                            </td>
-                            <td class="border border-DEFAULT px-4 py-2"
-                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_first_break`, el)"
-                                :style="{ backgroundColor: breakFairnessColor(employee, 'next_first_break') }"
-                                :title="timepickerOpen[`${employee.wiw_user_id}-next_first_break`] ? null : breakFairnessTooltip(employee, 'next_first_break')">
-                                <div
-                                    :class="[controls !== ControlSchemes.NONE  && employee.first_name !== 'Everyone' ? 'hidden' : '', 'print:block']">
-                                    {{ employee.next_first_break }}
-                                </div>
-                                <VueTimepicker
-                                    v-if="controls !== ControlSchemes.NONE && employee.first_name !== 'Everyone'"
-                                    :id="`timepick-${String(employee.wiw_user_id)}-next_first_break`"
-                                    class="print-hide" placeholder="None"
-                                    v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
-                                    :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                    @open="timepickerOpen[`${employee.wiw_user_id}-next_first_break`] = true"
-                                    @close="delete timepickerOpen[`${employee.wiw_user_id}-next_first_break`]"
-                                    @change="handleBreakChange($event, employee.wiw_user_id, employee.shift_start, 'next_first_break')"
-                                />
-                            </td>
-                            <td class="border border-DEFAULT px-4 py-2"
-                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_lunch_break`, el)"
-                                :style="{ backgroundColor: breakFairnessColor(employee, 'next_lunch_break') }"
-                                :title="timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`] ? null : breakFairnessTooltip(employee, 'next_lunch_break')">
-                                <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
-                                    {{ employee.next_lunch_break }}
-                                </div>
-                                <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
-                                               :id="`timepick-${String(employee.wiw_user_id)}-next_lunch_break`"
-                                               v-model="employee.next_lunch_break" format="HH:mma" :minute-interval="5"
-                                               :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                               placeholder="None"
-                                               @open="timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`] = true"
-                                               @close="delete timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`]"
-                                               @change="handleBreakChange($event, employee.wiw_user_id, employee.shift_start, 'next_lunch_break')"/>
-                            </td>
-                            <td class="border border-DEFAULT px-4 py-2"
-                                :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_second_break`, el)"
-                                :style="{ backgroundColor: breakFairnessColor(employee, 'next_second_break') }"
-                                :title="timepickerOpen[`${employee.wiw_user_id}-next_second_break`] ? null : breakFairnessTooltip(employee, 'next_second_break')">
-                                <div :class="[controls !== ControlSchemes.NONE ? 'hidden' : '', 'print:block']">
-                                    {{ employee.next_second_break }}
-                                </div>
-                                <VueTimepicker v-if="controls !== ControlSchemes.NONE" class="print-hide"
-                                               :id="`timepick-${String(employee.wiw_user_id)}-next_second_break`"
-                                               v-model="employee.next_second_break" format="HH:mma" :minute-interval="5"
-                                               :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                                               placeholder="None"
-                                               @open="timepickerOpen[`${employee.wiw_user_id}-next_second_break`] = true"
-                                               @close="delete timepickerOpen[`${employee.wiw_user_id}-next_second_break`]"
-                                               @change="handleBreakChange($event, employee.wiw_user_id, employee.shift_start, 'next_second_break')"/>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <BreakScheduleTable
+                    :employees="breaks"
+                    :readonly="controls === ControlSchemes.NONE"
+                    :shifts-refreshing="shiftsRefreshing"
+                    @saved="poll()"
+                    @refresh-shifts="onRefreshShiftsClick"/>
             </div>
 
             <div v-if="sectionCounts.in_house != null"
@@ -563,7 +248,8 @@ onMounted(() => {
         margin: 0.5cm;
     }
 
-    .print-hide {
+    .print-hide,
+    :deep(.print-hide) {
         display: none !important;
     }
 

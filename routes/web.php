@@ -49,6 +49,12 @@ Route::prefix('depositfinder')->group(function () {
     Route::get('/results/{i}', [ReportController::class, 'results']);
 });
 
+Route::prefix('supervisor')->group(function () {
+    Route::get('/', [TaskController::class, 'supervisor']);
+    Route::get('/data/{checksum?}', [TaskController::class, 'supervisorData'])
+        ->where('checksum', '[a-f0-9]{32}');
+});
+
 Route::prefix('task')->group(function () {
     Route::get('/', [TaskController::class, 'index']);
     Route::get('/data/{checksum?}', [TaskController::class, 'getData'])

@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {computed, nextTick, onBeforeUnmount, onMounted, ref} from 'vue';
 import {formatTime, getFittedFontSize} from "@/utils.js";
-import {useMapPolling} from "@/composables/useMapPolling.js";
+import {useMapPolling} from "../../Composables/useMapPolling.js";
 import GroupGrid from './GroupGrid.vue';
 
 const DIVIDER_W = 40;
@@ -18,6 +18,13 @@ const nextBreak = ref(null);
 const nextLunch = ref(null);
 const overscheduled = ref({});
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
+const isDinnerTime = ref(false);
+
+function checkDinnerTime() {
+    const now = new Date();
+    const min = now.getHours() * 60 + now.getMinutes();
+    isDinnerTime.value = min >= 16 * 60 + 30;
+}
 const currentGif = ref('/images/doggifs/dog1.webp');
 const randomPosition = ref({top: 0, left: 0});
 const chyron = ref(null);
@@ -99,6 +106,7 @@ useMapPolling(`/api/yardmap${props.size}/`, 5000, async (data) => {
     nextLunch.value = data.nextLunch;
     overscheduled.value = data.overscheduled ?? {};
     sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
+    checkDinnerTime();
 
     if (chyron.value) {
         await nextTick();
@@ -116,6 +124,7 @@ async function updateGif() {
 
 onMounted(() => {
     gifInterval = setInterval(updateGif, 60000);
+    checkDinnerTime();
 });
 
 onBeforeUnmount(() => clearInterval(gifInterval));
@@ -132,7 +141,8 @@ onBeforeUnmount(() => clearInterval(gifInterval));
             <div v-if="groupKeys.length >= 1" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[0]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
-                           :cardHeight="cardHeight" :sectionCounts="sectionCounts"/>
+                           :cardHeight="cardHeight" :sectionCounts="sectionCounts"
+                           :isDinnerTime="isDinnerTime"/>
             </div>
 
             <div v-if="groupKeys.length >= 2" class="bg-crimson h-full" :style="{width: DIVIDER_W + 'px'}"></div>
@@ -140,7 +150,8 @@ onBeforeUnmount(() => clearInterval(gifInterval));
             <div v-if="groupKeys.length >= 2" class="min-w-0 overflow-hidden">
                 <GroupGrid :groupKey="groupKeys[1]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
-                           :cardHeight="cardHeight" :sectionCounts="sectionCounts"/>
+                           :cardHeight="cardHeight" :sectionCounts="sectionCounts"
+                           :isDinnerTime="isDinnerTime"/>
             </div>
 
         </div>

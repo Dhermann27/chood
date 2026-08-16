@@ -1,9 +1,9 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {ref, onMounted} from 'vue';
+import {onMounted, ref} from 'vue';
 import Map from "@/Components/chood/Map.vue";
 import {ControlSchemes} from "@/controlSchemes.js";
-import {useMapPolling} from "@/composables/useMapPolling.js";
+import {useMapPolling} from "../Composables/useMapPolling.js";
 
 const props = defineProps({
     cabins: Array
