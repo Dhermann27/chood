@@ -2,13 +2,14 @@
 import {Head} from '@inertiajs/vue3';
 import {ref} from 'vue';
 import Map from "@/Components/chood/Map.vue";
-import {useMapPolling} from "../Composables/useMapPolling.js";
+import {useMapPolling} from "@/Composables/useMapPolling.js";
 
 const props = defineProps({
     cabins: Array
 });
 const dogs = ref([]);
 const statuses = ref([]);
+const sectionCounts = ref(null);
 
 useMapPolling('/api/fullmap/', 5000, (data) => {
     dogs.value = Object.fromEntries(
@@ -17,6 +18,7 @@ useMapPolling('/api/fullmap/', 5000, (data) => {
         )
     );
     statuses.value = data.statuses;
+    sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
 });
 </script>
 
@@ -25,7 +27,8 @@ useMapPolling('/api/fullmap/', 5000, (data) => {
     <main class="w-full h-full">
         <div class="choodmap items-center justify-center p-1">
             <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :maxlength="12"
-                 :card-width="160" :card-height="210"/>
+                 :card-width="160" :card-height="210" :display-cabin-id="2093"
+                 :section-counts="sectionCounts"/>
         </div>
     </main>
 </template>

@@ -93,9 +93,9 @@ class DataController extends Controller
         })->with('dog')->get()->unique('pet_id')->map(function ($feeding) {
             $dog = $feeding->dog;
             if (!$dog) return null; // safety
-            $parts = array_filter([$feeding->quantity, $feeding->unit, $feeding->description]);
+            $parts = array_filter([$feeding->quantity, $feeding->unit, $feeding->description], fn($p) => trim($p ?? '') !== '*See Notes*');
             $dog->lunch_notes = implode(' ', $parts);
-            return $dog;
+            return $dog->lunch_notes !== '' ? $dog : null;
         })->filter()->sortBy('cabin_id')->values();
 
         $medicatedDogs = Dog::where(function ($query) {

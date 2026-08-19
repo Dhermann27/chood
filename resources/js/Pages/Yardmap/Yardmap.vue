@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {computed, nextTick, onBeforeUnmount, onMounted, ref} from 'vue';
 import {formatTime, getFittedFontSize} from "@/utils.js";
-import {useMapPolling} from "../../Composables/useMapPolling.js";
+import {useMapPolling} from "@/Composables/useMapPolling.js";
 import GroupGrid from './GroupGrid.vue';
 
 const DIVIDER_W = 40;
@@ -25,6 +25,7 @@ function checkDinnerTime() {
     const min = now.getHours() * 60 + now.getMinutes();
     isDinnerTime.value = min >= 16 * 60 + 30;
 }
+
 const currentGif = ref('/images/doggifs/dog1.webp');
 const randomPosition = ref({top: 0, left: 0});
 const chyron = ref(null);

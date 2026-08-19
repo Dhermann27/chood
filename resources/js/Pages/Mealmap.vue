@@ -3,7 +3,7 @@ import {Head} from '@inertiajs/vue3';
 import {computed, onMounted, ref} from "vue";
 import DogCard from "@/Components/chood/DogCard.vue";
 import {ControlSchemes} from "@/controlSchemes.js";
-import {useMapPolling} from "../Composables/useMapPolling.js";
+import {useMapPolling} from "@/Composables/useMapPolling.js";
 import YardRotationTable from "@/Components/chood/YardRotationTable.vue";
 import BreakScheduleTable from "@/Components/chood/BreakScheduleTable.vue";
 

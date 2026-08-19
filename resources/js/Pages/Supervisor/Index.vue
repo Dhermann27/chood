@@ -8,7 +8,7 @@ import {ControlSchemes} from "@/controlSchemes.js";
 import DogCard from "@/Components/chood/DogCard.vue";
 import {getYardGridStyle} from "@/utils.js";
 import MoveDogs from "@/Pages/Task/MoveDogs.vue";
-import {useMapPolling} from "../../Composables/useMapPolling.js";
+import {useMapPolling} from "@/Composables/useMapPolling.js";
 import YardRotationTable from "@/Components/chood/YardRotationTable.vue";
 import BreakScheduleTable from "@/Components/chood/BreakScheduleTable.vue";
 

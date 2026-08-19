@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {ref} from 'vue';
 import Map from "@/Components/chood/Map.vue";
-import {useMapPolling} from "../Composables/useMapPolling.js";
+import {useMapPolling} from "@/Composables/useMapPolling.js";
 
 const props = defineProps({
     cabins: Array,
