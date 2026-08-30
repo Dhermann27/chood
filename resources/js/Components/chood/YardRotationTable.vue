@@ -140,10 +140,10 @@ async function handleYardChange(rotationId, yardId) {
             </select>
         </div>
 
-        <div class="text-3xl font-header mb-2">Daily Rotation</div>
-        <div v-if="fohStaff" class="text-base mb-2">{{ fohStaff }}</div>
+        <div class="text-3xl font-header mb-2 text-center">Daily Rotation</div>
+        <div v-if="fohStaff" class="text-base mb-2 text-center">{{ fohStaff }}</div>
 
-        <table class="mx-5 bg-amber-100">
+        <table class="mx-auto bg-amber-100">
             <thead>
             <tr>
                 <th>&nbsp;</th>

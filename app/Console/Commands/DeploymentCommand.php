@@ -19,10 +19,11 @@ class DeploymentCommand extends Command
     {
         GoFetchEmployeesJob::dispatchSync();
         GoFetchServiceListJob::dispatchSync();
-        GoFetchShiftsJob::dispatchSync();
 
         if ($rollbackDb = $this->option('rollback-db')) {
             $this->restoreFromRollback($rollbackDb);
+        } else {
+            GoFetchShiftsJob::dispatchSync();
         }
 
         $this->dropOldRollbackDbs();
@@ -48,20 +49,27 @@ class DeploymentCommand extends Command
         ", 'Dogs restored');
 
         $this->tryStatement("
-            UPDATE shifts AS s
-            JOIN {$db}.shifts AS sp ON s.wiw_user_id = sp.wiw_user_id
-            SET s.next_first_break  = sp.next_first_break,
-                s.next_lunch_break  = sp.next_lunch_break,
-                s.next_second_break = sp.next_second_break,
-                s.updated_at        = NOW()
-        ", 'Breaks restored');
+            INSERT INTO employees (wiw_user_id, first_name, last_name, created_at, updated_at)
+            SELECT wiw_user_id, first_name, last_name, created_at, updated_at
+            FROM {$db}.employees
+            ON DUPLICATE KEY UPDATE first_name = VALUES(first_name), last_name = VALUES(last_name), updated_at = VALUES(updated_at)
+        ", 'Employees restored');
 
         $this->tryStatement("
-            INSERT INTO cache (key, value, expiration)
-            SELECT key, value, expiration
+            INSERT INTO shifts (wiw_user_id, role, start_time, end_time, next_first_break, next_lunch_break, next_second_break, fairness_score, created_at, updated_at)
+            SELECT wiw_user_id, role, start_time, end_time, next_first_break, next_lunch_break, next_second_break, fairness_score, created_at, updated_at
+            FROM {$db}.shifts
+            ON DUPLICATE KEY UPDATE role = VALUES(role), start_time = VALUES(start_time), end_time = VALUES(end_time),
+                next_first_break = VALUES(next_first_break), next_lunch_break = VALUES(next_lunch_break),
+                next_second_break = VALUES(next_second_break), fairness_score = VALUES(fairness_score), updated_at = VALUES(updated_at)
+        ", 'Shifts restored');
+
+        $this->tryStatement("
+            INSERT INTO cache (`key`, `value`, `expiration`)
+            SELECT `key`, `value`, `expiration`
             FROM {$db}.cache
-            WHERE key LIKE '%yard_preset:%'
-            ON DUPLICATE KEY UPDATE value = VALUES(value), expiration = VALUES(expiration)
+            WHERE `key` LIKE '%yard_preset:%'
+            ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `expiration` = VALUES(`expiration`)
         ", 'Yard preset cache restored');
 
         $this->tryStatement("DELETE FROM employee_yard_rotations");

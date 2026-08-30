@@ -98,7 +98,7 @@ class DataController extends Controller
             return $dog->lunch_notes !== '' ? $dog : null;
         })->filter()->sortBy('cabin_id')->values();
 
-        $medicatedDogs = Dog::where(function ($query) {
+        $medicatedDogs = Dog::inHouse()->where(function ($query) {
             $query->whereHas('medications')->orWhereHas('allergies');
         })->with('medications.timeslot', 'allergies')->orderBy('cabin_id')->get();
 
