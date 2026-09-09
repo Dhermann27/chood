@@ -25,7 +25,7 @@ const PM_SHIFT_START_MIN = 13 * 60;         // 1:00pm
 const AFTERNOON_FLOOR_MIN = 16 * 60 + 30;  // 4:30pm
 
 function parseBreakTimeToMinutes(str) {
-    if (!str) return null;
+    if (!str || typeof str !== 'string') return null;
     const match = str.match(/^(\d{1,2}):(\d{2})(am|pm)$/i);
     if (!match) return null;
     let h = parseInt(match[1]);

@@ -113,8 +113,13 @@ function preloadImage(dog) {
     }
 }
 
-watch(() => props.dogs, (newDogs) => {
+watch(() => props.dogs, (newDogs, oldDogs) => {
     newDogs.forEach(dog => preloadImage(dog));
+
+    const oldIds = (oldDogs ?? []).map(d => d.id).join(',');
+    const newIds = newDogs.map(d => d.id).join(',');
+    if (oldIds === newIds) return;
+
     if (intervals[0]) {
         clearInterval(intervals[0]);
         intervals[0] = null;

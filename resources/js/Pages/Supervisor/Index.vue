@@ -1,20 +1,19 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {computed, ref} from 'vue';
+import {ref} from 'vue';
 import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
 import Map from "@/Components/chood/Map.vue";
 import Multiselect from "vue-multiselect";
 import {ControlSchemes} from "@/controlSchemes.js";
 import DogCard from "@/Components/chood/DogCard.vue";
-import {getYardGridStyle} from "@/utils.js";
 import MoveDogs from "@/Pages/Task/MoveDogs.vue";
 import {useMapPolling} from "@/Composables/useMapPolling.js";
+import {useTaskFlow} from "@/Composables/useTaskFlow.js";
 import YardRotationTable from "@/Components/chood/YardRotationTable.vue";
 import BreakScheduleTable from "@/Components/chood/BreakScheduleTable.vue";
 
 const props = defineProps({
     cabins: Array,
-    photoUri: String,
     gingrUrl: String,
     barkboardUrl: String,
     breakTypes: Array,
@@ -22,36 +21,8 @@ const props = defineProps({
     yards: Array,
 });
 
-// --- Task data state ---
-const dogs = ref(null);
-const employees = ref(null);
-const openYards = ref(null);
-const statuses = ref(null);
+// --- Supervisor-only state ---
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
-const statusMessage = ref(null);
-const statusClass = ref('text-greyhound');
-
-// --- UI / step state ---
-const wiwId = ref(null);
-const todo = ref(null);
-const restMinutes = ref('');
-const photoErrors = ref(new Set());
-const targets = ref({
-    'dogsToAssign': [],
-    'yardsToAssign': [],
-    'cabin_id': 0,
-    'cabin_short_name': '',
-    'break_type_id': null,
-    'rest_minutes': null,
-    'lunch_notes': '1 Bag'
-});
-const step = ref(1);
-const showNoCabinWarning = ref(false);
-const savedBreakDogs = ref([]);
-const savedNoCabinDog = ref(null);
-const is1pmOrLater = ref(false);
-
-// --- Mealmap state ---
 const mealmapAssignments = ref({});
 const mealmapBreaks = ref({});
 const mealmapRotations = ref(props.rotations ?? []);
@@ -62,73 +33,32 @@ const mealmapOverscheduled = ref({});
 const mealmapEmployees = ref([]);
 const mealmapFohStaff = ref('');
 const mealmapShiftsRefreshing = ref(false);
-
-// --- Overwrite modal state ---
 const showOverwriteModal = ref(false);
 const pendingConfirmAction = ref(null);
 
-// --- Computeds ---
-const empColumns = computed(() => Math.max(1, Math.ceil(Math.sqrt((4 / 3) * (employees.value?.length ?? 0)))));
-const empRows = computed(() => Math.max(1, Math.ceil((employees.value?.length ?? 0) / empColumns.value)));
-const restColumns = computed(() => Math.ceil(Math.sqrt((16 / 9) * (dogsOnBreak.value.length + 1))));
-const restRows = computed(() => Math.ceil((dogsOnBreak.value.length + 1) / restColumns.value));
-const restGridStyle = computed(() => getYardGridStyle(restRows.value, restColumns.value, false));
-const restCardWidth = computed(() => (770 - (restColumns.value - 1) * 10) / restColumns.value);
-const restCardHeight = computed(() => (290 - (restRows.value - 1) * 10) / restRows.value);
-const dogsOnBreak = computed(() => {
-    if (!dogs.value) return [];
-    return dogs.value.filter(dog => dog.rest_starts_at !== null && !dog.checked_out_at);
-});
-const dogsNotOnBreak = computed(() => {
-    if (!dogs.value) return [];
-    return dogs.value.filter(dog => dog.rest_starts_at === null && dog.pet_id !== null && !dog.checked_out_at);
-});
-const dogsByCabin = computed(() => {
-    const grouped = {};
-    if (!dogs.value) return grouped;
-    dogs.value.forEach(dog => {
-        const key = dog.cabin_id ?? 'unassigned';
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(dog);
-    });
-    return grouped;
-});
-const moveDogEnabled = computed(() => (openYards.value?.length ?? 0) >= 3);
-const feedingCabinEnabled = computed(() => dogsWithCabinMates.value.length > 0);
-const dogsWithCabinMates = computed(() => {
-    if (!dogs.value) return [];
-    const assignedNames = new Set(dogs.value.filter(d => d.pet_id === null).map(d => d.display_name));
-    const eligible = dogs.value.filter(d => d.cabin_id && d.is_boarding && d.pet_id !== null && !d.checked_out_at && !assignedNames.has(d.display_name));
-    const counts = {};
-    eligible.forEach(d => {
-        counts[d.cabin_id] = (counts[d.cabin_id] || 0) + 1;
-    });
-    return eligible.filter(d => counts[d.cabin_id] > 1);
-});
-const markReturnedIsWalked = computed(() => {
-    const dog = targets.value.dogsToAssign;
-    if (dog?.break_type?.behavior !== 'walks_only' || !dog?.rest_starts_at) return false;
-    const elapsed = (Date.now() - new Date(dog.rest_starts_at).getTime()) / 60000;
-    return elapsed >= dog.break_type.duration_minutes;
-});
-const breakStatus = computed(() => {
-    const bt = props.breakTypes?.find(t => t.id === targets.value.break_type_id);
-    if (!bt) return 'on break';
-    if (bt.behavior === 'lunch') return 'on lunch break';
-    if (bt.behavior === 'unlimited') return `in ${bt.label}`;
-    if (bt.behavior === 'walks_only') return 'marked as walks only';
-    return `resting for ${targets.value.rest_minutes ?? bt.duration_minutes} minutes`;
-});
+// Forward ref: restartTask assigned after useMapPolling returns
+const restartRef = {
+    fn: () => {
+    }
+};
 
-// --- Polling ---
-function preloadDogPhotos(dogList) {
-    if (!dogList) return;
-    dogList.forEach(dog => {
-        if (!dog?.photoUri) return;
-        const img = new Image();
-        img.src = dog.photoUri;
-    });
-}
+const {
+    dogs, employees, openYards, statuses, statusMessage, statusClass,
+    wiwId, todo, restMinutes, staffImageCache, targets, step,
+    showNoCabinWarning, is1pmOrLater,
+    empColumns, empRows, restColumns, restRows, restGridStyle, restCardWidth, restCardHeight,
+    dogsOnBreak, dogsNotOnBreak, dogsByCabin, moveDogEnabled, feedingCabinEnabled,
+    dogsWithCabinMates, markReturnedIsWalked, breakStatus,
+    preloadStaffPhoto, preloadDogPhotos,
+    prevStep, nextStep,
+    handleEmployeeClick, handleTaskClick, handleTargetClick,
+    handleFeedingDogUpdate, handleAssignDogUpdate, addAllBoarders,
+    handleBreakDogSelect, handleBreakDogUpdate, handleTimerStart, handleRotateStart,
+    handleNoCabinAssign, handleNoCabinDismiss, handleBreakDogDelete,
+    handleYardChange, handleFinishAction,
+} = useTaskFlow(props.breakTypes, {
+    onSuccess: () => restartRef.fn(),
+});
 
 const {restart: restartTask} = useMapPolling('/supervisor/data/', 10000, (data) => {
     dogs.value = data.dogs;
@@ -136,8 +66,11 @@ const {restart: restartTask} = useMapPolling('/supervisor/data/', 10000, (data) 
     employees.value = data.employees;
     statuses.value = data.statuses;
     sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
+    employees.value?.forEach(preloadStaffPhoto);
     preloadDogPhotos(dogs.value);
 });
+
+restartRef.fn = restartTask;
 
 const {poll: pollMealmap} = useMapPolling('/api/mealmap/', 15000, (data) => {
     mealmapAssignments.value = {...(data.assignments ?? {})};
@@ -148,201 +81,6 @@ const {poll: pollMealmap} = useMapPolling('/api/mealmap/', 15000, (data) => {
     mealmapOpenYardsByRotation.value = data.openYardsByRotation ?? {};
     mealmapOverscheduled.value = data.overscheduled ?? {};
 });
-
-// --- Navigation ---
-function prevStep() {
-    statusMessage.value = null;
-    if (step.value > 1) step.value--;
-}
-
-function nextStep() {
-    statusMessage.value = null;
-    if (step.value < 4) step.value++;
-}
-
-function handlePhotoError(id) {
-    photoErrors.value = new Set([...photoErrors.value, id]);
-}
-
-function handleEmployeeClick(employee) {
-    wiwId.value = employee.wiw_user_id;
-    nextStep();
-}
-
-function handleTaskClick(thisTodo) {
-    is1pmOrLater.value = new Date().getHours() >= 13;
-    todo.value = thisTodo;
-    nextStep();
-}
-
-// --- Task step 3 handlers ---
-function handleTargetClick(cabin) {
-    if (todo.value === 'assignCabin') {
-        targets.value = {
-            ...targets.value,
-            cabin_id: cabin.id,
-            cabin_short_name: cabin.short_name
-        };
-        if (targets.value['dogsToAssign'].length > 0) nextStep();
-    } else if (todo.value === 'assignFeedingCabin') {
-        const dummy = (dogsByCabin.value[cabin.id] ?? []).find(d => d.pet_id === null);
-        if (dummy) {
-            todo.value = 'clearFeedingCabin';
-            targets.value = {
-                ...targets.value,
-                cabin_id: cabin.id,
-                cabin_short_name: cabin.short_name,
-                dummy_display_name: dummy.display_name
-            };
-            nextStep();
-            return;
-        }
-        targets.value = {
-            ...targets.value,
-            cabin_id: cabin.id,
-            cabin_short_name: cabin.short_name,
-        };
-        if (targets.value.dogsToAssign?.id) nextStep();
-    } else if (todo.value === 'cleanCabin') {
-        targets.value = {
-            wiw_user_id: wiwId.value,
-            cabin_id: cabin.id,
-            cabin_short_name: cabin.short_name,
-            is_cleaned: statuses.value.hasOwnProperty(cabin.id)
-        };
-        nextStep();
-    }
-}
-
-function handleFeedingDogUpdate() {
-    if (targets.value.dogsToAssign?.id && targets.value.cabin_id > 0) nextStep();
-}
-
-function handleAssignDogUpdate() {
-    if (targets.value['dogsToAssign'].length > 0 && targets.value['cabin_id'] > 0) nextStep();
-}
-
-function addAllBoarders() {
-    const existingIds = new Set(targets.value.dogsToAssign.map(d => d.id));
-    const boarders = dogsNotOnBreak.value.filter(d => d.is_boarding && d.pet_id !== null && !existingIds.has(d.id));
-    targets.value.dogsToAssign = [...targets.value.dogsToAssign, ...boarders];
-}
-
-function handleBreakDogSelect(dog) {
-    if (!dog.cabin_id) showNoCabinWarning.value = true;
-}
-
-function handleBreakDogUpdate(breakTypeId) {
-    targets.value.break_type_id = breakTypeId;
-    targets.value.rest_minutes = null;
-    if (targets.value['dogsToAssign'].length > 0) nextStep();
-}
-
-function handleTimerStart() {
-    const mins = parseInt(restMinutes.value);
-    if (!mins || mins < 1) return;
-    const timerType = props.breakTypes?.find(bt => bt.behavior === 'countdown' && bt.duration_minutes === null);
-    if (!timerType) return;
-    restMinutes.value = '';
-    targets.value.break_type_id = timerType.id;
-    targets.value.rest_minutes = mins;
-    if (targets.value['dogsToAssign'].length > 0) nextStep();
-}
-
-function handleRotateStart() {
-    const m = new Date().getMinutes();
-    const until = m < 30 ? 30 - m : 90 - m;
-    const mins = until < 10 ? until + 60 : until;
-    const timerType = props.breakTypes?.find(bt => bt.behavior === 'countdown' && bt.duration_minutes === null);
-    if (!timerType) return;
-    targets.value.break_type_id = timerType.id;
-    targets.value.rest_minutes = mins;
-    if (targets.value['dogsToAssign'].length > 0) nextStep();
-}
-
-function handleNoCabinAssign() {
-    showNoCabinWarning.value = false;
-    savedNoCabinDog.value = targets.value.dogsToAssign.find(d => !d.cabin_id) ?? null;
-    savedBreakDogs.value = targets.value.dogsToAssign.filter(d => d.cabin_id);
-    targets.value = {
-        ...targets.value,
-        dogsToAssign: savedNoCabinDog.value ? [savedNoCabinDog.value] : [],
-        cabin_id: 0,
-        cabin_short_name: '',
-        break_type_id: null,
-    };
-    todo.value = 'assignCabin';
-}
-
-function handleNoCabinDismiss() {
-    showNoCabinWarning.value = false;
-    targets.value.dogsToAssign = targets.value.dogsToAssign.filter(d => d.cabin_id);
-}
-
-function handleBreakDogDelete(dog) {
-    targets.value['dogsToAssign'] = dog;
-    todo.value = `markReturned/${dog.id}`;
-    nextStep();
-}
-
-function handleYardChange(pendingMoves) {
-    const payload = Object.entries(pendingMoves).map(([dog_id, yard_id]) => ({
-        dog_id: Number(dog_id),
-        yard_id: Number(yard_id),
-    }));
-    if (!payload.length) return;
-    targets.value['yardsToAssign'] = payload;
-    nextStep();
-}
-
-async function handleFinishAction(action) {
-    if (action === 'Done' || action === 'More') {
-        const isClearFeeding = todo.value === 'clearFeedingCabin';
-        axios({
-            method: isClearFeeding ? 'DELETE' : 'POST',
-            url: isClearFeeding ? '/task/assignFeedingCabin' : `/task/${todo.value}`,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            },
-            data: targets.value,
-        }).then((response) => {
-            restartTask();
-            statusMessage.value = response.data?.message;
-            statusClass.value = 'text-meadow';
-        }).catch((error) => {
-            if (error.response && error.response.status === 419) {
-                if (confirm('Your session has expired due to inactivity. Would you like to reload the page?')) {
-                    window.location.reload();
-                }
-            } else {
-                statusMessage.value = `Error: ${error.response?.data?.message || 'Unable to complete action'}`;
-                statusClass.value = 'text-alerted';
-            }
-        });
-
-        statusMessage.value = `Processing ${action} action...`;
-        statusClass.value = 'text-greyhound';
-    }
-    targets.value = {
-        'dogsToAssign': [],
-        'yardsToAssign': [],
-        'cabin_id': 0,
-        'cabin_short_name': '',
-        'break_type_id': null,
-        'rest_minutes': null,
-        'lunch_notes': '1 Bag'
-    };
-    if (todo.value.includes('markReturned')) todo.value = 'startBreak';
-    if (todo.value === 'clearFeedingCabin') todo.value = 'assignFeedingCabin';
-    step.value = action === 'Done' ? 1 : 3;
-    if (savedBreakDogs.value.length > 0 || savedNoCabinDog.value) {
-        targets.value.dogsToAssign = [...savedBreakDogs.value, ...(savedNoCabinDog.value ? [savedNoCabinDog.value] : [])];
-        savedBreakDogs.value = [];
-        savedNoCabinDog.value = null;
-        todo.value = 'startBreak';
-        step.value = 3;
-    }
-}
 
 // --- Overwrite modal ---
 function cancelOverwrite() {
@@ -361,7 +99,7 @@ function onRefreshShiftsClick() {
         mealmapShiftsRefreshing.value = true;
         try {
             await axios.post('/api/mealmap/refreshShifts', {recalculate});
-            pollMealmap();
+            await pollMealmap();
         } finally {
             mealmapShiftsRefreshing.value = false;
         }
@@ -384,11 +122,11 @@ function onRefreshShiftsClick() {
                 <div v-for="employee in employees" :key="employee.id" role="button"
                      class="flex items-center justify-center w-full h-full cursor-pointer"
                      @click="handleEmployeeClick(employee)">
-                    <div v-if="!photoErrors.has(employee.wiw_user_id)"
+                    <div v-if="staffImageCache.has(employee.wiw_user_id)"
                          class="relative w-full h-full rounded-2xl overflow-hidden ring-[3px] ring-caregiver">
                         <img
                             :src="`/images/staff/${employee.wiw_user_id}.png`" :alt="employee.first_name"
-                            class="w-full h-full object-cover" @error="handlePhotoError(employee.wiw_user_id)"/>
+                            class="w-full h-full object-cover"/>
                     </div>
                     <div v-else
                          class="w-full h-full bg-caregiver rounded-2xl flex items-center justify-center text-white text-5xl font-semibold">
@@ -472,7 +210,6 @@ function onRefreshShiftsClick() {
         <template v-else-if="step === 3">
             <h1 class="text-3xl font-header mb-4">Cool! Which one?</h1>
 
-            <!-- Standard task views (shared with TaskEntry) -->
             <template v-if="todo === 'assignCabin'">
                 <multiselect
                     class="!w-1/2 dogsToAssign-multiselect mb-5 border-2 bg-crimson placeholder:text-crimson"
@@ -662,7 +399,6 @@ function onRefreshShiftsClick() {
                         @refresh-shifts="onRefreshShiftsClick"/>
                 </div>
             </template>
-
 
             <button class="px-16 py-6 text-2xl bg-gray-500 text-white mt-4" @click="prevStep">Back</button>
         </template>

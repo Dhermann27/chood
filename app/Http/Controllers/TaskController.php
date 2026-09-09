@@ -48,10 +48,9 @@ class TaskController extends Controller
     private function sharedProps(): array
     {
         return [
-            'cabins'     => $this->getCabins(),
-            'photoUri'   => config('services.gingr.uris.photo'),
-            'gingrUrl'      => config('services.gingr.uris.base'),
-            'barkboardUrl'  => config('services.barkboard.url'),
+            'cabins' => $this->getCabins(),
+            'gingrUrl' => config('services.gingr.uris.base'),
+            'barkboardUrl' => config('services.barkboard.url'),
             'breakTypes' => BreakType::orderBy('display_order')->get(),
         ];
     }
@@ -102,12 +101,12 @@ class TaskController extends Controller
         }
 
         return response()->json([
-            'dogs'          => $dogs,
-            'openYards'     => $yards,
-            'statuses'      => $statuses,
-            'employees'     => $employees,
+            'dogs' => $dogs,
+            'openYards' => $yards,
+            'statuses' => $statuses,
+            'employees' => $employees,
             'sectionCounts' => array_merge($sectionCounts, ['in_house' => Dog::inHouse()->count()]),
-            'checksum'      => $new_checksum,
+            'checksum' => $new_checksum,
         ]);
     }
 
@@ -284,6 +283,9 @@ class TaskController extends Controller
         }
     }
 
+    /**
+     * @throws Throwable
+     */
     public function moveDogs(Request $request): JsonResponse
     {
         $validated = $request->validate([

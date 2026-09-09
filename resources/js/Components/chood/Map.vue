@@ -40,7 +40,7 @@ let clockInterval;
 onMounted(() => {
     clockInterval = setInterval(() => {
         now.value = Date.now();
-    }, 5000);
+    }, 30000);
 });
 onBeforeUnmount(() => clearInterval(clockInterval));
 

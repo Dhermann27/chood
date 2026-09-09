@@ -4,8 +4,11 @@ import axios from 'axios';
 export function useMapPolling(url, intervalMs, onData) {
     const localChecksum = ref('');
     let intervalId = null;
+    let isFetching = false;
 
     async function poll() {
+        if (isFetching) return;
+        isFetching = true;
         try {
             const response = await axios.get(url + localChecksum.value);
             if (response.data && localChecksum.value !== response.data?.checksum) {
@@ -14,6 +17,8 @@ export function useMapPolling(url, intervalMs, onData) {
             }
         } catch (error) {
             console.error('Polling error:', error);
+        } finally {
+            isFetching = false;
         }
     }
 
