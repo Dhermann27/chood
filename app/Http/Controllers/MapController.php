@@ -14,7 +14,7 @@ class MapController extends Controller
 {
     use ChoodTrait;
 
-    const ROW_VIEWS = ['last' => [2046, 2099, -18],
+    public const array ROW_VIEWS = ['last' => [2046, 2099, -18],
         'mid' => [2016, 2045, -12],
         'first' => [0, 2015, 0]
 
@@ -47,9 +47,7 @@ class MapController extends Controller
     public function mealmap(): Response
     {
         return Inertia::render('Mealmap', [
-            'rotations' => Rotation::when(now()->isSunday(), function ($query) {
-                $query->where('is_sunday_hour', 1);
-            })->orderBy('start_time')->get(),
+            'rotations' => Rotation::forToday()->get(),
             'yards' => Yard::orderBy('display_order')->get(),
             'yardPresets' => collect(YardCodes::cases())->map(fn($case) => [
                 'value' => $case->value,
@@ -61,8 +59,7 @@ class MapController extends Controller
 
     public function groommap(): Response
     {
-        return Inertia::render('Groommap', [
-        ]);
+        return Inertia::render('Groommap', []);
     }
 
 

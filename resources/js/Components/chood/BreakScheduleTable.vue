@@ -2,7 +2,8 @@
 import {ref, watch} from 'vue';
 import VueTimepicker from 'vue3-timepicker';
 import 'vue3-timepicker/dist/VueTimepicker.css';
-import {formatTime, datetimeToMinutes} from '@/utils.js';
+import {datetimeToMinutes, formatTime} from '@/utils.js';
+import {useSaveFeedback} from '@/Composables/useSaveFeedback.js';
 
 const props = defineProps({
     employees: {type: Object, default: () => ({})},
@@ -14,7 +15,7 @@ const emit = defineEmits(['saved', 'refreshShifts']);
 
 const localEmployees = ref({});
 const timepickerOpen = ref({});
-const inputRefs = ref({});
+const {setInputRef, withFeedback} = useSaveFeedback();
 
 watch(() => props.employees, (val) => {
     localEmployees.value = val ? {...val} : {};
@@ -83,35 +84,15 @@ function breakFairnessTooltip(employee, breakKey) {
     return ideal !== null ? `Ideal: ${minutesToTimeStr(ideal)}` : null;
 }
 
-function setInputRef(key, el) {
-    if (!inputRefs.value) inputRefs.value = {};
-    inputRefs.value[key] = el;
-}
-
 async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name) {
-    const select = inputRefs.value[`timepick-${wiw_user_id}-${break_name}`];
-    const redClasses = Array.from({length: 9}, (_, i) => `bg-red-${(i + 1) * 100}`);
-
-    try {
-        if (select) {
-            select.classList.remove(...redClasses);
-            select.style.backgroundColor = 'gray';
-        }
+    await withFeedback(`timepicker-${wiw_user_id}-${break_name}`, async () => {
         await axios.post('/api/mealmap/break', {
             [break_name]: `${eventData.displayTime}`,
             wiw_user_id: wiw_user_id,
             shift_start: shift_start,
         });
-        if (select) select.style.backgroundColor = 'green';
         emit('saved');
-    } catch (error) {
-        console.error('Error handling Break Change', error);
-        if (select) select.style.backgroundColor = 'red';
-    }
-
-    setTimeout(() => {
-        if (select) select.style.backgroundColor = '';
-    }, 5000);
+    });
 }
 </script>
 
@@ -144,7 +125,7 @@ async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name
 
                 <!-- First Break -->
                 <td class="border border-DEFAULT px-4 py-2"
-                    :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_first_break`, el)"
+                    :ref="el => setInputRef(`timepicker-${String(employee.wiw_user_id)}-next_first_break`, el)"
                     :style="{ backgroundColor: breakFairnessColor(employee, 'next_first_break') }"
                     :title="timepickerOpen[`${employee.wiw_user_id}-next_first_break`] ? null : breakFairnessTooltip(employee, 'next_first_break')">
                     <div :class="[!readonly && employee.first_name !== 'Everyone' ? 'hidden' : '', 'print:block']">
@@ -152,7 +133,7 @@ async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name
                     </div>
                     <VueTimepicker
                         v-if="!readonly && employee.first_name !== 'Everyone'"
-                        :id="`timepick-${String(employee.wiw_user_id)}-next_first_break`"
+                        :id="`timepicker-${String(employee.wiw_user_id)}-next_first_break`"
                         class="print-hide" placeholder="None"
                         v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
                         :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
@@ -163,7 +144,7 @@ async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name
 
                 <!-- Lunch -->
                 <td class="border border-DEFAULT px-4 py-2"
-                    :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_lunch_break`, el)"
+                    :ref="el => setInputRef(`timepicker-${String(employee.wiw_user_id)}-next_lunch_break`, el)"
                     :style="{ backgroundColor: breakFairnessColor(employee, 'next_lunch_break') }"
                     :title="timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`] ? null : breakFairnessTooltip(employee, 'next_lunch_break')">
                     <div :class="[!readonly ? 'hidden' : '', 'print:block']">
@@ -171,7 +152,7 @@ async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name
                     </div>
                     <VueTimepicker
                         v-if="!readonly"
-                        :id="`timepick-${String(employee.wiw_user_id)}-next_lunch_break`"
+                        :id="`timepicker-${String(employee.wiw_user_id)}-next_lunch_break`"
                         class="print-hide" placeholder="None"
                         v-model="employee.next_lunch_break" format="HH:mma" :minute-interval="5"
                         :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
@@ -182,7 +163,7 @@ async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name
 
                 <!-- Second Break -->
                 <td class="border border-DEFAULT px-4 py-2"
-                    :ref="el => setInputRef(`timepick-${String(employee.wiw_user_id)}-next_second_break`, el)"
+                    :ref="el => setInputRef(`timepicker-${String(employee.wiw_user_id)}-next_second_break`, el)"
                     :style="{ backgroundColor: breakFairnessColor(employee, 'next_second_break') }"
                     :title="timepickerOpen[`${employee.wiw_user_id}-next_second_break`] ? null : breakFairnessTooltip(employee, 'next_second_break')">
                     <div :class="[!readonly ? 'hidden' : '', 'print:block']">
@@ -190,7 +171,7 @@ async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name
                     </div>
                     <VueTimepicker
                         v-if="!readonly"
-                        :id="`timepick-${String(employee.wiw_user_id)}-next_second_break`"
+                        :id="`timepicker-${String(employee.wiw_user_id)}-next_second_break`"
                         class="print-hide" placeholder="None"
                         v-model="employee.next_second_break" format="HH:mma" :minute-interval="5"
                         :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input

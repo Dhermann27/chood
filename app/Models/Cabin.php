@@ -11,7 +11,7 @@ class Cabin extends Model
     public $timestamps = false;
     protected $appends = ['short_name'];
 
-    public function getShortNameAttribute()
+    public function getShortNameAttribute(): ?string
     {
         $patterns = ['/Luxury Suite /', '/^Cabin 0*(\d+) - \d+x\d+$/', '/Teacup Condo /'];
         $replacements = ['L', '$1', 'T'];

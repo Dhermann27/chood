@@ -15,12 +15,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Traits\ParsesAnimalNotes;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ParsesAnimalNotes;
 
     public function __construct(protected string $ownerId)
     {
@@ -31,9 +33,6 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
         return 'animal_owner' . $this->ownerId;
     }
 
-    /**
-     * @throws Exception
-     */
     public function handle(FetchDataService $fetchDataService): void
     {
         $url = config('services.gingr.uris.ownerData') . $this->ownerId;
@@ -94,13 +93,14 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
         }
     }
 
-    private function resolveTimeslot(string $label, $timeslots): ?int
+    private function resolveTimeslot(string $label, Collection $timeslots): ?int
     {
         $name = trim(explode(' - ', ltrim($label, '*'))[0]);
-        return $timeslots->get($name);
+        $value = $timeslots->get($name);
+        return $value !== null ? (int)$value : null;
     }
 
-    private function getMedications(string $petId, array $animal, $timeslots): void
+    private function getMedications(string $petId, array $animal, Collection $timeslots): void
     {
         Medication::where('pet_id', $petId)->delete();
 
@@ -160,12 +160,7 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
         return trim(html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     }
 
-    private function isBoilerplate(string $text): bool
-    {
-        return (bool)preg_match('/^(none|no \w+ needed|none no \w+ needed)$/i', $text);
-    }
-
-    private function getFeedings(string $petId, ?array $feedingSchedule, $timeslots): void
+    private function getFeedings(string $petId, ?array $feedingSchedule, Collection $timeslots): void
     {
         Feeding::where('pet_id', $petId)->where('is_task', 0)->delete();
 

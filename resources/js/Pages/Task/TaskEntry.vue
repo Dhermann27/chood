@@ -9,6 +9,7 @@ import DogCard from "@/Components/chood/DogCard.vue";
 import MoveDogs from "@/Pages/Task/MoveDogs.vue";
 import {useMapPolling} from "@/Composables/useMapPolling.js";
 import {useTaskFlow} from "@/Composables/useTaskFlow.js";
+import DogMultiselectOption from "@/Components/chood/DogMultiselectOption.vue";
 
 const props = defineProps({
     cabins: Array,
@@ -23,19 +24,13 @@ const restartRef = {
 let lastInteractionAt = Date.now();
 
 const {
-    dogs, employees, openYards, statuses, statusMessage, statusClass,
-    wiwId, todo, restMinutes, staffImageCache, targets, step,
-    showNoCabinWarning, is1pmOrLater,
-    empColumns, empRows, restColumns, restRows, restGridStyle, restCardWidth, restCardHeight,
-    dogsOnBreak, dogsNotOnBreak, dogsByCabin, moveDogEnabled, feedingCabinEnabled,
-    dogsWithCabinMates, markReturnedIsWalked, breakStatus,
-    preloadStaffPhoto, preloadDogPhotos,
-    prevStep, nextStep,
-    handleEmployeeClick, handleTaskClick, handleTargetClick,
-    handleFeedingDogUpdate, handleAssignDogUpdate, addAllBoarders,
-    handleBreakDogSelect, handleBreakDogUpdate, handleTimerStart, handleRotateStart,
-    handleNoCabinAssign, handleNoCabinDismiss, handleBreakDogDelete,
-    handleYardChange, handleFinishAction,
+    dogs, employees, openYards, statuses, statusMessage, statusClass, todo, restMinutes, staffImageCache, targets, step,
+    showNoCabinWarning, is1pmOrLater, empColumns, empRows, restGridStyle, restCardWidth, restCardHeight, dogsOnBreak,
+    dogsNotOnBreak, dogsByCabin, moveDogEnabled, feedingCabinEnabled, dogsWithCabinMates, markReturnedIsWalked,
+    breakStatus, preloadStaffPhoto, preloadDogPhotos, prevStep, nextStep, handleEmployeeClick, handleTaskClick,
+    handleTargetClick, handleFeedingDogUpdate, handleAssignDogUpdate, addAllBoarders, handleBreakDogSelect,
+    handleBreakDogUpdate, handleTimerStart, handleRotateStart, handleNoCabinAssign, handleNoCabinDismiss,
+    handleBreakDogDelete, handleYardChange, handleFinishAction,
 } = useTaskFlow(props.breakTypes, {
     onInteraction: () => {
         lastInteractionAt = Date.now();
@@ -163,13 +158,7 @@ onUnmounted(() => clearInterval(idleInterval));
                             }}</span>
                     </template>
                     <template #option="{ option }">
-                        <div class="dog-option-item">
-                            <div v-if="option.photoUri" class="dog-photo-wrap">
-                                <img :src="option.photoUri" :alt="option.display_name"
-                                     @error="e => e.target.parentElement.style.display = 'none'"/>
-                            </div>
-                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
-                        </div>
+                        <DogMultiselectOption :option="option"/>
                     </template>
                 </multiselect>
                 <div class="choodmap items-center justify-center p-1">
@@ -190,13 +179,7 @@ onUnmounted(() => clearInterval(idleInterval));
                     v-model="targets.dogsToAssign" track-by="id" :options="dogsWithCabinMates" label="display_name"
                     placeholder="Select Dog (Required)" @update:modelValue="handleFeedingDogUpdate">
                     <template #option="{ option }">
-                        <div class="dog-option-item">
-                            <div v-if="option.photoUri" class="dog-photo-wrap">
-                                <img :src="option.photoUri" :alt="option.display_name"
-                                     @error="e => e.target.parentElement.style.display = 'none'"/>
-                            </div>
-                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
-                        </div>
+                        <DogMultiselectOption :option="option"/>
                     </template>
                 </multiselect>
                 <div class="choodmap items-center justify-center p-1">
@@ -218,13 +201,7 @@ onUnmounted(() => clearInterval(idleInterval));
                             }}</span>
                     </template>
                     <template #option="{ option }">
-                        <div class="dog-option-item">
-                            <div v-if="option.photoUri" class="dog-photo-wrap">
-                                <img :src="option.photoUri" :alt="option.display_name"
-                                     @error="e => e.target.parentElement.style.display = 'none'"/>
-                            </div>
-                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
-                        </div>
+                        <DogMultiselectOption :option="option"/>
                     </template>
                 </multiselect>
                 <label for="lunch-notes" class="block text-lg mb-2">Lunch notes</label>
@@ -253,13 +230,7 @@ onUnmounted(() => clearInterval(idleInterval));
                                 }}</span>
                         </template>
                         <template #option="{ option }">
-                            <div class="dog-option-item">
-                                <div v-if="option.photoUri" class="dog-photo-wrap">
-                                    <img :src="option.photoUri" :alt="option.display_name"
-                                         @error="e => e.target.parentElement.style.display = 'none'"/>
-                                </div>
-                                <span class="text-3xl ml-10">{{ option.display_name }}</span>
-                            </div>
+                            <DogMultiselectOption :option="option"/>
                         </template>
                     </multiselect>
                     <button @click="addAllBoarders"
@@ -407,25 +378,6 @@ onUnmounted(() => clearInterval(idleInterval));
 }
 </style>
 <style scoped>
-.dog-photo-wrap {
-    width: 75px;
-    height: 75px;
-    flex-shrink: 0;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.dog-photo-wrap img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.dog-option-item {
-    display: flex;
-    align-items: center;
-}
-
 :deep(.multiselect__tag) {
     padding: 12px 20px;
     font-size: 1.25rem;

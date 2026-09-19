@@ -6,7 +6,6 @@ use App\Models\Report;
 use App\Services\FetchDataService;
 use App\Traits\BuildsReportParams;
 use App\Traits\ParsesServiceCategory;
-use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -15,23 +14,20 @@ class FetchChargesJob implements ShouldQueue
     use Queueable, BuildsReportParams, ParsesServiceCategory;
 
     // account_code_charges.tbody row indices
-    const ACC_NAME = 0;
-    const ACC_AMOUNT = 2;
-    const ACC_QTY = 4;
+    private const int ACC_NAME = 0;
+    private const int ACC_AMOUNT = 2;
+    private const int ACC_QTY = 4;
 
     // charges_package / redeemed_package_credits tbody row indices
-    const PKG_NAME = 0;
-    const PKG_AMOUNT = 1;
-    const PKG_QTY = 3; // # items (not invoice count)
+    private const int PKG_NAME = 0;
+    private const int PKG_AMOUNT = 1;
+    private const int PKG_QTY = 3; // # items (not invoice count)
 
     public function __construct(public readonly string $reportId, public readonly array $cookies)
     {
         $this->onQueue('high');
     }
 
-    /**
-     * @throws Exception
-     */
     public function handle(FetchDataService $fetchDataService): void
     {
         $report = Report::findOrFail($this->reportId);

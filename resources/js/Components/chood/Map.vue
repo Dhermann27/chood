@@ -128,6 +128,17 @@ async function handleDelete(dogs) {
     }
 }
 
+async function handleClearFeeding(cabinId) {
+    if (!confirm('Clear feeding cabin?')) return;
+    try {
+        await axios.delete('/api/assignFeedingCabin', {
+            data: {cabin_id: cabinId},
+        });
+    } catch (error) {
+        console.error('Error clearing feeding cabin:', error);
+    }
+}
+
 function isCheckingOutTodayOrEarlier(dogs) {
     if (!dogs) return false;
     const today = new Date().toLocaleDateString('en-CA'); // "YYYY-MM-DD"
@@ -226,15 +237,20 @@ function displayCabinStyle(cabin) {
                      :style="{ fontSize: (cardHeight * 0.4) + 'px' }">
                     CO
                 </div>
-                <div v-if="controls === ControlSchemes.MODAL && props.dogs[cabin.id].every(d => !d.is_boarding)"
+                <div v-if="controls === ControlSchemes.MODAL"
                      class="absolute inset-y-0 left-0 flex flex-col justify-center">
-                    <button
-                        @click="openModal( 'edit', cabin)"
-                        class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md"
-                    >
-                        <FontAwesomeIcon :icon="['fas', 'edit']"/>
-                    </button>
-                    <button @click="handleDelete(props.dogs[cabin.id])"
+                    <template v-if="props.dogs[cabin.id].every(d => !d.is_boarding)">
+                        <button @click="openModal('edit', cabin)"
+                                class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md">
+                            <FontAwesomeIcon :icon="['fas', 'edit']"/>
+                        </button>
+                        <button @click="handleDelete(props.dogs[cabin.id])"
+                                class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md">
+                            <FontAwesomeIcon :icon="['fas', 'trash']"/>
+                        </button>
+                    </template>
+                    <button v-if="props.dogs[cabin.id].some(d => d.pet_id === null)"
+                            @click.stop="handleClearFeeding(cabin.id)"
                             class="bg-caregiver text-crimson hover:text-alerted p-1 rounded-r-md">
                         <FontAwesomeIcon :icon="['fas', 'trash']"/>
                     </button>

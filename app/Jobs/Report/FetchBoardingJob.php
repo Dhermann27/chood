@@ -5,25 +5,23 @@ namespace App\Jobs\Report;
 use App\Enums\HousingServiceCodes;
 use App\Models\Report;
 use App\Services\FetchDataService;
-use Carbon\Carbon;
-use DOMDocument;
-use DOMXPath;
+use App\Traits\BuildsReportParams;
+use App\Traits\ParsesHtmlReport;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
 
 class FetchBoardingJob implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, BuildsReportParams, ParsesHtmlReport;
 
-    private const BASE_RATES = [
+    private const array BASE_RATES = [
         'BRDC' => 65.00,
         'BRDL' => 100.00,
     ];
 
     // Per-dog discount off base rate when multiple dogs share a cabin
-    private const MULTI_DOG_DISCOUNTS = [
+    private const array MULTI_DOG_DISCOUNTS = [
         'BRDC' => [2 => 4, 3 => 7],
         'BRDL' => [2 => 5, 3 => 10],
     ];
@@ -39,25 +37,17 @@ class FetchBoardingJob implements ShouldQueue
     public function handle(FetchDataService $fetchDataService): void
     {
         $report = Report::findOrFail($this->reportId);
-        $formatted = Carbon::parse($report->report_date)->format('m/d/Y');
 
         $html = $fetchDataService->fetchOccupancy(
             config('services.gingr.uris.lodging_occupancy'),
-            [
-                'date_from' => $formatted,
-                'date_to' => $formatted,
-                'location_id' => config('services.gingr.location_id'),
-                'csv' => 'false',
-            ],
+            $this->buildOccupancyParams($report->report_date),
             $this->cookies
         );
 
-        [$qty, $total, $breakdown] = $this->parseOccupancy($html);
+        [$qty, $total] = $this->parseOccupancy($html);
 
         $data = $report->data ?? [];
-
-        $data['boarding_accrual'] = ['qty' => $qty, 'total' => round($total, 2), 'breakdown' => $breakdown];
-
+        $data['boarding_accrual'] = ['qty' => $qty, 'total' => round($total, 2)];
         $report->data = $data;
         $report->updated_at = now();
         $report->save();
@@ -67,16 +57,11 @@ class FetchBoardingJob implements ShouldQueue
     {
         $qty = 0;
         $total = 0.0;
-        $breakdown = [];
 
-        $dom = new DOMDocument();
-        @$dom->loadHTML($html);
-        $xpath = new DOMXPath($dom);
-
+        $xpath = $this->loadXPath($html);
         $rows = $xpath->query('//table[@id="reservations"]/tbody/tr');
-        if (!$rows) return [$qty, $total, $breakdown];
+        if (!$rows) return [$qty, $total];
 
-        $loggedCols = false;
         foreach ($rows as $row) {
             $cells = $row->getElementsByTagName('td');
             if ($cells->length < 3) continue;
@@ -84,17 +69,8 @@ class FetchBoardingJob implements ShouldQueue
             $lodging = trim($cells->item(0)->textContent ?? '');
             if (strtolower($lodging) === 'totals') continue;
 
-            if (!$loggedCols) {
-                $colTexts = [];
-                for ($i = 0; $i < $cells->length; $i++) {
-                    $colTexts[] = "[$i]=" . preg_replace('/\s+/', ' ', trim($cells->item($i)->textContent ?? ''));
-                }
-                Log::info('FetchBoardingJob columns: ' . implode(' | ', $colTexts));
-                $loggedCols = true;
-            }
-
             $area = trim($cells->item(1)->textContent ?? '');
-            $isLuxury = str_contains(strtolower($area), 'luxury') || str_contains(strtolower($area), 'teacup');
+            $isLuxury = str_contains(strtolower($area), 'luxury');
             $code = $isLuxury ? HousingServiceCodes::BRDL->value : HousingServiceCodes::BRDC->value;
             $base = self::BASE_RATES[$code];
 
@@ -110,18 +86,11 @@ class FetchBoardingJob implements ShouldQueue
             $discounts = self::MULTI_DOG_DISCOUNTS[$code];
             $discount = $discounts[min($count, max(array_keys($discounts)))] ?? 0;
             $rate = $base - $discount;
-            $cabinTotal = $rate * $count;
 
             $qty += $count;
-            $total += $cabinTotal;
-            $breakdown[] = [
-                'label' => preg_replace('/\s+/', ' ', $lodging) . ($count > 1 ? " ({$count} dogs)" : ''),
-                'qty' => $count,
-                'rate' => $rate,
-                'total' => $cabinTotal,
-            ];
+            $total += $rate * $count;
         }
 
-        return [$qty, $total, $breakdown];
+        return [$qty, $total];
     }
 }

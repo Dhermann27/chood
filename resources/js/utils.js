@@ -46,6 +46,14 @@ export function checkoutReservationColor(dog) {
     return '#000000';
 }
 
+export function getNewGifAndPosition() {
+    return {
+        newGif: '/images/doggifs/dog' + (Math.floor(Math.random() * 11) + 1) + '.webp',
+        top: Math.random() * (1080 - 480),
+        left: Math.random() * (1920 - 480),
+    };
+}
+
 export function getBannerStyle(currentDog, breakTimeLeft) {
     if (breakTimeLeft?.expired) {
         return {label: 'Return to Yard', class: 'bg-alerted'};

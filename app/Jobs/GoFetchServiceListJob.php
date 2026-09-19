@@ -23,9 +23,6 @@ class GoFetchServiceListJob implements ShouldQueue, ShouldBeUnique
     {
     }
 
-    /**
-     * @throws Exception
-     */
     public function handle(FetchDataService $fetchDataService): void
     {
         $location = config('services.gingr.location_id');

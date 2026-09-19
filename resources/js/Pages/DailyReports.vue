@@ -47,7 +47,7 @@ async function poll() {
     const ids = [...pendingIds.value];
     const params = ids.map(id => `ids[]=${id}`).join('&');
     try {
-        const res = await fetch(`/dailyreports/${props.iso_date}/dogs?${params}`);
+        const res = await fetch(`/reports/daily/${props.iso_date}/dogs?${params}`);
         const data = await res.json();
         for (const [petId, dogData] of Object.entries(data)) {
             extraData.value[parseInt(petId)] = dogData;

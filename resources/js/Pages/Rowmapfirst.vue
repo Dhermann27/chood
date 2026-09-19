@@ -7,8 +7,8 @@ import {useMapPolling} from "@/Composables/useMapPolling.js";
 const props = defineProps({
     cabins: Array,
 });
-const dogs = ref([]);
-const statuses = ref([]);
+const dogs = ref({});
+const statuses = ref({});
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
 
 useMapPolling('/api/fullmap/', 5000, (data) => {
@@ -19,7 +19,7 @@ useMapPolling('/api/fullmap/', 5000, (data) => {
 </script>
 
 <template>
-    <Head title="Rowmap Firstrow"/>
+    <Head title="Rowmap First Row"/>
     <main class="w-full h-full relative">
         <div class="choodmap items-center justify-center p-1">
             <Map :cabins="cabins" :statuses="statuses" :dogs="dogs" :maxlength="12"

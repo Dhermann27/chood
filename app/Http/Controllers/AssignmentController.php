@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CleaningStatus;
 use App\Models\Dog;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -83,6 +84,9 @@ class AssignmentController extends Controller
             'dogs.*.id' => 'nullable|exists:dogs,id',
         ]);
         $ids = collect($validatedData['dogs'])->pluck('id')->toArray();
-        return response()->json(Dog::whereIn('id', $ids)->delete(), 200);
+        $cabinIds = Dog::whereIn('id', $ids)->pluck('cabin_id')->filter()->unique();
+        Dog::whereIn('id', $ids)->delete();
+        CleaningStatus::whereIn('cabin_id', $cabinIds)->whereNull('completed_at')->delete();
+        return response()->json(1, 200);
     }
 }

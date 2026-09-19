@@ -33,20 +33,20 @@ Route::get('/mealmap', [MapController::class, 'mealmap']);
 Route::get('/groommap', [MapController::class, 'groommap']);
 
 
-Route::prefix('dailyreports')->group(function () {
-    Route::get('/{date?}', [ReportController::class, 'dailyReports'])->where('date', '\d{4}-\d{2}-\d{2}');
-    Route::get('/{date}/dogs', [ReportController::class, 'reportDogData'])->where('date', '\d{4}-\d{2}-\d{2}');
-});
-
-Route::prefix('journalmaker')->group(function () {
-    Route::get('/', [ReportController::class, 'journalMaker']);
-    Route::post('/transform', [ReportController::class, 'journalTransform']);
-});
-
-Route::prefix('depositfinder')->group(function () {
-    Route::get('/', [ReportController::class, 'report']);
-    Route::post('/login', [ReportController::class, 'overall']);
-    Route::get('/results/{i}', [ReportController::class, 'results']);
+Route::prefix('reports')->group(function () {
+    Route::prefix('daily')->group(function () {
+        Route::get('/{date?}', [ReportController::class, 'dailyIndex'])->where('date', '\d{4}-\d{2}-\d{2}');
+        Route::get('/{date}/dogs', [ReportController::class, 'dailyDogData'])->where('date', '\d{4}-\d{2}-\d{2}');
+    });
+    Route::prefix('journal')->group(function () {
+        Route::get('/', [ReportController::class, 'journalIndex']);
+        Route::post('/transform', [ReportController::class, 'journalTransform']);
+    });
+    Route::prefix('deposit')->group(function () {
+        Route::get('/', [ReportController::class, 'depositIndex']);
+        Route::post('/fetch', [ReportController::class, 'fetchDeposit']);
+        Route::get('/results/{i}', [ReportController::class, 'depositResults']);
+    });
 });
 
 Route::prefix('supervisor')->group(function () {
@@ -90,6 +90,7 @@ Route::prefix('api')->group(function () {
     Route::post('/dog', [AssignmentController::class, 'storeAssignment']);
     Route::put('/dog', [AssignmentController::class, 'updateAssignment']);
     Route::delete('/dog', [AssignmentController::class, 'deleteAssignment']);
+    Route::delete('/assignFeedingCabin', [TaskController::class, 'clearFeedingCabin']);
 
 });
 

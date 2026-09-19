@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Services\FetchDataService;
+use App\Traits\ParsesAnimalNotes;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Log;
 
 class GoFetchReportDogJob implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ParsesAnimalNotes;
 
     public function __construct(
         protected string $ownerId,
@@ -32,6 +33,9 @@ class GoFetchReportDogJob implements ShouldBeUnique, ShouldQueue
         return "report_dog_{$this->ownerId}_{$this->date}";
     }
 
+    /**
+     * @throws Exception
+     */
     public function handle(FetchDataService $fetchDataService): void
     {
         $url = config('services.gingr.uris.ownerData') . $this->ownerId;
@@ -100,8 +104,4 @@ class GoFetchReportDogJob implements ShouldBeUnique, ShouldQueue
         };
     }
 
-    private function isBoilerplate(string $text): bool
-    {
-        return (bool)preg_match('/^(none|no \w+ needed|none no \w+ needed)$/i', $text);
-    }
 }

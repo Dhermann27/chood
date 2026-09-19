@@ -5,3 +5,5 @@ declare module '@vue/runtime-core' {
         $fa: typeof byPrefixAndName;
     }
 }
+
+declare module 'vue3-timepicker';

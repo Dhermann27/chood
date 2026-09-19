@@ -20,7 +20,7 @@ class WiwService
     const string USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
     /**
-     * @throws ConnectionException|Exception
+     * @throws Exception
      */
     private function token(): string
     {
@@ -45,7 +45,7 @@ class WiwService
     }
 
     /**
-     * @throws ConnectionException|Exception
+     * @throws ConnectionException
      */
     public function getV2(string $path, array $query = []): array
     {
@@ -60,7 +60,7 @@ class WiwService
     }
 
     /**
-     * @throws ConnectionException|Exception
+     * @throws ConnectionException
      */
     public function getV3(string $path, array $query = []): array
     {
@@ -74,6 +74,9 @@ class WiwService
         return $response->json();
     }
 
+    /**
+     * @throws Exception
+     */
     private function client(): PendingRequest
     {
         return Http::withToken($this->token())->withHeaders([

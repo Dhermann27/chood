@@ -17,6 +17,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -174,7 +175,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         }
     }
 
-    private function getUpdateValues(array $row, $cabins): array
+    private function getUpdateValues(array $row, Collection $cabins): array
     {
         return array_filter([
             'order_id' => $row['id'],

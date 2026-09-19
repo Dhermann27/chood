@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\YardCodes;
 use App\Models\BreakType;
 use App\Models\Cabin;
 use App\Models\CleaningStatus;
@@ -18,7 +19,6 @@ use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -37,9 +37,12 @@ class TaskController extends Controller
     public function supervisor(): Response
     {
         return Inertia::render('Supervisor/Index', array_merge($this->sharedProps(), [
-            'rotations' => Rotation::when(now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))
-                ->orderBy('start_time')->get(),
+            'rotations' => Rotation::forToday()->get(),
             'yards' => Yard::orderBy('display_order')->get(),
+            'yardPresets' => collect(YardCodes::cases())->map(fn($case) => [
+                'value' => $case->value,
+                'label' => $case->label(),
+            ]),
         ]));
     }
 
@@ -58,48 +61,31 @@ class TaskController extends Controller
     // TODO: Add cool way to see status messages from others
     public function getData(?string $checksum = null): JsonResponse
     {
-        $dogs = $this->getDogs(false, null, true);
-        $yards = Yard::whereIn('id', RotationSettings::get()->allowedYards(false))
-            ->orderBy('display_order')->get();
-        $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
-        $employees = Employee::whereHas('shifts', function ($query) {
-            $query->where('start_time', '<=', now()->addHour())->where('end_time', '>=', now()->subHour());
-        })->orderBy('first_name')->get();
-        $sectionCounts = Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]);
-        $new_checksum = md5($dogs->toJson() . $employees->toJson() . json_encode($statuses) . json_encode($sectionCounts));
-        if ($checksum !== $new_checksum) {
-            $response = [
-                'dogs' => $dogs,
-                'openYards' => $yards,
-                'statuses' => $statuses,
-                'employees' => $employees,
-                'sectionCounts' => array_merge($sectionCounts, ['in_house' => Dog::inHouse()->count()]),
-                'checksum' => $new_checksum,
-            ];
-
-            return response()->json($response);
-        }
-        return response()->json(false);
+        return $this->buildTaskData(false, $checksum);
     }
 
     public function supervisorData(?string $checksum = null): JsonResponse
+    {
+        return $this->buildTaskData(true, $checksum);
+    }
+
+    private function buildTaskData(bool $supervisorOnly, ?string $checksum): JsonResponse
     {
         $dogs = $this->getDogs(false, null, true);
         $yards = Yard::whereIn('id', RotationSettings::get()->allowedYards(false))
             ->orderBy('display_order')->get();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
-        $employees = Employee::whereHas('shifts', function ($query) {
-            $query->where('start_time', '<=', now()->addHour())
-                ->where('end_time', '>=', now()->subHour())
-                ->whereIn('role', self::SUPERVISOR_ROLES);
+        $employees = Employee::whereHas('shifts', function ($query) use ($supervisorOnly) {
+            $query->where('start_time', '<=', now()->addHour())->where('end_time', '>=', now()->subHour());
+            if ($supervisorOnly) {
+                $query->whereIn('role', self::SUPERVISOR_ROLES);
+            }
         })->orderBy('first_name')->get();
-        $sectionCounts = Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]);
-
+        $sectionCounts = $this->getSectionCounts();
         $new_checksum = md5($dogs->toJson() . $employees->toJson() . json_encode($statuses) . json_encode($sectionCounts));
         if ($checksum === $new_checksum) {
             return response()->json(false);
         }
-
         return response()->json([
             'dogs' => $dogs,
             'openYards' => $yards,
@@ -247,13 +233,12 @@ class TaskController extends Controller
         return response()->json(['message' => "Marked {$dog->firstname} as returned to yard"]);
     }
 
-    /**
-     * @throws Throwable
-     */
     public function clearFeedingCabin(Request $request): JsonResponse
     {
         $request->validate(['cabin_id' => 'required|exists:cabins,id']);
-        Dog::whereNull('pet_id')->where('cabin_id', $request->input('cabin_id'))->delete();
+        $cabinId = $request->input('cabin_id');
+        Dog::whereNull('pet_id')->where('cabin_id', $cabinId)->delete();
+        CleaningStatus::where('cabin_id', $cabinId)->whereNull('completed_at')->delete();
         return response()->json(['message' => 'Feeding cabin cleared']);
     }
 

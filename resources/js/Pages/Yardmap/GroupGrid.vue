@@ -18,6 +18,7 @@ const props = defineProps({
     cardHeight: {type: Number, required: true},
     sectionCounts: {type: Object, default: () => ({checkin_today: null, checkout_today: null})},
     isDinnerTime: {type: Boolean, default: false},
+    lowCount: {type: Boolean, default: false},
 });
 
 const dogs = computed(() => props.dogsByGroup?.[props.groupKey] ?? []);
@@ -60,7 +61,8 @@ const gridStyle = computed(() => {
                 <DogCard :dogs="[dog]" :card-width="cardWidth" :card-height="cardHeight"/>
             </div>
 
-            <div class="w-full h-full flex relative items-center justify-center bg-crimson text-white font-bold">
+            <div class="w-full h-full flex relative items-center justify-center font-bold"
+                 :class="lowCount ? 'bg-sunshine text-black' : 'bg-crimson text-white'">
                 <span :style="{ fontSize: (cardHeight * 0.5) + 'px' }">
                     {{ activeCount }}
                 </span>

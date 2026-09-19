@@ -12,8 +12,6 @@ class FetchDataService
     const string USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
     /**
-     * Fetch from a Gingr /api/v1/* endpoint using the API key.
-     *
      * @throws Exception
      */
     public function fetchApi(string $endpoint, array $params = []): array
@@ -38,8 +36,6 @@ class FetchDataService
     }
 
     /**
-     * POST to a Gingr session-authenticated endpoint and return the raw HTML body.
-     *
      * @throws Exception
      */
     public function postHtmlWithSession(string $url, array $params): string
@@ -61,8 +57,6 @@ class FetchDataService
     }
 
     /**
-     * Fetch the Services by Date HTML report for a given date (MM/DD/YYYY).
-     *
      * @throws Exception
      */
     public function fetchServicesByDate(string $date): string
@@ -81,8 +75,6 @@ class FetchDataService
     }
 
     /**
-     * Fetch from a Gingr session-authenticated endpoint (e.g. /owners/get_form_data).
-     *
      * @throws Exception
      */
     public function fetchWithSession(string $path): array
@@ -106,8 +98,6 @@ class FetchDataService
     }
 
     /**
-     * POST to a Gingr session-authenticated endpoint with API key in the body.
-     *
      * @throws Exception
      */
     public function postWithSession(string $url, array $params = []): array
@@ -131,8 +121,6 @@ class FetchDataService
     }
 
     /**
-     * Authenticate a specific Gingr user and return their session cookies (not cached).
-     *
      * @throws Exception
      */
     public function authenticateUser(string $username, string $password): array
@@ -169,8 +157,6 @@ class FetchDataService
     }
 
     /**
-     * POST to a Gingr report endpoint using the provided session cookies.
-     *
      * @throws Exception
      */
     public function postReport(string $url, array $params, array $cookies): array
@@ -193,9 +179,6 @@ class FetchDataService
     }
 
     /**
-     * POST to a Gingr HTML report endpoint using the provided session cookies.
-     * Returns the raw HTML body.
-     *
      * @throws Exception
      */
     public function fetchOccupancy(string $url, array $params, array $cookies): string

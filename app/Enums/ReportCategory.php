@@ -12,10 +12,6 @@ enum ReportCategory: string
     case Training = 'training';
     case Other = 'other';
 
-    /**
-     * Resolve from structured API fields — no string matching.
-     * Falls back to name-based matching only when both API fields are inconclusive.
-     */
     public static function resolve(?string $bookingCategoryId, ?string $accountCodeId, ?string $name = null): self
     {
         $fromApi = match ((int)$bookingCategoryId) {
@@ -35,9 +31,7 @@ enum ReportCategory: string
         return $name ? self::fromServiceName($name) : self::Other;
     }
 
-    /**
-     * Fallback for HTML-parsed appointment names where API fields are unavailable.
-     */
+    // Fallback for HTML-parsed appointment names where API fields are unavailable.
     public static function fromServiceName(string $name): self
     {
         $lower = strtolower($name);

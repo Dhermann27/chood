@@ -6,7 +6,8 @@ import axios from 'axios'
 const date = ref(new Date().toLocaleDateString('en-CA'));
 const errorMessage = ref(null);
 const started = ref(false);
-const results = ref([]);
+const reportId = ref(null);
+const results = ref({});
 
 
 function formatCurrency(value) {
@@ -18,13 +19,14 @@ async function handleSubmit() {
     results.value = [];
     errorMessage.value = null;
     try {
-        const response = await axios.post('/depositfinder/login',
+        const response = await axios.post('/reports/deposit/fetch',
             {date: date.value},
             {headers: {'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')}}
         );
 
-        results.value = response.data;
-        pollResults(response.data.id);
+        reportId.value = response.data.id;
+        results.value = {};
+        pollResults(reportId.value);
     } catch (error) {
         started.value = false;
         if (error.response?.status === 419) {
@@ -39,9 +41,9 @@ function pollResults(reportId) {
     let pollInterval;
     pollInterval = setInterval(async () => {
         try {
-            const response = await axios.get('/depositfinder/results/' + reportId);
-            results.value = response.data.data;
-            if ('boarding_accrual' in results.value) {
+            const response = await axios.get('/reports/deposit/results/' + reportId);
+            results.value = response.data.data ?? {};
+            if (results.value.complete) {
                 started.value = false;
                 clearInterval(pollInterval);
             }
@@ -50,14 +52,6 @@ function pollResults(reportId) {
             clearInterval(pollInterval);
         }
     }, 3000);
-}
-
-async function copyToClipboard(text) {
-    try {
-        await navigator.clipboard.writeText(text);
-    } catch (err) {
-        console.error('Failed to copy:', err);
-    }
 }
 
 function stripLocation(name) {
@@ -129,7 +123,7 @@ async function copyFullReport(e) {
                 </form>
             </div>
 
-            <div v-if="Object.keys(results ?? {}).length > 0 || started" id="report-table-wrapper"
+            <div v-if="started || Object.keys(results).length > 0" id="report-table-wrapper"
                  class="w-2/3 max-w-full min-w-0 mt-8 p-8 bg-white shadow-md rounded-lg">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-xl font-subheader uppercase">Date: {{ results?.report_date ?? date }}</h3>
@@ -158,7 +152,7 @@ async function copyFullReport(e) {
                     <tr class="bg-greyhound">
                         <td colspan="5" class="text-lg text-white font-subheader uppercase">Overall</td>
                     </tr>
-                    <template v-if="!('overall_paid' in results)">
+                    <template v-if="!('services' in results)">
                         <tr>
                             <td colspan="5" class="text-center py-4">
                                 <FontAwesomeIcon :icon="['fas', 'spinner-third']" spin
@@ -170,20 +164,10 @@ async function copyFullReport(e) {
                         <tr class="border-b">
                             <td class="font-semibold">Total</td>
                             <td class="text-center">{{ results.overall_paid.qty }}</td>
-                            <td class="text-right font-semibold">
-                                {{ formatCurrency(results.overall_paid.total) }}
-                                <FontAwesomeIcon :icon="['fas', 'clipboard']"
-                                                 class="ml-2 text-caregiver cursor-pointer inline-block"
-                                                 @click="() => copyToClipboard(results.overall_paid.total)"/>
-                            </td>
-                            <template v-if="'boarding_accrual' in results">
-                                <td class="text-center">{{ results.accrual_total.qty }}</td>
-                                <td class="text-right font-semibold">
-                                    {{ formatCurrency(results.accrual_total.total) }}
-                                    <FontAwesomeIcon :icon="['fas', 'clipboard']"
-                                                     class="ml-2 text-caregiver cursor-pointer inline-block"
-                                                     @click="() => copyToClipboard(results.accrual_total.total)"/>
-                                </td>
+                            <td class="text-right font-semibold">{{ formatCurrency(results.overall_paid.total) }}</td>
+                            <template v-if="results.occupancy?.total != null">
+                                <td class="text-center">{{ results.occupancy.total }}</td>
+                                <td class="text-right font-semibold">{{ formatCurrency(results.accrual_total.total) }}</td>
                             </template>
                             <template v-else>
                                 <td colspan="2" class="text-center">
@@ -210,14 +194,14 @@ async function copyFullReport(e) {
                         <tr v-for="(row, name) in results.combined_services" :key="name" class="border-b">
                             <td>{{ name }}</td>
                             <td class="text-center">{{ row.sold_qty }}</td>
-                            <td class="text-right">
-                                {{ formatCurrency(row.sold_total) }}
-                                <FontAwesomeIcon :icon="['fas', 'clipboard']"
-                                                 class="ml-2 text-caregiver cursor-pointer inline-block"
-                                                 @click="() => copyToClipboard(row.sold_total)"/>
-                            </td>
+                            <td class="text-right">{{ formatCurrency(row.sold_total) }}</td>
                             <template v-if="'boarding_accrual' in results">
-                                <td class="text-center">{{ row.used_qty || 0 }}</td>
+                                <td class="text-center">
+                                    <template v-if="name === 'Daycare'">
+                                        {{ results.occupancy?.total != null ? (results.occupancy.daycare_full + results.occupancy.daycare_half) : '' }}
+                                    </template>
+                                    <template v-else>{{ row.used_qty || 0 }}</template>
+                                </td>
                                 <td class="text-right">{{ formatCurrency(row.used_total) }}</td>
                             </template>
                             <template v-else>
@@ -245,12 +229,7 @@ async function copyFullReport(e) {
                         <tr v-if="results?.tips" class="border-b">
                             <td>Tips Payable</td>
                             <td class="text-center">{{ results.tips.qty }}</td>
-                            <td class="text-right">
-                                {{ formatCurrency(results.tips.total) }}
-                                <FontAwesomeIcon :icon="['fas', 'clipboard']"
-                                                 class="ml-2 text-caregiver cursor-pointer inline-block"
-                                                 @click="() => copyToClipboard(results.tips.total)"/>
-                            </td>
+                            <td class="text-right">{{ formatCurrency(results.tips.total) }}</td>
                             <td>&nbsp;</td>
                             <td>&nbsp;</td>
                         </tr>
@@ -272,12 +251,7 @@ async function copyFullReport(e) {
                         <tr v-for="(row, name) in results.combined_packages" :key="name" class="border-b">
                             <td>{{ stripLocation(name) }}</td>
                             <td class="text-center">{{ row.sold_qty }}</td>
-                            <td class="text-right">
-                                {{ formatCurrency(row.sold_total) }}
-                                <FontAwesomeIcon :icon="['fas', 'clipboard']"
-                                                 class="ml-2 text-caregiver cursor-pointer inline-block"
-                                                 @click="() => copyToClipboard(row.sold_total)"/>
-                            </td>
+                            <td class="text-right">{{ formatCurrency(row.sold_total) }}</td>
                             <template v-if="'boarding_accrual' in results">
                                 <td class="text-center">{{ row.used_qty }}</td>
                                 <td class="text-right">{{ formatCurrency(row.used_total) }}</td>
@@ -298,51 +272,6 @@ async function copyFullReport(e) {
                 </table>
             </div>
 
-            <table v-if="results?.boarding_accrual?.breakdown?.length"
-                   class="w-2/3 max-w-full min-w-0 table-auto bg-white rounded-lg mt-8">
-                <thead>
-                <tr class="bg-greyhound">
-                    <td colspan="4" class="text-lg text-white font-subheader uppercase px-4 py-2">Boarding Accrual Breakdown</td>
-                </tr>
-                <tr class="bg-greyhound border-b text-sm text-white font-subheader uppercase whitespace-nowrap">
-                    <th class="px-4 py-2 text-left">Cabin</th>
-                    <th class="px-4 py-2 text-center">Dogs</th>
-                    <th class="px-4 py-2 text-right">Rate</th>
-                    <th class="px-4 py-2 text-right">Amount</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr v-for="(row, i) in results.boarding_accrual.breakdown" :key="i" class="border-b">
-                    <td class="px-4 py-1">{{ row.label }}</td>
-                    <td class="text-center px-4 py-1">{{ row.qty }}</td>
-                    <td class="text-right px-4 py-1">{{ formatCurrency(row.rate) }}</td>
-                    <td class="text-right px-4 py-1">{{ formatCurrency(row.total) }}</td>
-                </tr>
-                </tbody>
-            </table>
-
-            <table v-if="results?.cash_transactions && Object.keys(results.cash_transactions).length > 0"
-                   class="w-2/3 max-w-full min-w-0 table-auto bg-white rounded-lg mt-8">
-                <thead>
-                <tr class="bg-greyhound">
-                    <td colspan="4" class="text-lg text-white font-subheader uppercase px-4 py-2">Cash Transactions</td>
-                </tr>
-                <tr class="bg-greyhound border-b text-sm text-white font-subheader uppercase whitespace-nowrap">
-                    <th class="px-4 py-2 text-center">Invoice</th>
-                    <th class="px-4 py-2">Date</th>
-                    <th class="px-4 py-2">Owner</th>
-                    <th class="px-4 py-2 text-right">Amount</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr v-for="(data, invoiceId) in results.cash_transactions" :key="invoiceId" class="border-b">
-                    <td class="text-center">{{ invoiceId }}</td>
-                    <td>{{ data.date }}</td>
-                    <td>{{ data.owner }}</td>
-                    <td class="text-right">{{ formatCurrency(data.amount) }}</td>
-                </tr>
-                </tbody>
-            </table>
         </div>
     </div>
 </template>

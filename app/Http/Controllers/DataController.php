@@ -28,7 +28,8 @@ use Illuminate\Validation\ValidationException;
 
 class DataController extends Controller
 {
-    const array BREAK_COLUMNS = ['next_first_break', 'next_lunch_break', 'next_second_break'];
+    private const array BREAK_COLUMNS = ['next_first_break', 'next_lunch_break', 'next_second_break'];
+    private const int FLOATER_YARD_ID = 999;
     use ChoodTrait;
 
     // TODO: add a dedicated endpoint to fetch unassigned non-boarding dogs fresh when the assignment modal opens
@@ -36,7 +37,7 @@ class DataController extends Controller
     {
         $dogs = $this->getDogsByCabin();
         $statuses = CleaningStatus::whereNull('completed_at')->pluck('cleaning_type', 'cabin_id')->toArray();
-        $sectionCounts = Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]);
+        $sectionCounts = $this->getSectionCounts();
         $new_checksum = md5($dogs->toJson() . json_encode($statuses) . json_encode($sectionCounts));
         if ($checksum !== $new_checksum) {
             $response = [
@@ -55,9 +56,7 @@ class DataController extends Controller
     {
         $preset = RotationSettings::get();
 
-        $rotations = Rotation::query()
-            ->when(now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))
-            ->orderBy('start_time')->get(['id', 'is_midday', 'start_time']);
+        $rotations = Rotation::forToday()->get(['id', 'is_midday', 'start_time']);
 
         $openByRotation = $rotations->mapWithKeys(function ($r) use ($preset) {
             $allowed = $preset->allowedYards(false); // (bool)$r->is_midday); Display all assignments
@@ -140,10 +139,7 @@ class DataController extends Controller
                 'headerYards' => $headerYardIds,
                 'openYardsByRotation' => $openByRotation,
                 'overscheduled' => $overscheduled,
-                'sectionCounts' => array_merge(
-                    Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]),
-                    ['in_house' => Dog::inHouse()->count()]
-                ),
+                'sectionCounts' => array_merge($this->getSectionCounts(), ['in_house' => Dog::inHouse()->count()]),
                 'checksum' => $new_checksum,
             ];
 
@@ -336,16 +332,14 @@ class DataController extends Controller
         }
 
         $largeYardIds = Yard::where('is_large', true)->pluck('id');
-        $allRotations = Rotation::query()
-            ->when($now->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))
-            ->orderBy('start_time')->get(['id', 'start_time']);
+        $allRotations = Rotation::forToday()->get(['id', 'start_time']);
         $allAssignments = RotationYardView::query()->get(['rotation_id', 'yard_id', 'wiw_user_id'])
             ->groupBy('rotation_id')->map(fn($group) => $group->mapWithKeys(fn($row) => [
                 $row->yard_id => $row->wiw_user_id,
             ]));
         $overscheduled = $this->getOverscheduled($allRotations->values(), $largeYardIds, $allAssignments);
 
-        $sectionCounts = Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]);
+        $sectionCounts = $this->getSectionCounts();
         $new_checksum = md5($dogs->toJson() . $assignments->toJson() . json_encode($nextBreak) .
             json_encode($nextLunch) . json_encode($overscheduled) . json_encode($sectionCounts));
         if ($checksum !== $new_checksum) {
@@ -378,8 +372,6 @@ class DataController extends Controller
         return response()->json(false);
     }
 
-    private const FLOATER_YARD_ID = 999;
-
     private function wasInYard(mixed $userId, int $rotationId, Collection $assignments, ?Collection $restrictToYards = null): bool
     {
         $row = $assignments->get($rotationId) ?? collect();
@@ -390,13 +382,14 @@ class DataController extends Controller
 
     private function isFloaterRotation(mixed $userId, int $rotationId, Collection $assignments): bool
     {
-        return ($assignments->get($rotationId)?->get(self::FLOATER_YARD_ID) ?? null) == $userId;
+        $row = $assignments->get($rotationId) ?? collect();
+        return $row->get(self::FLOATER_YARD_ID) == $userId;
     }
 
-    private function consecutiveInYard(mixed $userId, int $i, int $lookback, Collection $rotations, Collection $assignments, ?Collection $restrictToYards = null): bool
+    private function consecutiveInYard(mixed $userId, int $i, int $lookBack, Collection $rotations, Collection $assignments, ?Collection $restrictToYards = null): bool
     {
         $found = 0;
-        for ($j = $i - 1; $j >= 0 && $found < $lookback; $j--) {
+        for ($j = $i - 1; $j >= 0 && $found < $lookBack; $j--) {
             $rotId = $rotations[$j]->id;
             if ($this->isFloaterRotation($userId, $rotId, $assignments)) {
                 continue;
@@ -406,7 +399,7 @@ class DataController extends Controller
             }
             $found++;
         }
-        return $found >= $lookback;
+        return $found >= $lookBack;
     }
 
     private function getOverscheduled(Collection $rotationList, Collection $largeYardIds, Collection $assignments): array
@@ -421,7 +414,8 @@ class DataController extends Controller
             // Large yard: flag at 3+ consecutive hours
             if ($i >= 2) {
                 foreach ($largeYardIds as $yardId) {
-                    $userId = $assignments->get($r)?->get($yardId) ?? null;
+                    $row = $assignments->get($r) ?? collect();
+                    $userId = $row->get($yardId) ?? null;
                     if (!$userId) continue;
                     if ($this->consecutiveInYard($userId, $i, 2, $rotations, $assignments, $largeYardIds))
                         $overscheduled["{$r}-{$yardId}"] = 'Large yard: 3+ hrs';
@@ -432,7 +426,8 @@ class DataController extends Controller
             if ($i >= 4) {
                 foreach (($assignments->get($r) ?? collect())->keys() as $yardId) {
                     if ($yardId == self::FLOATER_YARD_ID) continue;
-                    $userId = $assignments->get($r)?->get($yardId) ?? null;
+                    $row = $assignments->get($r) ?? collect();
+                    $userId = $row->get($yardId) ?? null;
                     if (!$userId) continue;
                     if ($this->consecutiveInYard($userId, $i, 4, $rotations, $assignments))
                         $overscheduled["{$r}-{$yardId}"] = 'Any yard: 5+ hrs';

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\HousingServiceCodes;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -47,7 +48,7 @@ class Dog extends Model
         };
     }
 
-    public function getLeftIconsAttribute()
+    public function getLeftIconsAttribute(): array
     {
         $icons = [];
 
@@ -62,7 +63,7 @@ class Dog extends Model
         return $icons;
     }
 
-    public function getRightIconsAttribute()
+    public function getRightIconsAttribute(): array
     {
         $icons = [];
 
@@ -75,7 +76,7 @@ class Dog extends Model
         return $icons;
     }
 
-    public function scopeInHouse($query)
+    public function scopeInHouse(Builder $query): Builder
     {
         return $query->whereNull('checked_out_at')->whereNotNull('pet_id');
     }

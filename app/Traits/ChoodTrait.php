@@ -8,18 +8,13 @@ use App\Models\Cabin;
 use App\Models\Dog;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 // use App\Models\Service; // TODO: restore when Gingr service sync is verified in prod
 
 
 trait ChoodTrait
 {
-    /**
-     * @param int $start
-     * @param int $end
-     * @param int $subtractor
-     * @return Collection
-     */
     public function getCabins(int $start = 0, int $end = 9999, int $subtractor = 0): Collection
     {
         return Cabin::where('rho', '>', '0')->where('kappa', '>', '0')->whereBetween('id', [$start, $end])
@@ -42,13 +37,7 @@ trait ChoodTrait
             ->map(fn($dogs) => $dogs->values()->all());
     }
 
-    /**
-     * @param bool $filterByCabinId
-     * @param string|null $size
-     * @param bool $includeCheckedOut
-     * @return Collection
-     */
-    public function getDogs(bool $filterByCabinId = false, string $size = null, bool $includeCheckedOut = false): Collection
+    public function getDogs(bool $filterByCabinId = false, ?string $size = null, bool $includeCheckedOut = false): Collection
     {
         $dogs = Dog::with('cabin', 'breakType', 'icons');
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
@@ -76,13 +65,15 @@ trait ChoodTrait
         return $result;
     }
 
-    /**
-     * @return Collection
-     */
     public function getGroomingDogsToday(): Collection
     {
         // TODO: rewrite for Gingr once service sync is verified in prod
         return new Collection();
+    }
+
+    public function getSectionCounts(): array
+    {
+        return Cache::get('section_counts', ['checkin_today' => null, 'checkout_today' => null]);
     }
 
 }

@@ -60,6 +60,7 @@ return [
             'charges_raw' => env('GINGR_BASE_URL') . env('GINGR_CHARGES_RAW_URI'),
             'payments_refunds_raw' => env('GINGR_BASE_URL') . env('GINGR_PAYMENTS_REFUNDS_URI'),
             'lodging_occupancy' => env('GINGR_BASE_URL') . env('GINGR_LODGING_OCCUPANCY_URI'),
+            'occupancy' => env('GINGR_BASE_URL') . env('GINGR_OCCUPANCY_URI'),
         ],
     ],
 

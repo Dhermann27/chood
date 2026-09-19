@@ -30,7 +30,7 @@ async function handleSubmit() {
     formData.append('csv', csvFile.value);
 
     try {
-        const response = await axios.post('/journalmaker/transform', formData, {
+        const response = await axios.post('/reports/journal/transform', formData, {
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 'Content-Type': 'multipart/form-data',

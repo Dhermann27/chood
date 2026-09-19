@@ -16,7 +16,6 @@ use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
@@ -44,9 +43,6 @@ class GoFetchShiftsJob implements ShouldQueue
     {
     }
 
-    /**
-     * @throws Exception
-     */
     public function handle(WiwService $wiw): void
     {
         $day = Carbon::today();
@@ -160,7 +156,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 $this->updateYardAssignments($yards, $qualifiedShifts, $smallMediumOnly);
             }
 
-        } catch (ConnectionException $e) {
+        } catch (Exception $e) {
             Log::error('Connection to WIW API failed.', ['error' => $e->getMessage()]);
         }
     }
@@ -331,23 +327,11 @@ class GoFetchShiftsJob implements ShouldQueue
         $allDogs = Dog::with('icons')->orderBy('id')->get();
         $largeDogs = $allDogs->filter(fn($d) => str_contains($d->size_letter, 'L'))->pluck('id');
 
-        if (in_array(YardIds::ACTIVE->value, $allowed, true)) {
-            $half = intdiv($largeDogs->count(), 2);
-            Dog::whereIn('id', $largeDogs->slice(0, $half))->update(['yard_id' => YardIds::LARGE->value]);
-            Dog::whereIn('id', $largeDogs->slice($half))->update(['yard_id' => YardIds::ACTIVE->value]);
-        } else {
-            Dog::whereIn('id', $largeDogs)->update(['yard_id' => YardIds::LARGE->value]);
-        }
+        $this->splitYardAssignment($largeDogs, YardIds::LARGE, YardIds::ACTIVE, $allowed);
 
         $smallDogs = $allDogs->filter(fn($d) => str_contains($d->size_letter, 'S') || str_contains($d->size_letter, 'T'))->pluck('id');
 
-        if (in_array(YardIds::MEDIUM->value, $allowed, true)) {
-            $half = intdiv($smallDogs->count(), 2);
-            Dog::whereIn('id', $smallDogs->slice(0, $half))->update(['yard_id' => YardIds::SMALL->value]);
-            Dog::whereIn('id', $smallDogs->slice($half))->update(['yard_id' => YardIds::MEDIUM->value]);
-        } else {
-            Dog::whereIn('id', $smallDogs)->update(['yard_id' => YardIds::SMALL->value]);
-        }
+        $this->splitYardAssignment($smallDogs, YardIds::SMALL, YardIds::MEDIUM, $allowed);
 
         $rotations = Rotation::query()->when(Carbon::now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))->get();
         $names = Employee::all()->pluck('first_name', 'wiw_user_id');
@@ -479,6 +463,17 @@ class GoFetchShiftsJob implements ShouldQueue
     {
         $local = $shiftTime->copy()->setTimezone(config('app.timezone'));
         return ($local->hour - self::START_HOUR_OF_DAY) * 12 + ($local->minute / 5);
+    }
+
+    private function splitYardAssignment(Collection $dogIds, YardIds $primary, YardIds $secondary, array $allowed): void
+    {
+        if (in_array($secondary->value, $allowed, true)) {
+            $half = intdiv($dogIds->count(), 2);
+            Dog::whereIn('id', $dogIds->slice(0, $half))->update(['yard_id' => $primary->value]);
+            Dog::whereIn('id', $dogIds->slice($half))->update(['yard_id' => $secondary->value]);
+        } else {
+            Dog::whereIn('id', $dogIds)->update(['yard_id' => $primary->value]);
+        }
     }
 
     private function isLunchAnchor(int $startIndex): bool

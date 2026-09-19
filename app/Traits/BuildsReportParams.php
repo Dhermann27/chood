@@ -19,4 +19,16 @@ trait BuildsReportParams
             'location' => [config('services.gingr.location_id')],
         ];
     }
+
+    private function buildOccupancyParams(string $date): array
+    {
+        $formatted = Carbon::parse($date)->format('m/d/Y');
+
+        return [
+            'date_from' => $formatted,
+            'date_to' => $formatted,
+            'location_id' => config('services.gingr.location_id'),
+            'csv' => 'false',
+        ];
+    }
 }

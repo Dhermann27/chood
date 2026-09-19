@@ -9,6 +9,7 @@ import DogCard from "@/Components/chood/DogCard.vue";
 import MoveDogs from "@/Pages/Task/MoveDogs.vue";
 import {useMapPolling} from "@/Composables/useMapPolling.js";
 import {useTaskFlow} from "@/Composables/useTaskFlow.js";
+import DogMultiselectOption from "@/Components/chood/DogMultiselectOption.vue";
 import YardRotationTable from "@/Components/chood/YardRotationTable.vue";
 import BreakScheduleTable from "@/Components/chood/BreakScheduleTable.vue";
 
@@ -19,6 +20,7 @@ const props = defineProps({
     breakTypes: Array,
     rotations: Array,
     yards: Array,
+    yardPresets: Array,
 });
 
 // --- Supervisor-only state ---
@@ -32,6 +34,7 @@ const mealmapOpenYardsByRotation = ref({});
 const mealmapOverscheduled = ref({});
 const mealmapEmployees = ref([]);
 const mealmapFohStaff = ref('');
+const mealmapSelectedPreset = ref(null);
 const mealmapShiftsRefreshing = ref(false);
 const showOverwriteModal = ref(false);
 const pendingConfirmAction = ref(null);
@@ -43,19 +46,13 @@ const restartRef = {
 };
 
 const {
-    dogs, employees, openYards, statuses, statusMessage, statusClass,
-    wiwId, todo, restMinutes, staffImageCache, targets, step,
-    showNoCabinWarning, is1pmOrLater,
-    empColumns, empRows, restColumns, restRows, restGridStyle, restCardWidth, restCardHeight,
-    dogsOnBreak, dogsNotOnBreak, dogsByCabin, moveDogEnabled, feedingCabinEnabled,
-    dogsWithCabinMates, markReturnedIsWalked, breakStatus,
-    preloadStaffPhoto, preloadDogPhotos,
-    prevStep, nextStep,
-    handleEmployeeClick, handleTaskClick, handleTargetClick,
-    handleFeedingDogUpdate, handleAssignDogUpdate, addAllBoarders,
-    handleBreakDogSelect, handleBreakDogUpdate, handleTimerStart, handleRotateStart,
-    handleNoCabinAssign, handleNoCabinDismiss, handleBreakDogDelete,
-    handleYardChange, handleFinishAction,
+    dogs, employees, openYards, statuses, statusMessage, statusClass, todo, restMinutes, staffImageCache, targets, step,
+    showNoCabinWarning, is1pmOrLater, empColumns, empRows, restGridStyle, restCardWidth, restCardHeight, dogsOnBreak,
+    dogsNotOnBreak, dogsByCabin, moveDogEnabled, feedingCabinEnabled, dogsWithCabinMates, markReturnedIsWalked,
+    breakStatus, preloadStaffPhoto, preloadDogPhotos, prevStep, nextStep, handleEmployeeClick, handleTaskClick,
+    handleTargetClick, handleFeedingDogUpdate, handleAssignDogUpdate, addAllBoarders, handleBreakDogSelect,
+    handleBreakDogUpdate, handleTimerStart, handleRotateStart, handleNoCabinAssign, handleNoCabinDismiss,
+    handleBreakDogDelete, handleYardChange, handleFinishAction,
 } = useTaskFlow(props.breakTypes, {
     onSuccess: () => restartRef.fn(),
 });
@@ -77,6 +74,7 @@ const {poll: pollMealmap} = useMapPolling('/api/mealmap/', 15000, (data) => {
     mealmapBreaks.value = {...(data.breaks ?? {})};
     mealmapEmployees.value = data.employees ?? [];
     mealmapFohStaff.value = data.fohStaff ?? '';
+    mealmapSelectedPreset.value = data.preset ?? mealmapSelectedPreset.value;
     mealmapHeaderYardIds.value = data.headerYards ?? [];
     mealmapOpenYardsByRotation.value = data.openYardsByRotation ?? {};
     mealmapOverscheduled.value = data.overscheduled ?? {};
@@ -223,13 +221,7 @@ function onRefreshShiftsClick() {
                             }}</span>
                     </template>
                     <template #option="{ option }">
-                        <div class="dog-option-item">
-                            <div v-if="option.photoUri" class="dog-photo-wrap">
-                                <img :src="option.photoUri" :alt="option.display_name"
-                                     @error="e => e.target.parentElement.style.display = 'none'"/>
-                            </div>
-                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
-                        </div>
+                        <DogMultiselectOption :option="option"/>
                     </template>
                 </multiselect>
                 <div class="choodmap items-center justify-center p-1">
@@ -252,13 +244,7 @@ function onRefreshShiftsClick() {
                     v-model="targets.dogsToAssign" track-by="id" :options="dogsWithCabinMates" label="display_name"
                     placeholder="Select Dog (Required)" @update:modelValue="handleFeedingDogUpdate">
                     <template #option="{ option }">
-                        <div class="dog-option-item">
-                            <div v-if="option.photoUri" class="dog-photo-wrap">
-                                <img :src="option.photoUri" :alt="option.display_name"
-                                     @error="e => e.target.parentElement.style.display = 'none'"/>
-                            </div>
-                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
-                        </div>
+                        <DogMultiselectOption :option="option"/>
                     </template>
                 </multiselect>
                 <div class="choodmap items-center justify-center p-1">
@@ -282,13 +268,7 @@ function onRefreshShiftsClick() {
                             }}</span>
                     </template>
                     <template #option="{ option }">
-                        <div class="dog-option-item">
-                            <div v-if="option.photoUri" class="dog-photo-wrap">
-                                <img :src="option.photoUri" :alt="option.display_name"
-                                     @error="e => e.target.parentElement.style.display = 'none'"/>
-                            </div>
-                            <span class="text-3xl ml-10">{{ option.display_name }}</span>
-                        </div>
+                        <DogMultiselectOption :option="option"/>
                     </template>
                 </multiselect>
                 <label for="lunch-notes" class="block text-lg mb-2">Lunch notes</label>
@@ -318,13 +298,7 @@ function onRefreshShiftsClick() {
                                 }}</span>
                         </template>
                         <template #option="{ option }">
-                            <div class="dog-option-item">
-                                <div v-if="option.photoUri" class="dog-photo-wrap">
-                                    <img :src="option.photoUri" :alt="option.display_name"
-                                         @error="e => e.target.parentElement.style.display = 'none'"/>
-                                </div>
-                                <span class="text-3xl ml-10">{{ option.display_name }}</span>
-                            </div>
+                            <DogMultiselectOption :option="option"/>
                         </template>
                     </multiselect>
                     <button @click="addAllBoarders"
@@ -382,7 +356,8 @@ function onRefreshShiftsClick() {
                         :overscheduled="mealmapOverscheduled"
                         :employees="mealmapEmployees"
                         :readonly="false"
-                        :yard-presets="null"
+                        :yard-presets="props.yardPresets"
+                        :selected-preset="mealmapSelectedPreset"
                         :foh-staff="mealmapFohStaff"
                         @saved="pollMealmap()"/>
                 </div>
@@ -390,7 +365,8 @@ function onRefreshShiftsClick() {
 
             <!-- Supervisor-specific: Break Schedule -->
             <template v-else-if="todo === 'breakSchedule'">
-                <div class="flex-1 min-h-0 overflow-auto flex items-center justify-center">
+                <div class="flex-1 min-h-0 overflow-auto flex flex-col items-center justify-center">
+                    <div class="text-3xl font-header mb-2">Break Schedule</div>
                     <BreakScheduleTable
                         :employees="mealmapBreaks"
                         :readonly="false"
@@ -536,25 +512,6 @@ function onRefreshShiftsClick() {
 }
 </style>
 <style scoped>
-.dog-photo-wrap {
-    width: 75px;
-    height: 75px;
-    flex-shrink: 0;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.dog-photo-wrap img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.dog-option-item {
-    display: flex;
-    align-items: center;
-}
-
 :deep(.multiselect__tag) {
     padding: 12px 20px;
     font-size: 1.25rem;

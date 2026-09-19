@@ -1,7 +1,7 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
 import {computed, nextTick, onBeforeUnmount, onMounted, ref} from 'vue';
-import {formatTime, getFittedFontSize} from "@/utils.js";
+import {formatTime, getFittedFontSize, getNewGifAndPosition} from "@/utils.js";
 import {useMapPolling} from "@/Composables/useMapPolling.js";
 import GroupGrid from './GroupGrid.vue';
 
@@ -47,6 +47,7 @@ const chyronStyle = computed(() => ({
 const allDogs = computed(() => {
     return Object.values(dogsByGroup.value ?? {}).flat();
 });
+const lowCount = computed(() => groupKeys.value.length >= 2 && allDogs.value.length <= 25);
 const groupKeys = computed(() => Object.keys(dogsByGroup.value ?? {}).sort((a, b) =>
     (props.yardOrder[a] ?? 99) - (props.yardOrder[b] ?? 99)
 ));
@@ -92,14 +93,6 @@ const cardHeight = computed(() => {
     return ((1080 - 100) - (maxRows.value - 1) * 10) / maxRows.value;
 });
 
-function getNewGifAndPosition() {
-    return {
-        newGif: '/images/doggifs/dog' + (Math.floor(Math.random() * 11) + 1) + '.webp',
-        top: Math.random() * (1080 - 480),
-        left: Math.random() * (1920 - 480),
-    };
-}
-
 useMapPolling(`/api/yardmap${props.size}/`, 5000, async (data) => {
     dogsByGroup.value = data.dogs;
     assignments.value = data.assignments;
@@ -143,7 +136,7 @@ onBeforeUnmount(() => clearInterval(gifInterval));
                 <GroupGrid :groupKey="groupKeys[0]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
                            :cardHeight="cardHeight" :sectionCounts="sectionCounts"
-                           :isDinnerTime="isDinnerTime"/>
+                           :isDinnerTime="isDinnerTime" :lowCount="lowCount"/>
             </div>
 
             <div v-if="groupKeys.length >= 2" class="bg-crimson h-full" :style="{width: DIVIDER_W + 'px'}"></div>
@@ -152,7 +145,7 @@ onBeforeUnmount(() => clearInterval(gifInterval));
                 <GroupGrid :groupKey="groupKeys[1]" :dogsByGroup="dogsByGroup"
                            :rowsByGroup="rowsByGroup" :colsByGroup="colsByGroup" :cardWidth="cardWidth"
                            :cardHeight="cardHeight" :sectionCounts="sectionCounts"
-                           :isDinnerTime="isDinnerTime"/>
+                           :isDinnerTime="isDinnerTime" :lowCount="lowCount"/>
             </div>
 
         </div>
@@ -170,7 +163,7 @@ onBeforeUnmount(() => clearInterval(gifInterval));
                     Break: {{ nextBreak.employee.first_name }}
                     {{ formatTime(nextBreak.next_break) }}
                 </span>
-            <span v-if="nextLunch" class="whitespace-nowrap">
+            <span v-if="nextLunch" class="pe-8 whitespace-nowrap">
                     Lunch: {{ nextLunch.employee.first_name }}
                     {{ formatTime(nextLunch.next_lunch_break) }}
                 </span>

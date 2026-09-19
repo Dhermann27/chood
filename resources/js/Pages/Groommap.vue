@@ -2,7 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import DogCard from "@/Components/chood/DogCard.vue";
-import {getYardGridStyle} from "@/utils.js";
+import {getYardGridStyle, getNewGifAndPosition} from "@/utils.js";
 
 const props = defineProps({});
 const dogs = ref([]);
@@ -22,15 +22,6 @@ const cardHeight = computed(() => (668 - (rows.value - 1) * 10) / rows.value);
 const displayDogs = computed(() =>
     dogs.value.length > 8 ? dogs.value.slice(0, 7) : dogs.value
 )
-
-function getNewGifAndPosition() {
-    return {
-        newGif: '/images/doggifs/dog' + (Math.floor(Math.random() * 11) + 1) + '.webp',
-        top: Math.random() * (1080 - 480),
-        left: Math.random() * (1920 - 480),
-    };
-}
-
 
 function getBathServiceSteps(appointment) {
     const steps = [

@@ -1,28 +1,22 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {onMounted, ref} from 'vue';
+import {ref} from 'vue';
 import Map from "@/Components/chood/Map.vue";
-import {ControlSchemes} from "@/controlSchemes.js";
 import {useMapPolling} from "@/Composables/useMapPolling.js";
+import {useControlScheme} from "@/Composables/useControlScheme.js";
 
 const props = defineProps({
     cabins: Array
 });
 const dogs = ref([]);
 const statuses = ref({});
-const controls = ref(ControlSchemes.NONE);
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
+const {controls} = useControlScheme();
 
 useMapPolling('/api/fullmap/', 5000, (data) => {
     dogs.value = data.dogs;
     statuses.value = data.statuses;
     sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
-});
-
-onMounted(() => {
-    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
-        controls.value = !navigator.userAgent.includes('Linux') ? ControlSchemes.MODAL : ControlSchemes.NONE;
-    }
 });
 </script>
 

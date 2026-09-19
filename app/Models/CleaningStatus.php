@@ -16,10 +16,10 @@ class CleaningStatus extends Model
     public $incrementing = false;
     public $timestamps = false;
 
-    const STATUS_DAILY = 'daily';
-    const STATUS_DEEP = 'deep';
+    const string STATUS_DAILY = 'daily';
+    const string STATUS_DEEP = 'deep';
 
-    public static function getStatusOptions()
+    public static function getStatusOptions(): array
     {
         return [
             self::STATUS_DAILY,

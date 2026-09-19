@@ -1,9 +1,10 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {computed, onMounted, ref} from "vue";
+import {computed, ref} from "vue";
 import DogCard from "@/Components/chood/DogCard.vue";
 import {ControlSchemes} from "@/controlSchemes.js";
 import {useMapPolling} from "@/Composables/useMapPolling.js";
+import {useControlScheme} from "@/Composables/useControlScheme.js";
 import YardRotationTable from "@/Components/chood/YardRotationTable.vue";
 import BreakScheduleTable from "@/Components/chood/BreakScheduleTable.vue";
 
@@ -14,14 +15,13 @@ const props = defineProps({
     preset: String,
 });
 
-const controls = ref(ControlSchemes.NONE);
+const {controls} = useControlScheme();
 const showOverwriteModal = ref(false);
 const pendingConfirmAction = ref(null);
 const breaks = ref({});
 const lunchDogs = ref([]);
 const medicatedDogs = ref([]);
 const selectedYardPreset = ref(props.preset);
-const isUpdatingPreset = ref(false);
 const employees = ref([]);
 const fohStaff = ref('');
 const assignments = ref({});
@@ -31,11 +31,6 @@ const shiftsRefreshing = ref(false);
 const overscheduled = ref({});
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
 const cardHeight = computed(() => Math.min(300, 800 / (lunchDogs.value.length + medicatedDogs.value.length)));
-const openYards = computed(() => {
-    const ids = (headerYardIds.value ?? []).map(Number);
-    if (!ids.length) return [];
-    return (props.yards ?? []).filter(e => ids.includes(Number(e.id)));
-});
 
 function mergedMedications(medications) {
     const map = new Map();
@@ -67,24 +62,6 @@ const {poll} = useMapPolling('/api/mealmap/', 15000, (data) => {
     sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
 });
 
-function onYardPresetChange(e) {
-    const preset = e.target.value;
-    const previous = selectedYardPreset.value;
-    e.target.value = previous;
-    selectedYardPreset.value = previous;
-    pendingConfirmAction.value = async (overwrite) => {
-        isUpdatingPreset.value = true;
-        try {
-            await axios.post('/api/mealmap/markActive', {preset, overwrite});
-            selectedYardPreset.value = preset;
-            await poll();
-        } finally {
-            isUpdatingPreset.value = false;
-        }
-    };
-    showOverwriteModal.value = true;
-}
-
 function cancelOverwrite() {
     pendingConfirmAction.value = null;
     showOverwriteModal.value = false;
@@ -108,11 +85,6 @@ function onRefreshShiftsClick() {
     showOverwriteModal.value = true;
 }
 
-onMounted(() => {
-    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
-        controls.value = !navigator.userAgent.includes('Linux') ? ControlSchemes.MODAL : ControlSchemes.NONE;
-    }
-});
 </script>
 
 
@@ -177,10 +149,8 @@ onMounted(() => {
                     :readonly="controls === ControlSchemes.NONE"
                     :yard-presets="controls !== ControlSchemes.NONE ? props.yardPresets : null"
                     :selected-preset="selectedYardPreset"
-                    :is-updating-preset="isUpdatingPreset"
                     :foh-staff="fohStaff"
-                    @saved="poll()"
-                    @preset-change="onYardPresetChange"/>
+                    @saved="poll()"/>
 
                 <BreakScheduleTable
                     :employees="breaks"

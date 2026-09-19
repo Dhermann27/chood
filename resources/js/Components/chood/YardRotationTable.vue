@@ -2,6 +2,7 @@
 import {computed, ref, watch} from 'vue';
 import Multiselect from 'vue-multiselect';
 import 'vue-multiselect/dist/vue-multiselect.css';
+import {useSaveFeedback} from '@/Composables/useSaveFeedback.js';
 
 const props = defineProps({
     rotations: Array,
@@ -14,14 +15,16 @@ const props = defineProps({
     readonly: {type: Boolean, default: false},
     yardPresets: {type: Array, default: null},
     selectedPreset: {type: String, default: null},
-    isUpdatingPreset: {type: Boolean, default: false},
     fohStaff: {type: String, default: ''},
 });
 
-const emit = defineEmits(['saved', 'presetChange']);
+const emit = defineEmits(['saved']);
 
 const uiAssignments = ref({});
-const inputRefs = ref({});
+const isUpdatingPreset = ref(false);
+const showPresetModal = ref(false);
+const pendingPreset = ref(null);
+const {setInputRef, withFeedback} = useSaveFeedback();
 
 const employeesById = computed(() => {
     const map = new Map();
@@ -91,34 +94,41 @@ watch(
     {deep: true, immediate: true}
 );
 
-function setInputRef(key, el) {
-    if (!inputRefs.value) inputRefs.value = {};
-    inputRefs.value[key] = el;
+function onPresetChange(e) {
+    pendingPreset.value = e.target.value;
+    e.target.value = props.selectedPreset;
+    showPresetModal.value = true;
+}
+
+function cancelPresetChange() {
+    pendingPreset.value = null;
+    showPresetModal.value = false;
+}
+
+async function confirmPresetChange(overwrite) {
+    showPresetModal.value = false;
+    isUpdatingPreset.value = true;
+    try {
+        await axios.post('/api/mealmap/markActive', {preset: pendingPreset.value, overwrite});
+        emit('saved');
+    } finally {
+        isUpdatingPreset.value = false;
+        pendingPreset.value = null;
+    }
 }
 
 async function handleYardChange(rotationId, yardId) {
     const r = String(rotationId);
     const y = String(yardId);
     const selected = uiAssignments.value?.[r]?.[y] ?? null;
-    const td = inputRefs.value[`multiselect-${r}-${y}`];
-
-    try {
-        if (td) td.style.backgroundColor = 'gray';
+    await withFeedback(`multiselect-${r}-${y}`, async () => {
         await axios.post('/api/mealmap/yard', {
             rotation_id: Number(rotationId),
             yard_id: Number(yardId),
             wiw_user_id: selected ? selected.wiw_user_id : null,
         });
-        if (td) td.style.backgroundColor = 'green';
         emit('saved');
-    } catch (error) {
-        console.error('Error handling Yard Change', error);
-        if (td) td.style.backgroundColor = 'red';
-    }
-
-    setTimeout(() => {
-        if (td) td.style.backgroundColor = '';
-    }, 5000);
+    });
 }
 </script>
 
@@ -133,7 +143,7 @@ async function handleYardChange(rotationId, yardId) {
                 :disabled="isUpdatingPreset"
                 :value="selectedPreset"
                 class="print:hidden text-sm rounded-md border border-gray-300 bg-white px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                @change="emit('presetChange', $event)">
+                @change="onPresetChange">
                 <option v-for="preset in yardPresets" :key="preset.value" :value="preset.value">
                     {{ preset.label }}
                 </option>
@@ -185,5 +195,34 @@ async function handleYardChange(rotationId, yardId) {
             </tr>
             </tbody>
         </table>
+
+        <div v-if="showPresetModal" class="fixed inset-0 z-50 flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/50" @click="cancelPresetChange"></div>
+            <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-700" @click="cancelPresetChange">
+                    <FontAwesomeIcon :icon="['fas', 'xmark']" class="text-xl"/>
+                </button>
+                <div class="text-lg font-semibold mb-2">Recalculate?</div>
+                <div class="text-sm text-gray-600 mb-6">
+                    Chood can recalculate yard rotation and breaks if needed. This process will overwrite any changes
+                    you
+                    have made today.
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button
+                        class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-sm leading-tight w-48"
+                        @click="confirmPresetChange(false)">
+                        Do not recalculate<br>Assign manually
+                    </button>
+                    <button
+                        class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-red-700 text-sm leading-tight w-48"
+                        @click="confirmPresetChange(true)">
+                        <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']"
+                                         class="text-yellow-400 float-left text-2xl mr-2"/>
+                        Recalculate<br>Lose assignments
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
