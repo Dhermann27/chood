@@ -196,12 +196,7 @@ async function copyFullReport(e) {
                             <td class="text-center">{{ row.sold_qty }}</td>
                             <td class="text-right">{{ formatCurrency(row.sold_total) }}</td>
                             <template v-if="'boarding_accrual' in results">
-                                <td class="text-center">
-                                    <template v-if="name === 'Daycare'">
-                                        {{ results.occupancy?.total != null ? (results.occupancy.daycare_full + results.occupancy.daycare_half) : '' }}
-                                    </template>
-                                    <template v-else>{{ row.used_qty || 0 }}</template>
-                                </td>
+                                <td class="text-center">{{ row.used_qty || 0 }}</td>
                                 <td class="text-right">{{ formatCurrency(row.used_total) }}</td>
                             </template>
                             <template v-else>
@@ -232,6 +227,24 @@ async function copyFullReport(e) {
                             <td class="text-right">{{ formatCurrency(results.tips.total) }}</td>
                             <td>&nbsp;</td>
                             <td>&nbsp;</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td>Orientations</td>
+                            <td class="text-center">
+                                <template v-if="'occupancy' in results">{{ results.occupancy.interview }}</template>
+                                <FontAwesomeIcon v-else :icon="['fas', 'spinner-third']" spin class="text-xl text-greyhound"/>
+                            </td>
+                            <td class="text-right">{{ formatCurrency(0) }}</td>
+                            <template v-if="'boarding_accrual' in results">
+                                <td class="text-center">{{ results.orientations?.pkg_qty ?? 0 }}</td>
+                                <td class="text-right">{{ formatCurrency(results.orientations?.pkg_total ?? 0) }}</td>
+                            </template>
+                            <template v-else>
+                                <td colspan="2" class="text-center">
+                                    <FontAwesomeIcon :icon="['fas', 'spinner-third']" spin
+                                                     class="text-xl text-greyhound py-2"/>
+                                </td>
+                            </template>
                         </tr>
                     </template>
 

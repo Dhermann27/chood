@@ -60,12 +60,15 @@ class FetchChargesJob implements ShouldQueue
     {
         $result = [];
         foreach ($data['tbody'] ?? [] as $row) {
+            $amount = (float)($row[self::ACC_AMOUNT] ?? 0);
+            if ($amount === 0.0) continue;
+
             $category = $this->serviceCategory($row[self::ACC_NAME] ?? '');
             if (!$category) continue;
 
             $result[$category] ??= ['qty' => 0, 'total' => 0.0];
             $result[$category]['qty'] += (int)($row[self::ACC_QTY] ?? 0);
-            $result[$category]['total'] += (float)($row[self::ACC_AMOUNT] ?? 0);
+            $result[$category]['total'] += $amount;
         }
 
         return $result;

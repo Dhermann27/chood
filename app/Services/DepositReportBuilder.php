@@ -9,6 +9,8 @@ class DepositReportBuilder
     use ParsesServiceCategory;
 
     private const array CUSTOM_ORDER = ['Daycare', 'Boarding', 'Enrichment', 'Grooming', 'Training'];
+    private const array ORIENTATION_PKG_NAMES = ['Bath', 'Enrichment', 'Full Day Camp'];
+    private const float ORIENTATION_PRICE = 99.0;
 
     public function build(array $data): array
     {
@@ -44,7 +46,15 @@ class DepositReportBuilder
             ->sortBy(fn($v, $k) => array_search($k, self::CUSTOM_ORDER) ?? PHP_INT_MAX)
             ->all();
 
-        $data['combined_packages'] = $this->mergeGroups($packages, $data['accrual_packages'] ?? []);
+        // Extract orientation (First Day Special) packages — keep in category calculations above,
+        // remove from display table, surface as separate Orientations row
+        [$packages, $accrualPackages, $orientationQty] = $this->extractOrientations($packages, $data['accrual_packages'] ?? []);
+        $data['orientations'] = [
+            'pkg_qty' => $orientationQty,
+            'pkg_total' => round($orientationQty * self::ORIENTATION_PRICE, 2),
+        ];
+
+        $data['combined_packages'] = $this->mergeGroups($packages, $accrualPackages);
 
         if (isset($data['occupancy'], $data['boarding_accrual'])) {
             $data['occupancy']['boarding'] = $data['boarding_accrual']['qty'];
@@ -66,6 +76,23 @@ class DepositReportBuilder
         $data['complete'] = isset($data['boarding_accrual'], $data['occupancy']);
 
         return $data;
+    }
+
+    private function extractOrientations(array $packages, array $accrualPackages): array
+    {
+        $qty = 0;
+        foreach (array_keys($packages) as $name) {
+            if (in_array(trim(preg_replace('/\s*@.*$/i', '', $name)), self::ORIENTATION_PKG_NAMES)) {
+                $qty = max($qty, $packages[$name]['qty'] ?? 0);
+                unset($packages[$name]);
+            }
+        }
+        foreach (array_keys($accrualPackages) as $name) {
+            if (in_array(trim(preg_replace('/\s*@.*$/i', '', $name)), self::ORIENTATION_PKG_NAMES)) {
+                unset($accrualPackages[$name]);
+            }
+        }
+        return [$packages, $accrualPackages, $qty];
     }
 
     private function groupByCategory(array $items): array

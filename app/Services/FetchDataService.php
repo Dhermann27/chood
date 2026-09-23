@@ -187,6 +187,8 @@ class FetchDataService
 
         $response = Http::withHeaders([
             'Cookie' => $cookieHeader,
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json, text/javascript, */*; q=0.01',
             'User-Agent' => self::USER_AGENT,
             'Referer' => config('services.gingr.uris.dashboard'),
         ])->asForm()->post($url, $params);
@@ -195,7 +197,12 @@ class FetchDataService
             throw new Exception("Gingr occupancy request failed [{$response->status()}]: $url");
         }
 
-        return $response->body();
+        $body = $response->body();
+        if (str_contains($body, 'gingr_csrf_token')) {
+            throw new Exception('Gingr occupancy session expired - re-authenticate in Deposit Finder');
+        }
+
+        return $body;
     }
 
     /**
