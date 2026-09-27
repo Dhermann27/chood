@@ -41,11 +41,15 @@ return [
 
     'gingr' => [
         'api_key' => env('GINGR_API_KEY'),
+        'widget_key' => env('GINGR_ACCOUNT_WIDGET_KEY'),
         'username' => env('GINGR_USERNAME'),
         'password' => env('GINGR_PASSWORD'),
         'queue_delay' => env('QUEUE_DELAY'),
         'location_id' => env('GINGR_LOCATION_ID', 3),
-        'service_type_ids' => array_map('intval', array_filter(array_map('trim', explode(',', env('GINGR_SERVICE_TYPE_IDS', ''))))),
+        'ids' => [
+            'service_types' => array_map('intval', array_filter(array_map('trim', explode(',', env('GINGR_SERVICE_TYPE_IDS', ''))))),
+            'boarding' => array_map('intval', array_filter(array_map('trim', explode(',', env('GINGR_BOARDING_TYPE_IDS', ''))))),
+        ],
         'uris' => [
             'base' => env('GINGR_BASE_URL'),
             'login' => env('GINGR_BASE_URL') . env('GINGR_LOGIN_URI'),
@@ -61,6 +65,9 @@ return [
             'payments_refunds_raw' => env('GINGR_BASE_URL') . env('GINGR_PAYMENTS_REFUNDS_URI'),
             'lodging_occupancy' => env('GINGR_BASE_URL') . env('GINGR_LODGING_OCCUPANCY_URI'),
             'occupancy' => env('GINGR_BASE_URL') . env('GINGR_OCCUPANCY_URI'),
+            'reservationsByDate' => env('GINGR_BASE_URL') . env('GINGR_RESERVATIONS_BY_DATE_URI'),
+            'breeds' => env('GINGR_BASE_URL') . env('GINGR_BREEDS_URI'),
+            'reservation_widget' => env('GINGR_BASE_URL') . '/api/v1/reservation_widget_data',
         ],
     ],
 

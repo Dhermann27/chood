@@ -17,15 +17,19 @@ class DepositReportBuilder
         $services = $data['services'] ?? [];
         $packages = $data['packages'] ?? [];
 
+        // Extract orientations before grouping so their components don't affect category accrual math
+        [$packages, $accrualPackages, $orientationQty] = $this->extractOrientations($packages, $data['accrual_packages'] ?? []);
+
         $pkgByCategory = $this->groupByCategory($packages);
-        $accrualPkgByCategory = $this->groupByCategory($data['accrual_packages'] ?? []);
+        $accrualPkgByCategory = $this->groupByCategory($accrualPackages);
 
         // Cash charges minus packages sold (deferred) plus redemptions (deferred revenue earned)
         $usedServices = [];
-        foreach ($services as $category => $entry) {
+        $allCategories = array_unique(array_merge(array_keys($services), array_keys($pkgByCategory), array_keys($accrualPkgByCategory)));
+        foreach ($allCategories as $category) {
             $usedServices[$category] = [
-                'qty' => max(0, ($entry['qty'] ?? 0) - ($pkgByCategory[$category]['qty'] ?? 0) + ($accrualPkgByCategory[$category]['qty'] ?? 0)),
-                'total' => max(0.0, (float)($entry['total'] ?? 0) - (float)($pkgByCategory[$category]['total'] ?? 0) + (float)($accrualPkgByCategory[$category]['total'] ?? 0)),
+                'qty' => max(0, ($services[$category]['qty'] ?? 0) - ($pkgByCategory[$category]['qty'] ?? 0) + ($accrualPkgByCategory[$category]['qty'] ?? 0)),
+                'total' => max(0.0, (float)($services[$category]['total'] ?? 0) - (float)($pkgByCategory[$category]['total'] ?? 0) + (float)($accrualPkgByCategory[$category]['total'] ?? 0)),
             ];
         }
 
@@ -34,6 +38,15 @@ class DepositReportBuilder
             $usedServices['Boarding'] = [
                 'qty' => $data['boarding_accrual']['qty'],
                 'total' => $data['boarding_accrual']['total'],
+            ];
+        }
+
+        // Daycare Used = occupancy headcount (full + half + interview); amount = package redemptions only
+        if (isset($data['occupancy'])) {
+            $occ = $data['occupancy'];
+            $usedServices['Daycare'] = [
+                'qty' => ($occ['daycare_full'] ?? 0) + ($occ['daycare_half'] ?? 0) + ($occ['interview'] ?? 0),
+                'total' => round((float)($accrualPkgByCategory['Daycare']['total'] ?? 0), 2),
             ];
         }
 
@@ -46,9 +59,6 @@ class DepositReportBuilder
             ->sortBy(fn($v, $k) => array_search($k, self::CUSTOM_ORDER) ?? PHP_INT_MAX)
             ->all();
 
-        // Extract orientation (First Day Special) packages — keep in category calculations above,
-        // remove from display table, surface as separate Orientations row
-        [$packages, $accrualPackages, $orientationQty] = $this->extractOrientations($packages, $data['accrual_packages'] ?? []);
         $data['orientations'] = [
             'pkg_qty' => $orientationQty,
             'pkg_total' => round($orientationQty * self::ORIENTATION_PRICE, 2),
@@ -58,6 +68,7 @@ class DepositReportBuilder
 
         if (isset($data['occupancy'], $data['boarding_accrual'])) {
             $data['occupancy']['boarding'] = $data['boarding_accrual']['qty'];
+            $data['occupancy']['grooming'] = (int)($services['Grooming']['qty'] ?? 0);
             $data['occupancy']['total'] = array_sum($data['occupancy']);
         }
 

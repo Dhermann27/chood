@@ -28,6 +28,5 @@ class GoFetchReports implements ShouldQueue, ShouldBeUnique
 
         FetchChargesJob::dispatch($this->reportId, $this->cookies);
         FetchBoardingJob::dispatch($this->reportId, $this->cookies);
-        FetchOccupancyJob::dispatch($this->reportId, $this->cookies);
     }
 }

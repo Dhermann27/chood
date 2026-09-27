@@ -181,14 +181,17 @@ class GoFetchShiftsJob implements ShouldQueue
 
     private function assignSundayMorningBreaks(Collection $qualifiedShifts): Collection
     {
+        $tz = config('app.timezone');
+        $noon = Carbon::createFromTime(12, 0, 0, $tz);
+
         Shift::insert(
             $qualifiedShifts->filter(
-                fn($shift) => Carbon::parse($shift->start_at)->lt(Carbon::createFromTime(12, 0))
+                fn($shift) => Carbon::parse($shift->start_at)->setTimezone($tz)->lt($noon)
             )->map(fn($shift) => [
                 'wiw_user_id' => $shift->user_id,
                 'start_time' => Carbon::parse($shift->start_at)->format('Y-m-d H:i:s'),
                 'end_time' => Carbon::parse($shift->end_at)->format('Y-m-d H:i:s'),
-                'next_first_break' => Carbon::createFromTime(10, 0),
+                'next_first_break' => Carbon::createFromTime(10, 0, 0, $tz),
                 'next_lunch_break' => null,
                 'next_second_break' => null,
                 'created_at' => now(),
@@ -197,7 +200,7 @@ class GoFetchShiftsJob implements ShouldQueue
         );
 
         return $qualifiedShifts->filter(
-            fn($shift) => Carbon::parse($shift->start_at)->gte(Carbon::createFromTime(12, 0))
+            fn($shift) => Carbon::parse($shift->start_at)->setTimezone($tz)->gte($noon)
         )->values();
     }
 
@@ -250,10 +253,18 @@ class GoFetchShiftsJob implements ShouldQueue
         return $log;
     }
 
-    private function findBreakIndex(int $idealIndex, int $duration, array $breakMatrix): array|null
+    private function findBreakIndex(int $idealIndex, int $duration, array $breakMatrix, ?int $minIndex = null, ?int $maxIndex = null): array|null
     {
-        $forward = $this->findNextAvailableSlot($idealIndex, $duration, $breakMatrix);
-        $backward = $this->findPrevAvailableSlot($idealIndex - 1, $duration, $breakMatrix);
+        $bounded = $minIndex !== null || $maxIndex !== null;
+        $min = $minIndex ?? 0;
+        $max = $maxIndex ?? (count($breakMatrix) - 1);
+        $clamped = max($min, min($max, $idealIndex));
+
+        $forward = $this->findNextAvailableSlot($clamped, $duration, $breakMatrix);
+        if ($forward !== null && $forward > $max) $forward = null;
+
+        $backward = $this->findPrevAvailableSlot($clamped - 1, $duration, $breakMatrix);
+        if ($backward !== null && $backward < $min) $backward = null;
 
         $forwardDev = $forward !== null ? abs($forward - $idealIndex) : PHP_INT_MAX;
         $backwardDev = $backward !== null ? abs($backward - $idealIndex) : PHP_INT_MAX;
@@ -261,7 +272,7 @@ class GoFetchShiftsJob implements ShouldQueue
         $best = $backwardDev < $forwardDev ? $backward : $forward;
         $bestDev = min($forwardDev, $backwardDev);
 
-        if ($best === null || $bestDev > 24) return null;
+        if ($best === null || (!$bounded && $bestDev > 24)) return null;
 
         return ['index' => $best, 'deviation' => $bestDev];
     }
@@ -417,24 +428,26 @@ class GoFetchShiftsJob implements ShouldQueue
     {
         $duration = $this->getDurationInSegments($shift);
         $startIndex = $this->convertTimeToIndex(Carbon::parse($shift->start_at));
+        $endIndex = $this->convertTimeToIndex(Carbon::parse($shift->end_at));
         $lunchTarget = $duration >= 8 * 12
             ? $startIndex + round($duration / 2)
             : $startIndex + round($duration * 2 / 3);
         $lunchIndex = max($lunchTarget, self::START_LUNCHES_AT_INDEX);
-        return $this->findBreakIndex($lunchIndex, 6, $breakMatrix);
+        return $this->findBreakIndex($lunchIndex, 6, $breakMatrix, $startIndex, $endIndex - 6);
     }
 
     private function findFirstBreakIndex(object $shift, array $breakMatrix): ?array
     {
         $duration = $this->getDurationInSegments($shift);
         $startIndex = $this->convertTimeToIndex(Carbon::parse($shift->start_at));
+        $endIndex = $this->convertTimeToIndex(Carbon::parse($shift->end_at));
         $firstBreakTarget = $startIndex + ($duration >= 8 * 12
                 ? $duration / 4
                 : ($duration >= 6.5 * 12 ? $duration / 3 : $duration / 2));
         if ($startIndex >= self::PM_SHIFT_START_INDEX) {
             $firstBreakTarget = max($firstBreakTarget, self::AFTERNOON_BREAK_FLOOR);
         }
-        return $this->findBreakIndex(round($firstBreakTarget), 3, $breakMatrix);
+        return $this->findBreakIndex(round($firstBreakTarget), 3, $breakMatrix, $startIndex, $endIndex - 3);
     }
 
     private function findSecondBreakIndex(object $shift, array $breakMatrix): ?array
@@ -443,7 +456,7 @@ class GoFetchShiftsJob implements ShouldQueue
         $startIndex = $this->convertTimeToIndex(Carbon::parse($shift->start_at));
         $endIndex = $this->convertTimeToIndex(Carbon::parse($shift->end_at));
         $secondBreakTarget = min($startIndex + round($duration * 3 / 4), $endIndex - 4);
-        return $this->findBreakIndex(round($secondBreakTarget), 3, $breakMatrix);
+        return $this->findBreakIndex(round($secondBreakTarget), 3, $breakMatrix, $startIndex, $endIndex - 3);
     }
 
     private function markSlots(int $startIndex, int $duration, array &$matrix): void

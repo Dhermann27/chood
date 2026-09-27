@@ -84,8 +84,13 @@ function breakFairnessTooltip(employee, breakKey) {
     return ideal !== null ? `Ideal: ${minutesToTimeStr(ideal)}` : null;
 }
 
+function shiftKey(employee) {
+    return `${employee.wiw_user_id}-${String(employee.shift_start ?? '').replace(/:/g, '')}`;
+}
+
 async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name) {
-    await withFeedback(`timepicker-${wiw_user_id}-${break_name}`, async () => {
+    const key = `timepicker-${wiw_user_id}-${String(shift_start ?? '').replace(/:/g, '')}-${break_name}`;
+    await withFeedback(key, async () => {
         await axios.post('/api/mealmap/break', {
             [break_name]: `${eventData.displayTime}`,
             wiw_user_id: wiw_user_id,
@@ -125,58 +130,58 @@ async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name
 
                 <!-- First Break -->
                 <td class="border border-DEFAULT px-4 py-2"
-                    :ref="el => setInputRef(`timepicker-${String(employee.wiw_user_id)}-next_first_break`, el)"
+                    :ref="el => setInputRef(`timepicker-${shiftKey(employee)}-next_first_break`, el)"
                     :style="{ backgroundColor: breakFairnessColor(employee, 'next_first_break') }"
-                    :title="timepickerOpen[`${employee.wiw_user_id}-next_first_break`] ? null : breakFairnessTooltip(employee, 'next_first_break')">
+                    :title="timepickerOpen[`${shiftKey(employee)}-next_first_break`] ? null : breakFairnessTooltip(employee, 'next_first_break')">
                     <div :class="[!readonly && employee.first_name !== 'Everyone' ? 'hidden' : '', 'print:block']">
                         {{ employee.next_first_break }}
                     </div>
                     <VueTimepicker
                         v-if="!readonly && employee.first_name !== 'Everyone'"
-                        :id="`timepicker-${String(employee.wiw_user_id)}-next_first_break`"
+                        :id="`timepicker-${shiftKey(employee)}-next_first_break`"
                         class="print-hide" placeholder="None"
                         v-model="employee.next_first_break" format="HH:mma" :minute-interval="5"
                         :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                        @open="timepickerOpen[`${employee.wiw_user_id}-next_first_break`] = true"
-                        @close="delete timepickerOpen[`${employee.wiw_user_id}-next_first_break`]"
+                        @open="timepickerOpen[`${shiftKey(employee)}-next_first_break`] = true"
+                        @close="delete timepickerOpen[`${shiftKey(employee)}-next_first_break`]"
                         @change="handleBreakChange($event, employee.wiw_user_id, employee.shift_start, 'next_first_break')"/>
                 </td>
 
                 <!-- Lunch -->
                 <td class="border border-DEFAULT px-4 py-2"
-                    :ref="el => setInputRef(`timepicker-${String(employee.wiw_user_id)}-next_lunch_break`, el)"
+                    :ref="el => setInputRef(`timepicker-${shiftKey(employee)}-next_lunch_break`, el)"
                     :style="{ backgroundColor: breakFairnessColor(employee, 'next_lunch_break') }"
-                    :title="timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`] ? null : breakFairnessTooltip(employee, 'next_lunch_break')">
+                    :title="timepickerOpen[`${shiftKey(employee)}-next_lunch_break`] ? null : breakFairnessTooltip(employee, 'next_lunch_break')">
                     <div :class="[!readonly ? 'hidden' : '', 'print:block']">
                         {{ employee.next_lunch_break }}
                     </div>
                     <VueTimepicker
                         v-if="!readonly"
-                        :id="`timepicker-${String(employee.wiw_user_id)}-next_lunch_break`"
+                        :id="`timepicker-${shiftKey(employee)}-next_lunch_break`"
                         class="print-hide" placeholder="None"
                         v-model="employee.next_lunch_break" format="HH:mma" :minute-interval="5"
                         :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                        @open="timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`] = true"
-                        @close="delete timepickerOpen[`${employee.wiw_user_id}-next_lunch_break`]"
+                        @open="timepickerOpen[`${shiftKey(employee)}-next_lunch_break`] = true"
+                        @close="delete timepickerOpen[`${shiftKey(employee)}-next_lunch_break`]"
                         @change="handleBreakChange($event, employee.wiw_user_id, employee.shift_start, 'next_lunch_break')"/>
                 </td>
 
                 <!-- Second Break -->
                 <td class="border border-DEFAULT px-4 py-2"
-                    :ref="el => setInputRef(`timepicker-${String(employee.wiw_user_id)}-next_second_break`, el)"
+                    :ref="el => setInputRef(`timepicker-${shiftKey(employee)}-next_second_break`, el)"
                     :style="{ backgroundColor: breakFairnessColor(employee, 'next_second_break') }"
-                    :title="timepickerOpen[`${employee.wiw_user_id}-next_second_break`] ? null : breakFairnessTooltip(employee, 'next_second_break')">
+                    :title="timepickerOpen[`${shiftKey(employee)}-next_second_break`] ? null : breakFairnessTooltip(employee, 'next_second_break')">
                     <div :class="[!readonly ? 'hidden' : '', 'print:block']">
                         {{ employee.next_second_break }}
                     </div>
                     <VueTimepicker
                         v-if="!readonly"
-                        :id="`timepicker-${String(employee.wiw_user_id)}-next_second_break`"
+                        :id="`timepicker-${shiftKey(employee)}-next_second_break`"
                         class="print-hide" placeholder="None"
                         v-model="employee.next_second_break" format="HH:mma" :minute-interval="5"
                         :hour-range="[[1, 12]]" hide-disabled-items lazy manual-input
-                        @open="timepickerOpen[`${employee.wiw_user_id}-next_second_break`] = true"
-                        @close="delete timepickerOpen[`${employee.wiw_user_id}-next_second_break`]"
+                        @open="timepickerOpen[`${shiftKey(employee)}-next_second_break`] = true"
+                        @close="delete timepickerOpen[`${shiftKey(employee)}-next_second_break`]"
                         @change="handleBreakChange($event, employee.wiw_user_id, employee.shift_start, 'next_second_break')"/>
                 </td>
             </tr>

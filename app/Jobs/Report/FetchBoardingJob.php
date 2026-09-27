@@ -4,26 +4,19 @@ namespace App\Jobs\Report;
 
 use App\Enums\HousingServiceCodes;
 use App\Models\Report;
-use App\Services\FetchDataService;
-use App\Traits\BuildsReportParams;
-use App\Traits\ParsesHtmlReport;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class FetchBoardingJob implements ShouldQueue
 {
-    use Queueable, BuildsReportParams, ParsesHtmlReport;
+    use Queueable;
 
     private const array BASE_RATES = [
         'BRDC' => 65.00,
         'BRDL' => 100.00,
-    ];
-
-    // Per-dog discount off base rate when multiple dogs share a cabin
-    private const array MULTI_DOG_DISCOUNTS = [
-        'BRDC' => [2 => 4, 3 => 7],
-        'BRDL' => [2 => 5, 3 => 10],
     ];
 
     public function __construct(public readonly string $reportId, public readonly array $cookies)
@@ -34,63 +27,63 @@ class FetchBoardingJob implements ShouldQueue
     /**
      * @throws Exception
      */
-    public function handle(FetchDataService $fetchDataService): void
+    public function handle(): void
     {
         $report = Report::findOrFail($this->reportId);
 
-        $html = $fetchDataService->fetchOccupancy(
-            config('services.gingr.uris.lodging_occupancy'),
-            $this->buildOccupancyParams($report->report_date),
-            $this->cookies
-        );
+        $cookieHeader = collect($this->cookies)->map(fn($v, $k) => "$k=$v")->implode('; ');
 
-        [$qty, $total] = $this->parseOccupancy($html);
+        $response = Http::withHeaders([
+            'Cookie' => $cookieHeader,
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json, text/javascript, */*; q=0.01',
+        ])->get(config('services.gingr.uris.reservation_widget'), [
+            'key' => config('services.gingr.widget_key'),
+            'timestamp' => $report->report_date,
+        ]);
+
+        if (!$response->successful()) {
+            Log::error('FetchBoardingJob: widget API failed', ['status' => $response->status()]);
+            return;
+        }
+
+        [$boardingAccrual, $occupancy] = $this->parseWidget($response->json('data', []));
 
         $data = $report->data ?? [];
-        $data['boarding_accrual'] = ['qty' => $qty, 'total' => round($total, 2)];
+        $data['boarding_accrual'] = $boardingAccrual;
+        $data['occupancy'] = $occupancy;
         $report->data = $data;
         $report->updated_at = now();
         $report->save();
     }
 
-    private function parseOccupancy(string $html): array
+    private function parseWidget(array $data): array
     {
-        $qty = 0;
-        $total = 0.0;
+        $boardingQty = 0;
+        $boardingTotal = 0.0;
+        $occupancy = ['daycare_full' => 0, 'daycare_half' => 0, 'interview' => 0];
 
-        $xpath = $this->loadXPath($html);
-        $rows = $xpath->query('//table[@id="reservations"]/tbody/tr');
-        if (!$rows) return [$qty, $total];
+        foreach ($data as $label => $counts) {
+            $lower = strtolower($label);
 
-        foreach ($rows as $row) {
-            $cells = $row->getElementsByTagName('td');
-            if ($cells->length < 3) continue;
-
-            $lodging = trim($cells->item(0)->textContent ?? '');
-            if (strtolower($lodging) === 'totals') continue;
-
-            $area = trim($cells->item(1)->textContent ?? '');
-            $isLuxury = str_contains(strtolower($area), 'luxury');
-            $code = $isLuxury ? HousingServiceCodes::BRDL->value : HousingServiceCodes::BRDC->value;
-            $base = self::BASE_RATES[$code];
-
-            // Date column is index 2 — first number in the span text is the dog count
-            $dateCell = $cells->item(2);
-            $countSpan = $xpath->query('.//span[@class="number-reservations"]', $dateCell)->item(0);
-            if (!$countSpan) continue;
-
-            $spanText = preg_replace('/\s+/', ' ', trim($countSpan->textContent ?? ''));
-            $count = preg_match('/^(\d+)/', $spanText, $m) ? (int)$m[1] : 0;
-            if ($count === 0) continue;
-
-            $discounts = self::MULTI_DOG_DISCOUNTS[$code];
-            $discount = $discounts[min($count, max(array_keys($discounts)))] ?? 0;
-            $rate = $base - $discount;
-
-            $qty += $count;
-            $total += $rate * $count;
+            if (str_contains($lower, 'boarding')) {
+                $active = (int)($counts['active'] ?? 0) - (int)($counts['check_outs'] ?? 0);
+                if ($active <= 0) continue;
+                $code = str_contains($lower, 'luxury') ? HousingServiceCodes::BRDL->value : HousingServiceCodes::BRDC->value;
+                $boardingQty += $active;
+                $boardingTotal += self::BASE_RATES[$code] * $active;
+            } elseif (str_contains($lower, 'half day')) {
+                $occupancy['daycare_half'] += (int)($counts['active'] ?? 0);
+            } elseif (str_contains($lower, 'day camp')) {
+                $occupancy['daycare_full'] += (int)($counts['active'] ?? 0);
+            } elseif (str_contains($lower, 'interview')) {
+                $occupancy['interview'] += (int)($counts['active'] ?? 0);
+            }
         }
 
-        return [$qty, $total];
+        return [
+            ['qty' => $boardingQty, 'total' => round($boardingTotal, 2)],
+            $occupancy,
+        ];
     }
 }

@@ -229,12 +229,7 @@ async function copyFullReport(e) {
                             <td>&nbsp;</td>
                         </tr>
                         <tr class="border-b">
-                            <td>Orientations</td>
-                            <td class="text-center">
-                                <template v-if="'occupancy' in results">{{ results.occupancy.interview }}</template>
-                                <FontAwesomeIcon v-else :icon="['fas', 'spinner-third']" spin class="text-xl text-greyhound"/>
-                            </td>
-                            <td class="text-right">{{ formatCurrency(0) }}</td>
+                            <td colspan="3">Orientations &amp; First-Day Specials</td>
                             <template v-if="'boarding_accrual' in results">
                                 <td class="text-center">{{ results.orientations?.pkg_qty ?? 0 }}</td>
                                 <td class="text-right">{{ formatCurrency(results.orientations?.pkg_total ?? 0) }}</td>

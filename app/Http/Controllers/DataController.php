@@ -74,7 +74,7 @@ class DataController extends Controller
             ]));
 
 
-        $breaks = Shift::whereIn('role', ['Camp Counselor', 'Camp Counselor In Training'])
+        $breaks = Shift::whereIn('role', ['Camp Counselor', 'Camp Counselor In Training', 'Supervisor'])
             ->with('employee')->get()->map(function ($shift) {
                 return [
                     'wiw_user_id' => $shift->employee->wiw_user_id,
