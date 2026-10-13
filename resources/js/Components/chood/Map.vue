@@ -163,13 +163,16 @@ function cabinStyle(cabin) {
     const recentDog = recentCheckoutDog(dogsInCabin);
 
     let borderColor = props.statuses?.[cabin.id]
-        ? props.statuses[cabin.id] === 'deep' ? '#dd454f' : '#f4df7a'
+        ? props.statuses[cabin.id] === 'deep' ? '#FF4F4F' : '#FFDE17'
         : '#373a36';
     let borderStyle = isCheckingOutTodayOrEarlier(dogsInCabin) ? 'dashed' : 'solid';
 
     if (recentDog) {
         borderColor = checkoutReservationColor(recentDog);
         borderStyle = 'dashed';
+    } else if (hasCheckedOut(dogsInCabin)) {
+        borderColor = checkoutReservationColor(dogsInCabin.find(d => d.checked_out_at));
+        borderStyle = 'solid';
     }
 
     return {
@@ -233,7 +236,7 @@ function displayCabinStyle(cabin) {
             <div v-if="props.dogs[cabin.id] && props.dogs[cabin.id].length > 0" class="h-full w-full relative">
                 <DogCard :dogs="props.dogs[cabin.id]" :maxlength="maxlength" :card-height="cardHeight"/>
                 <div v-if="hasCheckedOut(props.dogs[cabin.id]) && !recentCheckoutDog(props.dogs[cabin.id])"
-                     class="absolute inset-0 flex items-center justify-center bg-black/60 text-white pointer-events-none"
+                     class="absolute inset-0 flex items-center justify-center bg-greyhound/60 text-white pointer-events-none"
                      :style="{ fontSize: (cardHeight * 0.4) + 'px' }">
                     CO
                 </div>

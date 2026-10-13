@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\GoFetchBreedsJob;
 use App\Jobs\GoFetchServiceListJob;
 use App\Jobs\WIW\GoFetchEmployeesJob;
 use App\Jobs\WIW\GoFetchShiftsJob;
@@ -19,11 +20,12 @@ class DeploymentCommand extends Command
     {
         GoFetchEmployeesJob::dispatchSync();
         GoFetchServiceListJob::dispatchSync();
+        GoFetchBreedsJob::dispatchSync();
 
         if ($rollbackDb = $this->option('rollback-db')) {
             $this->restoreFromRollback($rollbackDb);
         } else {
-            GoFetchShiftsJob::dispatchSync();
+            GoFetchShiftsJob::dispatchSync(cutoffTime: '00:00:00');
         }
 
         $this->dropOldRollbackDbs();

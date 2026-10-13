@@ -22,9 +22,21 @@ const emit = defineEmits(['saved']);
 
 const uiAssignments = ref({});
 const isUpdatingPreset = ref(false);
-const showPresetModal = ref(false);
+const showRotationModal = ref(false);
 const pendingPreset = ref(null);
+const selectedTime = ref('');
 const {setInputRef, withFeedback} = useSaveFeedback();
+
+const timeOptions = Array.from({length: 10}, (_, i) => {
+    const h = i + 8;
+    const label = h > 12 ? `${h - 12}pm` : h === 12 ? '12pm' : `${h}am`;
+    return {value: `${String(h).padStart(2, '0')}:00`, label};
+});
+
+function defaultNextHour() {
+    const h = Math.min(Math.max(new Date().getHours() + 1, 8), 17);
+    return `${String(h).padStart(2, '0')}:00`;
+}
 
 const employeesById = computed(() => {
     const map = new Map();
@@ -90,6 +102,7 @@ watch(
             }
         }
         hydrateUiAssignments();
+        if (isUpdatingPreset.value) isUpdatingPreset.value = false;
     },
     {deep: true, immediate: true}
 );
@@ -97,22 +110,36 @@ watch(
 function onPresetChange(e) {
     pendingPreset.value = e.target.value;
     e.target.value = props.selectedPreset;
-    showPresetModal.value = true;
+    selectedTime.value = defaultNextHour();
+    showRotationModal.value = true;
 }
 
-function cancelPresetChange() {
+function onRecalculateClick() {
     pendingPreset.value = null;
-    showPresetModal.value = false;
+    selectedTime.value = defaultNextHour();
+    showRotationModal.value = true;
 }
 
-async function confirmPresetChange(overwrite) {
-    showPresetModal.value = false;
+async function cancelRotationModal() {
+    showRotationModal.value = false;
+    if (pendingPreset.value) {
+        await axios.post('/api/mealmap/markActive', {preset: pendingPreset.value});
+        emit('saved');
+    }
+    pendingPreset.value = null;
+}
+
+async function confirmRotation() {
+    showRotationModal.value = false;
     isUpdatingPreset.value = true;
     try {
-        await axios.post('/api/mealmap/markActive', {preset: pendingPreset.value, overwrite});
+        if (pendingPreset.value) {
+            await axios.post('/api/mealmap/markActive', {preset: pendingPreset.value, from_time: selectedTime.value});
+        } else {
+            await axios.post('/api/mealmap/recalculateRotation', {from_time: selectedTime.value});
+        }
         emit('saved');
     } finally {
-        isUpdatingPreset.value = false;
         pendingPreset.value = null;
     }
 }
@@ -142,7 +169,7 @@ async function handleYardChange(rotationId, yardId) {
                 v-if="yardPresets?.length && !readonly"
                 :disabled="isUpdatingPreset"
                 :value="selectedPreset"
-                class="print:hidden text-sm rounded-md border border-gray-300 bg-white px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="print:hidden text-sm rounded-md border border-greyhound bg-white px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver"
                 @change="onPresetChange">
                 <option v-for="preset in yardPresets" :key="preset.value" :value="preset.value">
                     {{ preset.label }}
@@ -153,73 +180,83 @@ async function handleYardChange(rotationId, yardId) {
         <div class="text-3xl font-header mb-2 text-center">Daily Rotation</div>
         <div v-if="fohStaff" class="text-base mb-2 text-center">{{ fohStaff }}</div>
 
-        <table class="mx-auto bg-amber-100">
-            <thead>
-            <tr>
-                <th>&nbsp;</th>
-                <th class="font-subheader uppercase" v-for="yardId in headerYardIds" :key="yardId">
-                    {{ (yards ?? []).find(y => y.id === Number(yardId))?.name ?? yardId }}
-                </th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="rotation in rotations" :key="rotation.id">
-                <td class="border border-DEFAULT px-4 py-2">{{ rotation.label }}</td>
-                <td v-for="yardId in headerYardIds" :key="yardId"
-                    class="border border-DEFAULT px-4 py-2"
-                    :class="{ 'bg-orange-300': `${rotation.id}-${yardId}` in (overscheduled ?? {}) }"
-                    :title="(overscheduled ?? {})[`${rotation.id}-${yardId}`] ?? null"
-                    :ref="el => setInputRef(`multiselect-${String(rotation.id)}-${String(yardId)}`, el)">
+        <div class="w-fit mx-auto">
+            <div v-if="!readonly" class="flex justify-end mb-1">
+                <button @click="onRecalculateClick" title="Recalculate yard rotation"
+                        :disabled="isUpdatingPreset"
+                        class="w-10 h-10 bg-crimson text-white rounded text-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                    <FontAwesomeIcon :icon="['fas', 'rotate-right']" :spin="isUpdatingPreset"/>
+                </button>
+            </div>
+            <table class="bg-sunshine/20">
+                <thead>
+                <tr>
+                    <th>&nbsp;</th>
+                    <th class="font-subheader uppercase" v-for="yardId in headerYardIds" :key="yardId">
+                        {{ (yards ?? []).find(y => y.id === Number(yardId))?.name ?? yardId }}
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="rotation in rotations" :key="rotation.id">
+                    <td class="border border-DEFAULT px-4 py-2">{{ rotation.label }}</td>
+                    <td v-for="yardId in headerYardIds" :key="yardId"
+                        class="border border-DEFAULT px-4 py-2"
+                        :class="{ 'bg-alerted/40': `${rotation.id}-${yardId}` in (overscheduled ?? {}) }"
+                        :title="(overscheduled ?? {})[`${rotation.id}-${yardId}`] ?? null"
+                        :ref="el => setInputRef(`multiselect-${String(rotation.id)}-${String(yardId)}`, el)">
 
-                    <div :class="[!readonly ? 'hidden' : '', 'print:block']">
+                        <div :class="[!readonly ? 'hidden' : '', 'print:block']">
                         <span v-if="slot(rotation.id, yardId)">
                             {{ slot(rotation.id, yardId).first_name }}
                             <FontAwesomeIcon v-if="`${rotation.id}-${yardId}` in (overscheduled ?? {})"
                                              :icon="['fas', 'clock']" class="me-1"/>
                         </span>
-                    </div>
+                        </div>
 
-                    <multiselect
-                        v-if="!readonly && uiAssignments[String(rotation.id)]"
-                        class="print-hide"
-                        :key="`multiselect-${rotation.id}-${yardId}`"
-                        :id="`multiselect-${rotation.id}-${yardId}`"
-                        v-model="uiAssignments[String(rotation.id)][String(yardId)]"
-                        :options="employees ?? []"
-                        group-label="status" group-values="employees" :group-select="true"
-                        label="first_name" track-by="wiw_user_id" :searchable="true"
-                        :clearable="true" placeholder="Unassigned"
-                        @select="() => handleYardChange(rotation.id, yardId)"
-                        @remove="() => handleYardChange(rotation.id, yardId)"/>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+                        <multiselect
+                            v-if="!readonly && uiAssignments[String(rotation.id)]"
+                            class="print-hide"
+                            :key="`multiselect-${rotation.id}-${yardId}`"
+                            :id="`multiselect-${rotation.id}-${yardId}`"
+                            v-model="uiAssignments[String(rotation.id)][String(yardId)]"
+                            :options="employees ?? []"
+                            group-label="status" group-values="employees" :group-select="true"
+                            label="first_name" track-by="wiw_user_id" :searchable="true"
+                            :clearable="true" placeholder="Unassigned"
+                            @select="() => handleYardChange(rotation.id, yardId)"
+                            @remove="() => handleYardChange(rotation.id, yardId)"/>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
 
-        <div v-if="showPresetModal" class="fixed inset-0 z-50 flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/50" @click="cancelPresetChange"></div>
-            <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-700" @click="cancelPresetChange">
+        <div v-if="showRotationModal" class="fixed inset-0 z-50 flex items-center justify-center">
+            <div class="absolute inset-0 bg-greyhound/50" @click="cancelRotationModal"></div>
+            <div class="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+                <button class="absolute top-4 right-4 text-greyhound" @click="cancelRotationModal">
                     <FontAwesomeIcon :icon="['fas', 'xmark']" class="text-xl"/>
                 </button>
-                <div class="text-lg font-semibold mb-2">Recalculate?</div>
-                <div class="text-sm text-gray-600 mb-6">
-                    Chood can recalculate yard rotation and breaks if needed. This process will overwrite any changes
-                    you
-                    have made today.
-                </div>
+                <div class="text-lg font-semibold mb-2">Recalculate Yard Rotation</div>
+                <p class="text-sm text-greyhound mb-4">Assignments will be recalculated from the set time forward.</p>
+                <label class="block text-sm text-greyhound mb-1">Recalculate after:</label>
+                <select v-model="selectedTime"
+                        class="w-full rounded-md border border-greyhound bg-white px-3 py-2 text-sm mb-6 focus:outline-none focus:ring-2 focus:ring-caregiver">
+                    <option v-for="opt in timeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                </select>
                 <div class="flex justify-end gap-3">
                     <button
-                        class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-sm leading-tight w-48"
-                        @click="confirmPresetChange(false)">
-                        Do not recalculate<br>Assign manually
+                        class="rounded-xl px-4 py-2 border border-greyhound bg-white hover:bg-greyhound/10 text-sm leading-tight w-48"
+                        @click="cancelRotationModal">
+                        Leave existing assignments
                     </button>
                     <button
-                        class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-red-700 text-sm leading-tight w-48"
-                        @click="confirmPresetChange(true)">
+                        class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-alerted text-sm leading-tight w-48"
+                        @click="confirmRotation">
                         <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']"
                                          class="text-yellow-400 float-left text-2xl mr-2"/>
-                        Recalculate<br>Lose assignments
+                        Recalculate assignments
                     </button>
                 </div>
             </div>

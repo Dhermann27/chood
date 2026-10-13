@@ -89,7 +89,7 @@ onBeforeUnmount(() => {
                     <DogCard :dogs="[dog]" :card-width="cardWidth" :card-height="cardHeight"/>
                 </div>
                 <!-- appointments panel commented out; see ChoodTrait::getGroomingDogsToday() -->
-                <div class="bg-yellow-100 text-3xl rounded-tr-2xl rounded-br-2xl shadow-inner p-4 h-full">
+                <div class="bg-sunshine/20 text-3xl rounded-tr-2xl rounded-br-2xl shadow-inner p-4 h-full">
                     <div>Checkout: {{ formatTime(dog.checkout) }}</div>
                 </div>
             </template>

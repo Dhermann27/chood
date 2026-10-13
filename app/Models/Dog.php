@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use App\Enums\HousingServiceCodes;
+use App\Enums\YardCodes;
+use App\Enums\YardIds;
+use App\Services\RotationSettings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,9 +17,10 @@ class Dog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'display_name', 'gender', 'photoUri',
-        'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout', 'checked_out_at',
-        'rest_starts_at', 'break_type_id', 'rest_minutes', 'food_type', 'feeding_method', 'feeding_notes', 'services_string',
+    protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'display_name', 'gender',
+        'photoUri', 'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout', 'checked_out_at',
+        'rest_starts_at', 'break_type_id', 'rest_minutes', 'food_type', 'feeding_method', 'feeding_notes',
+        'services_string', 'owner_id', 'color', 'breed',
     ];
 
     protected $casts = ['checkin' => 'datetime', 'checkout' => 'datetime',
@@ -73,6 +77,19 @@ class Dog extends Model
 
         // TODO: add droplet/sheep icons by parsing services_string for bath/FSG keywords
 
+        if ($this->yard_id && $this->yard_id !== YardIds::FLOAT->value && RotationSettings::get() !== YardCodes::DEFAULT) {
+            $yardCode = match ($this->yard_id) {
+                YardIds::ACTIVE->value => 'A',
+                YardIds::LARGE->value => 'L',
+                YardIds::MEDIUM->value => 'M',
+                YardIds::SMALL->value => 'S',
+                default => null,
+            };
+            if ($yardCode) {
+                $icons[] = ['icon' => 'star', 'text' => $yardCode];
+            }
+        }
+
         return $icons;
     }
 
@@ -94,6 +111,11 @@ class Dog extends Model
     public function getIsInterviewAttribute(): bool
     {
         return $this->housing_code === HousingServiceCodes::INTV->value;
+    }
+
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(Owner::class);
     }
 
     public function allergies(): HasMany

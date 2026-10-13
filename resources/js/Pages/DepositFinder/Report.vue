@@ -68,7 +68,7 @@ async function copyFullReport(e) {
 
     const style = document.createElement('style');
     style.textContent = `
-    table { border-collapse: collapse; width: 100%; font-family: Calibri, sans-serif; }
+    table { border-collapse: collapse; width: 100%; font-family: FuturaBook, sans-serif; }
     th, td.font-semibold { font-weight: 600 }
     thead tr:first-child { background-color: #f0f0f0; }
     th, td { padding: 8px; border: 1px solid #ccc; }
@@ -229,13 +229,15 @@ async function copyFullReport(e) {
                             <td>&nbsp;</td>
                         </tr>
                         <tr class="border-b">
-                            <td colspan="3">Orientations &amp; First-Day Specials</td>
-                            <template v-if="'boarding_accrual' in results">
-                                <td class="text-center">{{ results.orientations?.pkg_qty ?? 0 }}</td>
-                                <td class="text-right">{{ formatCurrency(results.orientations?.pkg_total ?? 0) }}</td>
+                            <td>Orientations</td>
+                            <template v-if="'interview_qty' in (results.orientations ?? {})">
+                                <td class="text-center">{{ results.orientations.interview_qty }}</td>
+                                <td class="text-right">{{ formatCurrency(0) }}</td>
+                                <td class="text-center">{{ results.orientations.pkg_qty }}</td>
+                                <td class="text-right">{{ formatCurrency(results.orientations.pkg_total) }}</td>
                             </template>
                             <template v-else>
-                                <td colspan="2" class="text-center">
+                                <td colspan="4" class="text-center">
                                     <FontAwesomeIcon :icon="['fas', 'spinner-third']" spin
                                                      class="text-xl text-greyhound py-2"/>
                                 </td>

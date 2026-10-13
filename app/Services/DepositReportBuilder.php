@@ -10,7 +10,6 @@ class DepositReportBuilder
 
     private const array CUSTOM_ORDER = ['Daycare', 'Boarding', 'Enrichment', 'Grooming', 'Training'];
     private const array ORIENTATION_PKG_NAMES = ['Bath', 'Enrichment', 'Full Day Camp'];
-    private const float ORIENTATION_PRICE = 99.0;
 
     public function build(array $data): array
     {
@@ -18,7 +17,7 @@ class DepositReportBuilder
         $packages = $data['packages'] ?? [];
 
         // Extract orientations before grouping so their components don't affect category accrual math
-        [$packages, $accrualPackages, $orientationQty] = $this->extractOrientations($packages, $data['accrual_packages'] ?? []);
+        [$packages, $accrualPackages, $orientationQty, $orientationPkgTotal] = $this->extractOrientations($packages, $data['accrual_packages'] ?? []);
 
         $pkgByCategory = $this->groupByCategory($packages);
         $accrualPkgByCategory = $this->groupByCategory($accrualPackages);
@@ -41,12 +40,14 @@ class DepositReportBuilder
             ];
         }
 
-        // Daycare Used = occupancy headcount (full + half + interview); amount = package redemptions only
+        // Daycare Used = occupancy headcount (full + half + interview); amount = cash paid + pkg redemptions - pkgs sold
         if (isset($data['occupancy'])) {
             $occ = $data['occupancy'];
             $usedServices['Daycare'] = [
                 'qty' => ($occ['daycare_full'] ?? 0) + ($occ['daycare_half'] ?? 0) + ($occ['interview'] ?? 0),
-                'total' => round((float)($accrualPkgByCategory['Daycare']['total'] ?? 0), 2),
+                'total' => round((float)($services['Daycare']['total'] ?? 0)
+                    - (float)($pkgByCategory['Daycare']['total'] ?? 0)
+                    + (float)($accrualPkgByCategory['Daycare']['total'] ?? 0), 2),
             ];
         }
 
@@ -60,8 +61,9 @@ class DepositReportBuilder
             ->all();
 
         $data['orientations'] = [
+            'interview_qty' => $data['occupancy']['interview'] ?? 0,
             'pkg_qty' => $orientationQty,
-            'pkg_total' => round($orientationQty * self::ORIENTATION_PRICE, 2),
+            'pkg_total' => $orientationPkgTotal,
         ];
 
         $data['combined_packages'] = $this->mergeGroups($packages, $accrualPackages);
@@ -92,9 +94,11 @@ class DepositReportBuilder
     private function extractOrientations(array $packages, array $accrualPackages): array
     {
         $qty = 0;
+        $total = 0.0;
         foreach (array_keys($packages) as $name) {
             if (in_array(trim(preg_replace('/\s*@.*$/i', '', $name)), self::ORIENTATION_PKG_NAMES)) {
-                $qty = max($qty, $packages[$name]['qty'] ?? 0);
+                $qty += $packages[$name]['qty'] ?? 0;
+                $total += (float)($packages[$name]['total'] ?? 0);
                 unset($packages[$name]);
             }
         }
@@ -103,7 +107,7 @@ class DepositReportBuilder
                 unset($accrualPackages[$name]);
             }
         }
-        return [$packages, $accrualPackages, $qty];
+        return [$packages, $accrualPackages, $qty, round($total, 2)];
     }
 
     private function groupByCategory(array $items): array

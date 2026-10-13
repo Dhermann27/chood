@@ -16,8 +16,6 @@ const props = defineProps({
 });
 
 const {controls} = useControlScheme();
-const showOverwriteModal = ref(false);
-const pendingConfirmAction = ref(null);
 const breaks = ref({});
 const lunchDogs = ref([]);
 const medicatedDogs = ref([]);
@@ -27,7 +25,6 @@ const fohStaff = ref('');
 const assignments = ref({});
 const headerYardIds = ref([]);
 const openYardIdsByRotation = ref({});
-const shiftsRefreshing = ref(false);
 const overscheduled = ref({});
 const sectionCounts = ref({checkin_today: null, checkout_today: null});
 const cardHeight = computed(() => Math.min(300, 800 / (lunchDogs.value.length + medicatedDogs.value.length)));
@@ -62,28 +59,6 @@ const {poll} = useMapPolling('/api/mealmap/', 15000, (data) => {
     sectionCounts.value = data.sectionCounts ?? sectionCounts.value;
 });
 
-function cancelOverwrite() {
-    pendingConfirmAction.value = null;
-    showOverwriteModal.value = false;
-}
-
-async function confirmOverwrite(overwrite) {
-    showOverwriteModal.value = false;
-    await pendingConfirmAction.value?.(overwrite);
-    pendingConfirmAction.value = null;
-}
-
-function onRefreshShiftsClick() {
-    pendingConfirmAction.value = async (recalculate) => {
-        shiftsRefreshing.value = true;
-        try {
-            await axios.post('/api/mealmap/refreshShifts', {recalculate});
-        } finally {
-            shiftsRefreshing.value = false;
-        }
-    };
-    showOverwriteModal.value = true;
-}
 
 </script>
 
@@ -95,7 +70,8 @@ function onRefreshShiftsClick() {
             <div class="flex flex-col ps-3 items-center divider pt-5 print:hidden">
                 <div class="text-3xl font-header mb-2">Medications</div>
                 <div class="grid grid-cols-1 w-full">
-                    <div v-for="(dog, index) in medicatedDogs" :key="index" class="flex border-b-2 even:bg-gray-200">
+                    <div v-for="(dog, index) in medicatedDogs" :key="index"
+                         class="flex border-b-2 even:bg-greyhound/20">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: cardHeight + 'px'}">
                             <DogCard :dogs="[dog]" :maxlength="20" :card-height="cardHeight"/>
                         </div>
@@ -124,7 +100,7 @@ function onRefreshShiftsClick() {
                 </div>
                 <div class="text-3xl font-header my-2">Lunches</div>
                 <div class="grid grid-cols-1 w-full">
-                    <div v-for="(dog, index) in lunchDogs" :key="index" class="flex border-b-2 even:bg-gray-200">
+                    <div v-for="(dog, index) in lunchDogs" :key="index" class="flex border-b-2 even:bg-greyhound/20">
                         <div class="flex-shrink-0" :style="{height: cardHeight + 'px', width: cardHeight + 'px'}">
                             <DogCard :dogs="[dog]" :maxlength="20" :card-height="cardHeight"/>
                         </div>
@@ -138,26 +114,14 @@ function onRefreshShiftsClick() {
             </div>
 
             <div class="mealmap-right flex flex-col items-center pt-5 print:flex relative">
-                <YardRotationTable
-                    :rotations="props.rotations"
-                    :yards="props.yards"
-                    :header-yard-ids="headerYardIds"
-                    :open-yard-ids-by-rotation="openYardIdsByRotation"
-                    :assignments="assignments"
-                    :overscheduled="overscheduled"
-                    :employees="employees"
-                    :readonly="controls === ControlSchemes.NONE"
-                    :yard-presets="controls !== ControlSchemes.NONE ? props.yardPresets : null"
-                    :selected-preset="selectedYardPreset"
-                    :foh-staff="fohStaff"
-                    @saved="poll()"/>
+                <YardRotationTable :rotations="props.rotations" :yards="props.yards" :header-yard-ids="headerYardIds"
+                                   :open-yard-ids-by-rotation="openYardIdsByRotation" :assignments="assignments"
+                                   :overscheduled="overscheduled" :employees="employees"
+                                   :readonly="controls === ControlSchemes.NONE"
+                                   :yard-presets="controls !== ControlSchemes.NONE ? props.yardPresets : null"
+                                   :selected-preset="selectedYardPreset" :foh-staff="fohStaff" @saved="poll()"/>
 
-                <BreakScheduleTable
-                    :employees="breaks"
-                    :readonly="controls === ControlSchemes.NONE"
-                    :shifts-refreshing="shiftsRefreshing"
-                    @saved="poll()"
-                    @refresh-shifts="onRefreshShiftsClick"/>
+                <BreakScheduleTable :employees="breaks" :readonly="controls === ControlSchemes.NONE" @saved="poll()"/>
             </div>
 
             <div v-if="sectionCounts.in_house != null"
@@ -173,35 +137,6 @@ function onRefreshShiftsClick() {
                     <FontAwesomeIcon :icon="['fas', 'left-right']"/>
                     {{ sectionCounts.checkout_today }}
                 </span>
-            </div>
-
-        </div>
-    </div>
-    <div v-if="showOverwriteModal" class="fixed inset-0 z-50 flex items-center justify-center print:hidden">
-        <!-- backdrop -->
-        <div class="absolute inset-0 bg-black/50" @click="cancelOverwrite"></div>
-
-        <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-700" @click="cancelOverwrite">
-                <FontAwesomeIcon :icon="['fas', 'xmark']" class="text-xl"/>
-            </button>
-            <div class="text-lg font-semibold mb-2">Recalculate?</div>
-            <div class="text-sm text-gray-600 mb-6">
-                Chood can recalculate yard rotation and breaks if needed. This process will overwrite any changes you
-                have made today.
-            </div>
-            <div class="flex justify-end gap-3">
-                <button
-                    class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-sm leading-tight w-48"
-                    @click="confirmOverwrite(false)">
-                    Do not recalculate<br>Assign manually
-                </button>
-                <button class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-red-700 text-sm leading-tight w-48"
-                        @click="confirmOverwrite(true)">
-                    <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']"
-                                     class="text-yellow-400 float-left text-2xl mr-2"/>
-                    Recalculate<br>Lose assignments
-                </button>
             </div>
 
         </div>

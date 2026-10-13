@@ -4,6 +4,7 @@ namespace App\Jobs\Report;
 
 use App\Enums\HousingServiceCodes;
 use App\Models\Report;
+use App\Services\FetchDataService;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -37,12 +38,14 @@ class FetchBoardingJob implements ShouldQueue
             'Cookie' => $cookieHeader,
             'X-Requested-With' => 'XMLHttpRequest',
             'Accept' => 'application/json, text/javascript, */*; q=0.01',
+            'User-Agent' => FetchDataService::USER_AGENT,
+            'Referer' => config('services.gingr.uris.dashboard'),
         ])->get(config('services.gingr.uris.reservation_widget'), [
             'key' => config('services.gingr.widget_key'),
             'timestamp' => $report->report_date,
         ]);
 
-        if (!$response->successful()) {
+        if (!$response->successful() || null === $response->json()) {
             Log::error('FetchBoardingJob: widget API failed', ['status' => $response->status()]);
             return;
         }

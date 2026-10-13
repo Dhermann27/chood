@@ -3,9 +3,11 @@
 namespace App\Jobs;
 
 use App\Models\Allergy;
+use App\Models\Breed;
 use App\Models\Dog;
 use App\Models\Feeding;
 use App\Models\Medication;
+use App\Models\Owner;
 use App\Models\Timeslot;
 use App\Services\FetchDataService;
 use Exception;
@@ -48,7 +50,20 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
             throw $e;
         }
 
+        $ownerRow = $output['owner'] ?? [];
+        $owner = Owner::updateOrCreate(
+            ['gingr_owner_id' => $this->ownerId],
+            [
+                'first_name' => $ownerRow['first_name'] ?? null,
+                'last_name' => $ownerRow['last_name'] ?? null,
+                'cell_phone' => $ownerRow['cell_phone'] ?? null,
+                'emergency_contact_name' => $ownerRow['emergency_contact_name'] ?? null,
+                'emergency_contact_phone' => $ownerRow['emergency_contact_phone'] ?? null,
+            ]
+        );
+
         $timeslots = Timeslot::pluck('id', 'gingr_label');
+        $breeds = Breed::pluck('name', 'gingr_breed_id');
 
         if (empty($output['animals'])) {
             return;
@@ -59,7 +74,11 @@ class GoFetchAnimalDataJob implements ShouldQueue, ShouldBeUnique
             $dog = Dog::where('pet_id', $petId)->first();
             if (!$dog) continue;
 
+            $breedId = (string)($animal['breed'] ?? '');
             $dog->update([
+                'owner_id' => $owner->id,
+                'color' => $animal['color_and_markings_gingr'] ?? null,
+                'breed' => $breedId ? ($breeds->get($breedId) ?? null) : null,
                 'gender' => match ($animal['gender'] ?? null) {
                     'Male' => 'M',
                     'Female' => 'F',

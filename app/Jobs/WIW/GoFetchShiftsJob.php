@@ -36,10 +36,15 @@ class GoFetchShiftsJob implements ShouldQueue
     const int    AFTERNOON_BREAK_FLOOR = 10 * 12 + 6;  // 4:30pm: earliest break for PM crew
 
     const array SKIPPED_POSITIONS = ['Event Staff'];
-    const array QUALIFIED_POSITIONS = ['Camp Counselor', 'Camp Counselor In Training', 'Shift Supervisor'];
+    const array BREAK_SCHEDULED_POSITIONS = ['Camp Counselor', 'Camp Counselor In Training', 'Shift Supervisor'];
+    const array YARD_POSITIONS = ['Camp Counselor', 'Shift Supervisor'];
     const array SUPERVISOR_POSITIONS = ['Shift Supervisor', 'FOH Shift Supervisor'];
 
-    public function __construct(public bool $recalculateRotation = true)
+    public function __construct(
+        public bool             $recalculateBreaks = true,
+        public bool             $recalculateYards = true,
+        public readonly ?string $cutoffTime = null,
+    )
     {
     }
 
@@ -60,7 +65,7 @@ class GoFetchShiftsJob implements ShouldQueue
             $userMap = collect($data['users'] ?? [])->keyBy('id')
                 ->map(fn($u) => $u['first_name']);
 
-            $savedBreaks = $this->recalculateRotation ? collect() : Shift::whereNotNull('next_first_break')
+            $savedBreaks = $this->recalculateBreaks ? collect() : Shift::whereNotNull('next_first_break')
                 ->orWhereNotNull('next_lunch_break')->orWhereNotNull('next_second_break')
                 ->get(['wiw_user_id', 'start_time', 'next_first_break', 'next_lunch_break', 'next_second_break'])
                 ->keyBy(fn($s) => $s->wiw_user_id . '|' . Carbon::parse($s->start_time)->format('H:i:s'));
@@ -71,7 +76,7 @@ class GoFetchShiftsJob implements ShouldQueue
             $wiwShifts = collect($data['shifts'] ?? []);
 
             $qualifiedShifts = $wiwShifts
-                ->filter(fn($s) => in_array($positionMap->get($s['position_id']), self::QUALIFIED_POSITIONS))
+                ->filter(fn($s) => in_array($positionMap->get($s['position_id']), self::BREAK_SCHEDULED_POSITIONS))
                 ->sortBy(['start_time', 'position_id'])
                 ->map(function ($s) use ($positionMap, $userMap, $yards, $smallMediumOnly) {
                     return $this->buildShift($s, $positionMap, $userMap, $yards, $smallMediumOnly);
@@ -92,7 +97,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 Cache::put('foh_staff', $supervisors->implode(', '), Carbon::tomorrow());
             }
 
-            if ($this->recalculateRotation) {
+            if ($this->recalculateBreaks) {
                 if ($day->isSunday()) {
                     $remainingShifts = $this->assignSundayMorningBreaks($qualifiedShifts);
                 } else {
@@ -121,7 +126,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 'updated_at' => now(),
             ])->all();
 
-            Shift::insert($shiftInsertData);
+            Shift::insertOrIgnore($shiftInsertData);
 
             if ($savedBreaks->isNotEmpty()) {
                 foreach ($savedBreaks as $key => $breaks) {
@@ -137,7 +142,7 @@ class GoFetchShiftsJob implements ShouldQueue
             }
 
             $excludedShiftData = $wiwShifts
-                ->filter(fn($s) => !in_array($positionMap->get($s['position_id']), self::QUALIFIED_POSITIONS)
+                ->filter(fn($s) => !in_array($positionMap->get($s['position_id']), self::BREAK_SCHEDULED_POSITIONS)
                     && !in_array($positionMap->get($s['position_id']), self::SKIPPED_POSITIONS))
                 ->map(fn($s) => [
                     'wiw_user_id' => $s['user_id'],
@@ -149,11 +154,12 @@ class GoFetchShiftsJob implements ShouldQueue
                 ])->values()->all();
 
             if (!empty($excludedShiftData)) {
-                Shift::insert($excludedShiftData);
+                Shift::insertOrIgnore($excludedShiftData);
             }
 
-            if ($this->recalculateRotation) {
-                $this->updateYardAssignments($yards, $qualifiedShifts, $smallMediumOnly);
+            if ($this->recalculateYards) {
+                $yardShifts = $qualifiedShifts->filter(fn($s) => in_array($s->role, self::YARD_POSITIONS))->values();
+                $this->updateYardAssignments($yards, $yardShifts, $smallMediumOnly);
             }
 
         } catch (Exception $e) {
@@ -184,7 +190,7 @@ class GoFetchShiftsJob implements ShouldQueue
         $tz = config('app.timezone');
         $noon = Carbon::createFromTime(12, 0, 0, $tz);
 
-        Shift::insert(
+        Shift::insertOrIgnore(
             $qualifiedShifts->filter(
                 fn($shift) => Carbon::parse($shift->start_at)->setTimezone($tz)->lt($noon)
             )->map(fn($shift) => [
@@ -347,11 +353,32 @@ class GoFetchShiftsJob implements ShouldQueue
         $rotations = Rotation::query()->when(Carbon::now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))->get();
         $names = Employee::all()->pluck('first_name', 'wiw_user_id');
 
-        EmployeeYardRotation::truncate();
+        $cutoff = $this->cutoffTime ? Carbon::today()->setTimeFromTimeString($this->cutoffTime) : Carbon::now();
+
+        foreach (
+            EmployeeYardRotation::whereIn(
+                'rotation_id',
+                $rotations->filter(fn($r) => Carbon::today()->setTimeFromTimeString($r->end_time)->lte($cutoff))->pluck('id')
+            )->get() as $a
+        ) {
+            $shift = $shifts->firstWhere('user_id', $a->wiw_user_id);
+            if ($shift && array_key_exists($a->yard_id, $shift->yardHoursWorked)) {
+                $shift->yardHoursWorked[$a->yard_id]++;
+            }
+            $lastYardHourIds[$a->wiw_user_id][$a->yard_id] = $a->rotation_id;
+            if ($a->rotation_id > ($lastYardHourId ?? 0)) {
+                $lastYardHourId = $a->rotation_id;
+            }
+        }
+
+        EmployeeYardRotation::whereIn(
+            'rotation_id',
+            $rotations->filter(fn($r) => Carbon::today()->setTimeFromTimeString($r->end_time)->gt($cutoff))->pluck('id')
+        )->delete();
 
         $yardLog = [];
 
-        foreach ($rotations as $rotation) {
+        foreach ($rotations->filter(fn($r) => Carbon::today()->setTimeFromTimeString($r->end_time)->gt($cutoff)) as $rotation) {
             $startOfHour = Carbon::today()->setTimeFromTimeString($rotation->start_time);
             $endOfHour = Carbon::today()->setTimeFromTimeString($rotation->end_time);
             $rotationLog = [];

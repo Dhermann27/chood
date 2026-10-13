@@ -47,6 +47,11 @@ Route::prefix('reports')->group(function () {
         Route::post('/fetch', [ReportController::class, 'fetchDeposit']);
         Route::get('/results/{i}', [ReportController::class, 'depositResults']);
     });
+    Route::prefix('checkin')->group(function () {
+        Route::get('/', [ReportController::class, 'checkinIndex']);
+        Route::post('/fetch', [ReportController::class, 'fetchCheckin']);
+        Route::get('/results/{id}', [ReportController::class, 'checkinResults']);
+    });
 });
 
 Route::prefix('supervisor')->group(function () {
@@ -80,6 +85,7 @@ Route::prefix('api')->group(function () {
     Route::get('/mealmap/{checksum?}', [DataController::class, 'mealmap'])
         ->where('checksum', '[a-f0-9]{32}');
     Route::post('/mealmap/markActive', [DataController::class, 'markActiveYards']);
+    Route::post('/mealmap/recalculateRotation', [DataController::class, 'recalculateRotation']);
     Route::post('/mealmap/yard', [DataController::class, 'assignYard']);
     Route::post('/mealmap/break', [DataController::class, 'assignBreak']);
     Route::post('/mealmap/refreshShifts', [DataController::class, 'refreshShifts']);

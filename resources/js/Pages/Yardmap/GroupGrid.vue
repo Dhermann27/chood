@@ -62,7 +62,7 @@ const gridStyle = computed(() => {
             </div>
 
             <div class="w-full h-full flex relative items-center justify-center font-bold"
-                 :class="lowCount ? 'bg-sunshine text-black' : 'bg-crimson text-white'">
+                 :class="lowCount ? 'bg-sunshine text-greyhound' : 'bg-crimson text-white'">
                 <span :style="{ fontSize: (cardHeight * 0.5) + 'px' }">
                     {{ activeCount }}
                 </span>

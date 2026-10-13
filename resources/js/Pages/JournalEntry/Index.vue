@@ -115,7 +115,7 @@ function downloadCsv() {
             <div v-if="result" class="w-2/3 max-w-full min-w-0 mt-8 p-8 bg-white shadow-md rounded-lg">
                 <div v-if="result.warnings?.length" class="mb-6 space-y-2">
                     <div v-for="(w, i) in result.warnings" :key="i"
-                         class="p-3 bg-yellow-50 border border-yellow-300 rounded text-yellow-800 text-sm">
+                         class="p-3 bg-sunshine/10 border border-sunshine rounded text-greyhound text-sm">
                         <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']" class="mr-2"/>{{ w }}
                     </div>
                 </div>
@@ -143,7 +143,7 @@ function downloadCsv() {
                         <td class="px-4 py-2">{{ row.Account }}</td>
                         <td class="px-4 py-2 text-right">{{ row.Debits !== '' ? formatCurrency(row.Debits) : '' }}</td>
                         <td class="px-4 py-2 text-right">{{ row.Credits !== '' ? formatCurrency(row.Credits) : '' }}</td>
-                        <td class="px-4 py-2 text-sm text-gray-600">{{ row.Description }}</td>
+                        <td class="px-4 py-2 text-sm text-greyhound">{{ row.Description }}</td>
                     </tr>
                     </tbody>
                     <tfoot>

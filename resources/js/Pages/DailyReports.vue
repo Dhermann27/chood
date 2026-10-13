@@ -104,7 +104,7 @@ function specialistFor(entry, key) {
     <div class="p-6 print:p-0">
         <div class="no-print flex items-center gap-6 mb-6">
             <h1 class="text-2xl font-bold">Daily Reports — {{ date }}</h1>
-            <button class="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
+            <button class="px-4 py-2 bg-greyhound text-white rounded hover:bg-greyhound/80"
                     @click="print">Print
             </button>
         </div>
@@ -112,16 +112,16 @@ function specialistFor(entry, key) {
         <section v-for="section in sections" :key="section.key" class="report-section">
             <div class="section-header">
                 <h2 class="text-xl font-bold">{{ section.title }}</h2>
-                <span class="text-sm text-gray-500 print:text-gray-700">{{ date }}</span>
+                <span class="text-sm text-greyhound">{{ date }}</span>
             </div>
 
-            <p v-if="!section.dogs.length" class="text-gray-400 italic mt-4 print:text-gray-600">
+            <p v-if="!section.dogs.length" class="text-greyhound italic mt-4">
                 No dogs scheduled.
             </p>
 
             <table v-else class="w-full mt-3 border-collapse text-sm">
                 <thead>
-                <tr class="border-b-2 border-gray-800 text-left">
+                <tr class="border-b-2 border-greyhound text-left">
                     <th class="py-1 pr-4">Time</th>
                     <th class="py-1 pr-4">Name</th>
                     <th class="py-1 pr-4">M/F</th>
@@ -136,25 +136,25 @@ function specialistFor(entry, key) {
                 </thead>
                 <tbody>
                 <tr v-for="(dog, i) in section.dogs" :key="dog.id ?? dog.pet_id ?? i"
-                    class="border-b border-gray-200 print:border-gray-400">
+                    class="border-b border-greyhound/30">
                     <td class="py-1 pr-4">
                         <template v-if="sectionTime(dog, section.key) !== null">{{
                                 sectionTime(dog, section.key)
                             }}
                         </template>
-                        <span v-else class="font-bold text-amber-600 print:text-amber-800">
+                        <span v-else class="font-bold text-sunshine">
                                 <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']" class="mr-1"/>Unscheduled
                             </span>
                     </td>
                     <td class="py-1 pr-4 font-medium">{{ dog.display_name }}</td>
                     <td class="py-1 pr-4">
                         <FontAwesomeIcon v-if="isPending(dog) && effectiveDog(dog).gender === null"
-                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-gray-300"/>
+                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-greyhound"/>
                         <template v-else>{{ effectiveDog(dog).gender ?? '—' }}</template>
                     </td>
                     <td class="py-1 pr-4">
                         <FontAwesomeIcon v-if="isPending(dog) && effectiveDog(dog).weight === null"
-                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-gray-300"/>
+                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-greyhound"/>
                         <template v-else>{{
                                 effectiveDog(dog).weight ? effectiveDog(dog).weight + ' lb' : '—'
                             }}
@@ -162,15 +162,15 @@ function specialistFor(entry, key) {
                     </td>
                     <td class="py-1 pr-4">
                         <FontAwesomeIcon v-if="isPending(dog) && effectiveDog(dog).size_letter === null"
-                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-gray-300"/>
+                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-greyhound"/>
                         <template v-else>{{ effectiveDog(dog).size_letter ?? '—' }}</template>
                     </td>
                     <td class="py-1 pr-4">{{ dog.breed ?? '—' }}</td>
                     <td class="py-1 pr-4">{{ dog.cabin?.short_name ?? '—' }}</td>
                     <td class="py-1 pr-4">{{ serviceNames(dog, section.key) }}</td>
-                    <td class="py-1 pr-4 text-red-700 print:text-red-800 font-medium">
+                    <td class="py-1 pr-4 text-alerted font-medium">
                         <FontAwesomeIcon v-if="isPending(dog) && effectiveDog(dog).allergies === null"
-                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-gray-300"/>
+                                         :icon="['fas', 'spinner-third']" :spin="true" class="text-greyhound"/>
                         <template v-else>{{ formatAllergies(effectiveDog(dog).allergies) }}</template>
                     </td>
                     <td class="py-1">{{ specialistFor(dog, section.key) }}</td>

@@ -36,6 +36,9 @@ return new class extends Migration {
             $table->string('feeding_method')->nullable();
             $table->text('feeding_notes')->nullable();
             $table->string('services_string')->nullable();
+            $table->foreignId('owner_id')->nullable()->constrained('owners')->nullOnDelete();
+            $table->string('color')->nullable();
+            $table->string('breed')->nullable();
             $table->timestamps();
         });
         DB::update('ALTER TABLE dogs AUTO_INCREMENT = 1000');

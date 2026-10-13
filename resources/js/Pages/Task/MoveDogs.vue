@@ -157,7 +157,7 @@ watch(() => [moveDogYards.value, props.dogs], rebuildYardTiles, {deep: true, imm
                     </div>
 
                     <Draggable :list="yardTiles[yard.id]" item-key="id" :group="dragGroupForYard(yard)" :sort="true"
-                               :move="validateMove" :data-yard-id="yard.id" class="rounded-xl bg-gray-50 h-full"
+                               :move="validateMove" :data-yard-id="yard.id" class="rounded-xl bg-greyhound/10 h-full"
                                :style="gridStyle" @change="e => handleDragPreview(e, yard)">>
                         <template #item="{ element }">
                             <div class="flex items-center justify-center w-full"

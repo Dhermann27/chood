@@ -8,17 +8,19 @@ import {useSaveFeedback} from '@/Composables/useSaveFeedback.js';
 const props = defineProps({
     employees: {type: Object, default: () => ({})},
     readonly: {type: Boolean, default: false},
-    shiftsRefreshing: {type: Boolean, default: false},
 });
 
-const emit = defineEmits(['saved', 'refreshShifts']);
+const emit = defineEmits(['saved']);
 
 const localEmployees = ref({});
 const timepickerOpen = ref({});
+const isRefreshing = ref(false);
+const showModal = ref(false);
 const {setInputRef, withFeedback} = useSaveFeedback();
 
 watch(() => props.employees, (val) => {
     localEmployees.value = val ? {...val} : {};
+    if (isRefreshing.value) isRefreshing.value = false;
 }, {immediate: true});
 
 const LUNCH_FLOOR_MIN = 8 * 60 + 30;       // 8:30am
@@ -70,6 +72,10 @@ function breakIdealMinutes(employee, breakKey) {
 function breakFairnessColor(employee, breakKey) {
     const actual = parseBreakTimeToMinutes(employee[breakKey]);
     if (actual === null) return null;
+    const startMin = datetimeToMinutes(employee.shift_start);
+    const endMin = datetimeToMinutes(employee.shift_end);
+    if (startMin !== null && actual <= startMin) return '#FF4F4F';
+    if (endMin !== null && actual >= endMin) return '#FF4F4F';
     const ideal = breakIdealMinutes(employee, breakKey);
     if (ideal === null) return null;
     const t = Math.min(Math.abs(actual - ideal) / 120, 1);
@@ -88,6 +94,21 @@ function shiftKey(employee) {
     return `${employee.wiw_user_id}-${String(employee.shift_start ?? '').replace(/:/g, '')}`;
 }
 
+function onRefreshClick() {
+    showModal.value = true;
+}
+
+function cancelModal() {
+    showModal.value = false;
+}
+
+async function confirmRecalc() {
+    showModal.value = false;
+    isRefreshing.value = true;
+    await axios.post('/api/mealmap/refreshShifts', {recalculateBreaks: true, recalculateYards: false});
+    emit('saved');
+}
+
 async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name) {
     const key = `timepicker-${wiw_user_id}-${String(shift_start ?? '').replace(/:/g, '')}-${break_name}`;
     await withFeedback(key, async () => {
@@ -104,10 +125,9 @@ async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name
 <template>
     <div class="mx-5 m-10 inline-block">
         <div v-if="!readonly" class="flex justify-end mb-1">
-            <button @click="emit('refreshShifts')" title="Refresh shift schedule"
-                    :disabled="shiftsRefreshing"
+            <button @click="onRefreshClick" title="Recalculate break schedule" :disabled="isRefreshing"
                     class="w-10 h-10 bg-crimson text-white rounded text-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                <FontAwesomeIcon :icon="['fas', 'rotate-right']" :spin="shiftsRefreshing"/>
+                <FontAwesomeIcon :icon="['fas', 'rotate-right']" :spin="isRefreshing"/>
             </button>
         </div>
         <table class="bg-caregiver">
@@ -187,5 +207,28 @@ async function handleBreakChange(eventData, wiw_user_id, shift_start, break_name
             </tr>
             </tbody>
         </table>
+    </div>
+
+    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="absolute inset-0 bg-greyhound/50" @click="cancelModal"></div>
+        <div class="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <button class="absolute top-4 right-4 text-greyhound" @click="cancelModal">
+                <FontAwesomeIcon :icon="['fas', 'xmark']" class="text-xl"/>
+            </button>
+            <div class="text-lg font-semibold mb-2">Recalculate Break Schedule</div>
+            <div class="text-sm text-greyhound mb-6">Manually set break times will be overwritten.</div>
+            <div class="flex justify-end gap-3">
+                <button
+                    class="rounded-xl px-4 py-2 border border-greyhound bg-white hover:bg-greyhound/10 text-sm leading-tight w-48"
+                    @click="cancelModal">Leave existing schedule
+                </button>
+                <button class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-alerted text-sm leading-tight w-48"
+                        @click="confirmRecalc">
+                    <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']"
+                                     class="text-yellow-400 float-left text-2xl mr-2"/>
+                    Recalculate schedule
+                </button>
+            </div>
+        </div>
     </div>
 </template>

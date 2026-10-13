@@ -43,7 +43,7 @@ export function checkoutReservationColor(dog) {
     if (dog?.is_boarding) return '#87b3d1';
     if (dog?.is_daycare) return '#88c999';
     if (dog?.is_interview) return '#9e1b32';
-    return '#000000';
+    return '#58595B';
 }
 
 export function getNewGifAndPosition() {

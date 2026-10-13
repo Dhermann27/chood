@@ -154,17 +154,17 @@ class DataController extends Controller
         try {
             $validatedData = $request->validate([
                 'preset' => 'required|string|in:default,three-two,three,four-two,four-three,four',
-                'overwrite' => 'required|boolean'
+                'from_time' => 'nullable|date_format:H:i',
             ]);
 
             $newPreset = YardCodes::from($validatedData['preset']);
             RotationSettings::put($newPreset);
 
-            $allowedYardIds = $newPreset->allowedYards(false);
+            $allowedYardIds = array_merge($newPreset->allowedYards(false), [YardIds::FLOAT->value]);
             EmployeeYardRotation::whereNotIn('yard_id', $allowedYardIds)->delete();
 
-            if ($validatedData['overwrite']) {
-                GoFetchShiftsJob::dispatchSync();
+            if (!empty($validatedData['from_time'])) {
+                GoFetchShiftsJob::dispatchSync(recalculateBreaks: false, recalculateYards: true, cutoffTime: $validatedData['from_time']);
             }
 
             return response()->json([
@@ -182,6 +182,13 @@ class DataController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function recalculateRotation(Request $request): JsonResponse
+    {
+        $validated = $request->validate(['from_time' => 'required|date_format:H:i']);
+        GoFetchShiftsJob::dispatchSync(recalculateBreaks: false, recalculateYards: true, cutoffTime: $validated['from_time']);
+        return response()->json(['message' => 'Done.'], 200);
     }
 
     public function assignYard(Request $request): JsonResponse
@@ -266,8 +273,9 @@ class DataController extends Controller
 
     public function refreshShifts(Request $request): JsonResponse
     {
-        $recalculate = (bool)$request->input('recalculate', true);
-        GoFetchShiftsJob::dispatch($recalculate)->onQueue('high');
+        $recalculateBreaks = $request->boolean('recalculateBreaks', false);
+        $recalculateYards = $request->boolean('recalculateYards', false);
+        GoFetchShiftsJob::dispatch($recalculateBreaks, $recalculateYards)->onQueue('high');
         return response()->json(['message' => 'Shift refresh queued.'], 200);
     }
 
@@ -392,7 +400,7 @@ class DataController extends Controller
         for ($j = $i - 1; $j >= 0 && $found < $lookBack; $j--) {
             $rotId = $rotations[$j]->id;
             if ($this->isFloaterRotation($userId, $rotId, $assignments)) {
-                continue;
+                return false;
             }
             if (!$this->wasInYard($userId, $rotId, $assignments, $restrictToYards)) {
                 return false;

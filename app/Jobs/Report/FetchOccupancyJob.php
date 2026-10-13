@@ -26,10 +26,9 @@ class FetchOccupancyJob implements ShouldQueue
     {
         $report = Report::findOrFail($this->reportId);
 
-        $html = $fetchDataService->fetchOccupancy(
+        $html = $fetchDataService->postHtmlWithSession(
             config('services.gingr.uris.occupancy'),
-            $this->buildOccupancyParams($report->report_date),
-            $this->cookies
+            $this->buildOccupancyParams($report->report_date)
         );
 
         $data = $report->data ?? [];

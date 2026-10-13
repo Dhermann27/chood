@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\HousingServiceCodes;
 use App\Enums\ReportCategory;
 use App\Jobs\GoFetchReportDogJob;
+use App\Jobs\Report\FetchCheckinCardsJob;
 use App\Jobs\Report\GoFetchReports;
 use App\Models\Dog;
 use App\Models\Report;
@@ -30,6 +31,31 @@ class ReportController extends Controller
         private readonly DepositReportBuilder    $depositBuilder,
     )
     {
+    }
+
+    public function checkinIndex(): Response
+    {
+        return Inertia::render('Reports/CheckinCards');
+    }
+
+    public function fetchCheckin(Request $request): JsonResponse
+    {
+        $validated = $request->validate(['date' => 'required|date']);
+
+        $report = Report::updateOrCreate(
+            ['username' => 'checkin', 'report_date' => $validated['date']],
+            ['data' => ['complete' => false]]
+        );
+
+        FetchCheckinCardsJob::dispatch((string)$report->id, $validated['date']);
+
+        return response()->json($report);
+    }
+
+    public function checkinResults($reportId): JsonResponse
+    {
+        $report = Report::findOrFail($reportId);
+        return response()->json(['data' => $report->data ?? []]);
     }
 
     public function depositIndex(): Response

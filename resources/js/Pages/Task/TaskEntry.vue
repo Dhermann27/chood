@@ -99,47 +99,47 @@ onUnmounted(() => clearInterval(idleInterval));
             <h1 class="text-3xl font-header mb-4">So, watchadoin?</h1>
             <div class="grid grid-cols-3 gap-4 w-[75vw] h-[75vh]">
                 <button
-                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition hover:bg-blue-500"
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition hover:bg-caregiver/80"
                     @click="handleTaskClick('assignCabin')">
                     <FontAwesomeIcon :icon="['fas', 'house-circle-check']" class="me-5"/>
                     Assigning a Cabin
                 </button>
                 <button
-                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition hover:bg-blue-500"
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition hover:bg-caregiver/80"
                     @click="handleTaskClick('cleanCabin')">
                     <FontAwesomeIcon :icon="['fas', 'broom']" class="me-5"/>
                     Cleaned a Cabin
                 </button>
                 <button
-                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition hover:bg-blue-500"
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition hover:bg-caregiver/80"
                     @click="handleTaskClick('setLunch')">
                     <FontAwesomeIcon :icon="['fas', 'turkey']" class="me-5"/>
                     Set Lunch
                 </button>
                 <button
-                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition hover:bg-blue-500"
+                    class="bg-caregiver text-white text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition hover:bg-caregiver/80"
                     @click="handleTaskClick('startBreak')">
                     <FontAwesomeIcon :icon="['fas', 'alarm-clock']" class="me-5"/>
                     Rest Break
                 </button>
                 <button class="text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition
-                bg-caregiver text-white hover:bg-blue-500 disabled:bg-gray-400 disabled:text-gray-200
-                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
+                bg-caregiver text-white hover:bg-caregiver/80 disabled:bg-greyhound disabled:text-white
+                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-greyhound"
                         :disabled="!feedingCabinEnabled" @click="handleTaskClick('assignFeedingCabin')">
                     <FontAwesomeIcon :icon="['fas', 'utensils']" class="me-5"/>
                     <span v-if="feedingCabinEnabled">Assign Feeding Cabin</span>
                     <span v-else>No cabin siblings</span>
                 </button>
                 <button class="text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition
-                bg-caregiver text-white hover:bg-blue-500 disabled:bg-gray-400 disabled:text-gray-200
-                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
+                bg-caregiver text-white hover:bg-caregiver/80 disabled:bg-greyhound disabled:text-white
+                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-greyhound"
                         :disabled="!moveDogEnabled" @click="handleTaskClick('moveDog')">
                     <FontAwesomeIcon :icon="['fas', 'arrows-up-down-left-right']" class="me-5"/>
                     <span v-if="moveDogEnabled">Move Dogs between Yards</span>
                     <span v-else>Only 2 yards open</span>
                 </button>
             </div>
-            <button class="px-16 py-6 text-2xl bg-gray-500 text-white mt-2" @click="prevStep">Back</button>
+            <button class="px-16 py-6 text-2xl bg-greyhound text-white mt-2" @click="prevStep">Back</button>
         </template>
 
         <template v-else-if="step === 3">
@@ -209,9 +209,9 @@ onUnmounted(() => clearInterval(idleInterval));
                     <input id="lunch-notes" v-model="targets.lunch_notes" type="text"
                            placeholder="Example: 1 cup kibble + 1/2 pouch wet" inputmode="text"
                            autocapitalize="sentences" autocomplete="off"
-                           class="flex-1 h-16 px-5 text-2xl border-2 border-gray-300 rounded-l-2xl rounded-r-none border-r-0 focus:outline-none"/>
+                           class="flex-1 h-16 px-5 text-2xl border-2 border-greyhound rounded-l-2xl rounded-r-none border-r-0 focus:outline-none"/>
                     <button type="submit"
-                            class="h-16 px-10 text-2xl bg-crimson text-white border-2 border-gray-300 border-l-0 rounded-r-2xl">
+                            class="h-16 px-10 text-2xl bg-crimson text-white border-2 border-greyhound border-l-0 rounded-r-2xl">
                         Set
                     </button>
                 </form>
@@ -241,20 +241,20 @@ onUnmounted(() => clearInterval(idleInterval));
                 <div class="flex gap-2 text-white text-xl flex-wrap">
                     <button
                         v-for="bt in breakTypes.filter(bt => bt.behavior === 'countdown' && bt.duration_minutes !== null)"
-                        :key="bt.id" class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500"
+                        :key="bt.id" class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-caregiver/80"
                         @click="handleBreakDogUpdate(bt.id)">
                         {{ bt.label }}
                     </button>
                     <input v-model="restMinutes" type="number" min="1" max="480" placeholder="Minutes"
                            @keydown.enter="handleTimerStart" @blur="handleTimerStart"
-                           class="bg-caregiver py-2 px-4 rounded-2xl text-white placeholder-blue-200 w-36 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
+                           class="bg-caregiver py-2 px-4 rounded-2xl text-white placeholder-white/60 w-36 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
                     <button @click="handleRotateStart"
-                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500">
+                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-caregiver/80">
                         Rotate
                     </button>
                     <button v-for="bt in breakTypes.filter(bt => bt.behavior !== 'countdown')" :key="bt.id"
                             :disabled="bt.behavior === 'lunch' && is1pmOrLater"
-                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-caregiver/80 disabled:opacity-50 disabled:cursor-not-allowed"
                             @click="handleBreakDogUpdate(bt.id)">
                         {{ bt.label }}
                     </button>
@@ -275,7 +275,7 @@ onUnmounted(() => clearInterval(idleInterval));
                     style="height: calc(100vh - 220px);"/>
             </template>
 
-            <button class="px-16 py-6 text-2xl bg-gray-500 text-white mt-4" @click="prevStep">Back</button>
+            <button class="px-16 py-6 text-2xl bg-greyhound text-white mt-4" @click="prevStep">Back</button>
         </template>
         <template v-else-if="step === 4">
             <div class="fixed inset-0 bg-greyhound flex justify-center items-center">
@@ -316,7 +316,7 @@ onUnmounted(() => clearInterval(idleInterval));
                             <span>Done</span>
                         </button>
                         <button @click="handleFinishAction('Undo')"
-                                class="px-6 py-10 bg-gray-500 text-white rounded-md flex items-center space-x-2">
+                                class="px-6 py-10 bg-greyhound text-white rounded-md flex items-center space-x-2">
                             <FontAwesomeIcon :icon="['fas', 'rotate-left']"/>
                             <span>Undo</span>
                         </button>
@@ -338,7 +338,7 @@ onUnmounted(() => clearInterval(idleInterval));
                     {{ targets.dogsToAssign.filter(d => !d.cabin_id).length === 1 ? "doesn't" : "don't" }} have a cabin
                     assigned!
                 </h3>
-                <p class="text-xl text-gray-600 mb-6">Assign a cabin first, then start the rest break.</p>
+                <p class="text-xl text-greyhound mb-6">Assign a cabin first, then start the rest break.</p>
                 <div class="flex justify-center gap-6 text-2xl">
                     <button @click="handleNoCabinAssign"
                             class="px-8 py-4 bg-caregiver text-white rounded-xl flex items-center gap-3">
@@ -346,7 +346,7 @@ onUnmounted(() => clearInterval(idleInterval));
                         Assign Cabin
                     </button>
                     <button @click="handleNoCabinDismiss"
-                            class="px-8 py-4 bg-gray-500 text-white rounded-xl flex items-center gap-3">
+                            class="px-8 py-4 bg-greyhound text-white rounded-xl flex items-center gap-3">
                         <FontAwesomeIcon :icon="['fas', 'xmark']"/>
                         Cancel
                     </button>

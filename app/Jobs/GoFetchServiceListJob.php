@@ -26,7 +26,7 @@ class GoFetchServiceListJob implements ShouldQueue, ShouldBeUnique
     public function handle(FetchDataService $fetchDataService): void
     {
         $location = config('services.gingr.location_id');
-        $typeIds = config('services.gingr.service_type_ids', []);
+        $typeIds = config('services.gingr.ids.service_types', []);
         $seen = [];
 
         foreach ($typeIds as $typeId) {

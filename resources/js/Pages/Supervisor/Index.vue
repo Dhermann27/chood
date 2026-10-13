@@ -35,9 +35,6 @@ const mealmapOverscheduled = ref({});
 const mealmapEmployees = ref([]);
 const mealmapFohStaff = ref('');
 const mealmapSelectedPreset = ref(null);
-const mealmapShiftsRefreshing = ref(false);
-const showOverwriteModal = ref(false);
-const pendingConfirmAction = ref(null);
 
 // Forward ref: restartTask assigned after useMapPolling returns
 const restartRef = {
@@ -80,30 +77,8 @@ const {poll: pollMealmap} = useMapPolling('/api/mealmap/', 15000, (data) => {
     mealmapOverscheduled.value = data.overscheduled ?? {};
 });
 
-// --- Overwrite modal ---
-function cancelOverwrite() {
-    pendingConfirmAction.value = null;
-    showOverwriteModal.value = false;
-}
 
-async function confirmOverwrite(overwrite) {
-    showOverwriteModal.value = false;
-    await pendingConfirmAction.value?.(overwrite);
-    pendingConfirmAction.value = null;
-}
 
-function onRefreshShiftsClick() {
-    pendingConfirmAction.value = async (recalculate) => {
-        mealmapShiftsRefreshing.value = true;
-        try {
-            await axios.post('/api/mealmap/refreshShifts', {recalculate});
-            await pollMealmap();
-        } finally {
-            mealmapShiftsRefreshing.value = false;
-        }
-    };
-    showOverwriteModal.value = true;
-}
 </script>
 
 <template>
@@ -163,16 +138,16 @@ function onRefreshShiftsClick() {
                     Rest Break
                 </button>
                 <button class="text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition
-                bg-caregiver text-white hover:bg-blue-500 disabled:bg-gray-400 disabled:text-gray-200
-                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
+                bg-caregiver text-white hover:bg-caregiver/80 disabled:bg-greyhound disabled:text-white
+                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-greyhound"
                         :disabled="!feedingCabinEnabled" @click="handleTaskClick('assignFeedingCabin')">
                     <FontAwesomeIcon :icon="['fas', 'utensils']" class="me-5"/>
                     <span v-if="feedingCabinEnabled">Assign Feeding Cabin</span>
                     <span v-else>No cabin siblings</span>
                 </button>
                 <button class="text-3xl py-4 px-6 rounded-2xl flex items-center justify-center transition
-                bg-caregiver text-white hover:bg-blue-500 disabled:bg-gray-400 disabled:text-gray-200
-                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
+                bg-caregiver text-white hover:bg-caregiver/80 disabled:bg-greyhound disabled:text-white
+                disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-greyhound"
                         :disabled="!moveDogEnabled" @click="handleTaskClick('moveDog')">
                     <FontAwesomeIcon :icon="['fas', 'arrows-up-down-left-right']" class="me-5"/>
                     <span v-if="moveDogEnabled">Move Dogs between Yards</span>
@@ -201,7 +176,7 @@ function onRefreshShiftsClick() {
                     Break Schedule
                 </button>
             </div>
-            <button class="px-16 py-6 text-2xl bg-gray-500 text-white mt-2" @click="prevStep">Back</button>
+            <button class="px-16 py-6 text-2xl bg-greyhound text-white mt-2" @click="prevStep">Back</button>
         </template>
 
         <!-- Step 3: Task-specific views -->
@@ -276,9 +251,9 @@ function onRefreshShiftsClick() {
                     <input id="lunch-notes" v-model="targets.lunch_notes" type="text"
                            placeholder="Example: 1 cup kibble + 1/2 pouch wet" inputmode="text"
                            autocapitalize="sentences" autocomplete="off"
-                           class="flex-1 h-16 px-5 text-2xl border-2 border-gray-300 rounded-l-2xl rounded-r-none border-r-0 focus:outline-none"/>
+                           class="flex-1 h-16 px-5 text-2xl border-2 border-greyhound rounded-l-2xl rounded-r-none border-r-0 focus:outline-none"/>
                     <button type="submit"
-                            class="h-16 px-10 text-2xl bg-crimson text-white border-2 border-gray-300 border-l-0 rounded-r-2xl">
+                            class="h-16 px-10 text-2xl bg-crimson text-white border-2 border-greyhound border-l-0 rounded-r-2xl">
                         Set
                     </button>
                 </form>
@@ -309,7 +284,7 @@ function onRefreshShiftsClick() {
                 <div class="flex gap-2 text-white text-xl flex-wrap">
                     <button
                         v-for="bt in breakTypes.filter(bt => bt.behavior === 'countdown' && bt.duration_minutes !== null)"
-                        :key="bt.id" class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500"
+                        :key="bt.id" class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-caregiver/80"
                         @click="handleBreakDogUpdate(bt.id)">
                         {{ bt.label }}
                     </button>
@@ -317,12 +292,12 @@ function onRefreshShiftsClick() {
                            @keydown.enter="handleTimerStart" @blur="handleTimerStart"
                            class="bg-caregiver py-2 px-4 rounded-2xl text-white placeholder-blue-200 w-36 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
                     <button @click="handleRotateStart"
-                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500">
+                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-caregiver/80">
                         Rotate
                     </button>
                     <button v-for="bt in breakTypes.filter(bt => bt.behavior !== 'countdown')" :key="bt.id"
                             :disabled="bt.behavior === 'lunch' && is1pmOrLater"
-                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-caregiver/80 disabled:opacity-50 disabled:cursor-not-allowed"
                             @click="handleBreakDogUpdate(bt.id)">
                         {{ bt.label }}
                     </button>
@@ -370,13 +345,11 @@ function onRefreshShiftsClick() {
                     <BreakScheduleTable
                         :employees="mealmapBreaks"
                         :readonly="false"
-                        :shifts-refreshing="mealmapShiftsRefreshing"
-                        @saved="pollMealmap()"
-                        @refresh-shifts="onRefreshShiftsClick"/>
+                        @saved="pollMealmap()"/>
                 </div>
             </template>
 
-            <button class="px-16 py-6 text-2xl bg-gray-500 text-white mt-4" @click="prevStep">Back</button>
+            <button class="px-16 py-6 text-2xl bg-greyhound text-white mt-4" @click="prevStep">Back</button>
         </template>
 
         <!-- Step 4: Confirmation -->
@@ -419,7 +392,7 @@ function onRefreshShiftsClick() {
                             <span>Done</span>
                         </button>
                         <button @click="handleFinishAction('Undo')"
-                                class="px-6 py-10 bg-gray-500 text-white rounded-md flex items-center space-x-2">
+                                class="px-6 py-10 bg-greyhound text-white rounded-md flex items-center space-x-2">
                             <FontAwesomeIcon :icon="['fas', 'rotate-left']"/>
                             <span>Undo</span>
                         </button>
@@ -442,7 +415,7 @@ function onRefreshShiftsClick() {
                     {{ targets.dogsToAssign.filter(d => !d.cabin_id).length === 1 ? "doesn't" : "don't" }} have a cabin
                     assigned!
                 </h3>
-                <p class="text-xl text-gray-600 mb-6">Assign a cabin first, then start the rest break.</p>
+                <p class="text-xl text-greyhound mb-6">Assign a cabin first, then start the rest break.</p>
                 <div class="flex justify-center gap-6 text-2xl">
                     <button @click="handleNoCabinAssign"
                             class="px-8 py-4 bg-caregiver text-white rounded-xl flex items-center gap-3">
@@ -450,7 +423,7 @@ function onRefreshShiftsClick() {
                         Assign Cabin
                     </button>
                     <button @click="handleNoCabinDismiss"
-                            class="px-8 py-4 bg-gray-500 text-white rounded-xl flex items-center gap-3">
+                            class="px-8 py-4 bg-greyhound text-white rounded-xl flex items-center gap-3">
                         <FontAwesomeIcon :icon="['fas', 'xmark']"/>
                         Cancel
                     </button>
@@ -461,34 +434,6 @@ function onRefreshShiftsClick() {
         <!-- Status message -->
         <div v-if="statusMessage" class="text-3xl mt-4 text-center" :class="statusClass">
             {{ statusMessage }}
-        </div>
-    </div>
-
-    <!-- Overwrite / recalculate modal -->
-    <div v-if="showOverwriteModal" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/50" @click="cancelOverwrite"></div>
-        <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-700" @click="cancelOverwrite">
-                <FontAwesomeIcon :icon="['fas', 'xmark']" class="text-xl"/>
-            </button>
-            <div class="text-lg font-semibold mb-2">Recalculate?</div>
-            <div class="text-sm text-gray-600 mb-6">
-                Chood can recalculate yard rotation and breaks if needed. This process will overwrite any changes you
-                have made today.
-            </div>
-            <div class="flex justify-end gap-3">
-                <button
-                    class="rounded-xl px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-sm leading-tight w-48"
-                    @click="confirmOverwrite(false)">
-                    Do not recalculate<br>Assign manually
-                </button>
-                <button class="rounded-xl px-4 py-2 bg-crimson text-white hover:bg-red-700 text-sm leading-tight w-48"
-                        @click="confirmOverwrite(true)">
-                    <FontAwesomeIcon :icon="['fas', 'triangle-exclamation']"
-                                     class="text-yellow-400 float-left text-2xl mr-2"/>
-                    Recalculate<br>Lose assignments
-                </button>
-            </div>
         </div>
     </div>
 
