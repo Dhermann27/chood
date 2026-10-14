@@ -288,6 +288,7 @@ class DataController extends Controller
         $isMidday = $hour >= 11 && $hour < 13;
 
         $dogs = $this->getDogs(false, $size);
+        $dogs->each(fn($d) => $d->hideYardIcon = true);
 
         $yardCount = count($preset->allowedYards($isMidday));
         $groupBy = ($yardCount >= 4 || ($yardCount === 3 && $size === 'large')) ? function ($dog) use ($size) {

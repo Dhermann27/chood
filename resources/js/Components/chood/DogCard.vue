@@ -240,7 +240,7 @@ onUnmounted(() => {
                                      :style="{ fontSize: props.cardHeight * .12 + 'px' }"/>
                     <span v-if="iconData.text"
                           class="absolute inset-0 flex items-center justify-center font-bold pointer-events-none"
-                          :style="{fontSize: props.cardHeight * 0.06 + 'px', lineHeight: 1}">
+                          :style="{fontSize: props.cardHeight * 0.06 + 'px', lineHeight: 1, marginTop: '-1px'}">
                       {{ iconData.text }}
                     </span>
                 </div>

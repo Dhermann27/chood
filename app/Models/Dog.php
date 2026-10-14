@@ -17,6 +17,8 @@ class Dog extends Model
 {
     use HasFactory;
 
+    public bool $hideYardIcon = false;
+
     protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'display_name', 'gender',
         'photoUri', 'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout', 'checked_out_at',
         'rest_starts_at', 'break_type_id', 'rest_minutes', 'food_type', 'feeding_method', 'feeding_notes',
@@ -77,12 +79,16 @@ class Dog extends Model
 
         // TODO: add droplet/sheep icons by parsing services_string for bath/FSG keywords
 
-        if ($this->yard_id && $this->yard_id !== YardIds::FLOAT->value && RotationSettings::get() !== YardCodes::DEFAULT) {
+        if (!$this->hideYardIcon && $this->yard_id && $this->yard_id !== YardIds::FLOAT->value
+            && RotationSettings::get() !== YardCodes::DEFAULT) {
+            $preset = RotationSettings::get();
+            $hour = now()->hour;
+            $allowed = $preset->allowedYards($hour >= 11 && $hour < 13);
             $yardCode = match ($this->yard_id) {
                 YardIds::ACTIVE->value => 'A',
-                YardIds::LARGE->value => 'L',
+                YardIds::LARGE->value => in_array(YardIds::ACTIVE->value, $allowed) ? 'L' : null,
                 YardIds::MEDIUM->value => 'M',
-                YardIds::SMALL->value => 'S',
+                YardIds::SMALL->value => in_array(YardIds::MEDIUM->value, $allowed) ? 'S' : null,
                 default => null,
             };
             if ($yardCode) {
