@@ -37,7 +37,7 @@ class GoFetchShiftsJob implements ShouldQueue
 
     const array SKIPPED_POSITIONS = ['Event Staff'];
     const array BREAK_SCHEDULED_POSITIONS = ['Camp Counselor', 'Camp Counselor In Training', 'Shift Supervisor'];
-    const array YARD_POSITIONS = ['Camp Counselor', 'Shift Supervisor'];
+    const array YARD_POSITIONS = ['Camp Counselor', self::SUPERVISOR];
     const array SUPERVISOR_POSITIONS = ['Shift Supervisor', 'FOH Shift Supervisor'];
 
     public function __construct(
@@ -84,7 +84,7 @@ class GoFetchShiftsJob implements ShouldQueue
                 ->values();
 
             $supervisors = $wiwShifts
-                ->filter(fn($s) => in_array($positionMap->get($s['position_id']), self::SUPERVISOR_POSITIONS))
+                ->filter(fn($s) => $positionMap->get($s['position_id']) === 'Shift Supervisor')
                 ->map(function ($s) use ($userMap) {
                     $startAt = Carbon::parse($s['start_time']);
                     $endAt = Carbon::parse($s['end_time']);
@@ -93,9 +93,7 @@ class GoFetchShiftsJob implements ShouldQueue
                     return "{$userMap->get($s['user_id'])} ({$startFmt}-{$endFmt})";
                 });
 
-            if ($supervisors->isNotEmpty()) {
-                Cache::put('foh_staff', $supervisors->implode(', '), Carbon::tomorrow());
-            }
+            Cache::put('foh_staff', $supervisors->implode(', '), Carbon::tomorrow());
 
             if ($this->recalculateBreaks) {
                 if ($day->isSunday()) {
