@@ -115,6 +115,28 @@ function handleDragPreview(e, yard) {
     emit('changed', pendingMoves.value);
 }
 
+function balanceYards() {
+    const newMoves = {...pendingMoves.value};
+    for (const sizeYardIds of [LARGE_YARD_IDS, SMALL_YARD_IDS]) {
+        const yards = moveDogYards.value.filter(y => sizeYardIds.includes(y.id));
+        if (yards.length < 2) continue;
+        const tiles0 = yardTiles.value[yards[0].id] ?? [];
+        const tiles1 = yardTiles.value[yards[1].id] ?? [];
+        const total = tiles0.length + tiles1.length;
+        const [largerTiles, smallerYard] = tiles0.length >= tiles1.length
+            ? [tiles0, yards[1]]
+            : [tiles1, yards[0]];
+        const moveCount = Math.floor(largerTiles.length - total / 2);
+        if (moveCount <= 0) continue;
+        [...largerTiles].sort(() => Math.random() - 0.5).slice(0, moveCount).forEach(dog => {
+            newMoves[dog.id] = smallerYard.id;
+        });
+    }
+    pendingMoves.value = newMoves;
+    rebuildYardTiles();
+    emit('changed', pendingMoves.value);
+}
+
 function moveAll() {
     const basicLarge = moveDogYards.value.find(y => y.id === LARGE_YARD_IDS[0]);
     const basicSmall = moveDogYards.value.find(y => y.id === SMALL_YARD_IDS[0]);
@@ -183,6 +205,12 @@ watch(() => [moveDogYards.value, props.dogs], rebuildYardTiles, {deep: true, imm
                         class="px-8 py-2 text-2xl rounded-2xl bg-greyhound text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         :disabled="pendingCount === 0" @click="undoMoves">
                         Clear All
+                    </button>
+
+                    <button
+                        class="px-8 py-2 text-2xl rounded-2xl bg-caregiver text-white"
+                        @click="balanceYards">
+                        Balance
                     </button>
 
                     <button

@@ -337,16 +337,15 @@ class GoFetchShiftsJob implements ShouldQueue
         $lastYardHourId = null;
 
         $openYardCodes = RotationSettings::get();
-        $allowed = $openYardCodes->allowedYards(false);
 
         $allDogs = Dog::with('icons')->orderBy('id')->get();
         $largeDogs = $allDogs->filter(fn($d) => str_contains($d->size_letter, 'L'))->pluck('id');
 
-        $this->splitYardAssignment($largeDogs, YardIds::LARGE, YardIds::ACTIVE, $allowed);
+        Dog::whereIn('id', $largeDogs)->update(['yard_id' => YardIds::LARGE->value]);
 
         $smallDogs = $allDogs->filter(fn($d) => str_contains($d->size_letter, 'S') || str_contains($d->size_letter, 'T'))->pluck('id');
 
-        $this->splitYardAssignment($smallDogs, YardIds::SMALL, YardIds::MEDIUM, $allowed);
+        Dog::whereIn('id', $smallDogs)->update(['yard_id' => YardIds::SMALL->value]);
 
         $rotations = Rotation::query()->when(Carbon::now()->isSunday(), fn($q) => $q->where('is_sunday_hour', 1))->get();
         $names = Employee::all()->pluck('first_name', 'wiw_user_id');
@@ -501,17 +500,6 @@ class GoFetchShiftsJob implements ShouldQueue
     {
         $local = $shiftTime->copy()->setTimezone(config('app.timezone'));
         return ($local->hour - self::START_HOUR_OF_DAY) * 12 + ($local->minute / 5);
-    }
-
-    private function splitYardAssignment(Collection $dogIds, YardIds $primary, YardIds $secondary, array $allowed): void
-    {
-        if (in_array($secondary->value, $allowed, true)) {
-            $half = intdiv($dogIds->count(), 2);
-            Dog::whereIn('id', $dogIds->slice(0, $half))->update(['yard_id' => $primary->value]);
-            Dog::whereIn('id', $dogIds->slice($half))->update(['yard_id' => $secondary->value]);
-        } else {
-            Dog::whereIn('id', $dogIds)->update(['yard_id' => $primary->value]);
-        }
     }
 
     private function isLunchAnchor(int $startIndex): bool

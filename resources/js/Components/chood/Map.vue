@@ -162,9 +162,7 @@ function cabinStyle(cabin) {
     const dogsInCabin = props.dogs?.[cabin.id] || [];
     const recentDog = recentCheckoutDog(dogsInCabin);
 
-    let borderColor = props.statuses?.[cabin.id]
-        ? props.statuses[cabin.id] === 'deep' ? '#FF4F4F' : '#FFDE17'
-        : '#373a36';
+    let borderColor = '#373a36';
     let borderStyle = isCheckingOutTodayOrEarlier(dogsInCabin) ? 'dashed' : 'solid';
 
     if (recentDog) {
@@ -172,7 +170,10 @@ function cabinStyle(cabin) {
         borderStyle = 'dashed';
     } else if (hasCheckedOut(dogsInCabin)) {
         borderColor = checkoutReservationColor(dogsInCabin.find(d => d.checked_out_at));
-        borderStyle = 'solid';
+    }
+
+    if (props.statuses?.[cabin.id]) {
+        borderColor = props.statuses[cabin.id] === 'deep' ? '#9E1B32' : '#FFDE17';
     }
 
     return {
