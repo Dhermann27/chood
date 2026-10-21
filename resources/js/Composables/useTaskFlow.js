@@ -2,16 +2,21 @@ import {computed, ref} from 'vue';
 import axios from 'axios';
 import {getYardGridStyle} from '@/utils.js';
 
-const EMPTY_TARGETS = {
-    dogsToAssign: [],
-    yardsToAssign: [],
-    cabin_id: 0,
-    cabin_short_name: '',
-    break_type_id: null,
-    rest_minutes: null,
-    lunch_notes: '1 Bag',
-};
+function emptyTargets() {
+    return {
+        dogsToAssign: [],
+        yardsToAssign: [],
+        cabin_id: 0,
+        cabin_short_name: '',
+        break_type_id: null,
+        rest_minutes: null,
+        reason_ids: [],
+        show_reasons: false,
+        lunch_notes: '1 Bag',
+    };
+}
 
+// TODO: audit other composables (useMapPolling, etc.) for provide/inject opportunities like BreakPanel uses
 export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
     const dogs = ref(null);
     const employees = ref(null);
@@ -23,18 +28,19 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
     const todo = ref(null);
     const restMinutes = ref('');
     const staffImageCache = ref(new Set());
-    const targets = ref({...EMPTY_TARGETS});
+    const targets = ref(emptyTargets());
     const step = ref(1);
     const showNoCabinWarning = ref(false);
     const savedBreakDogs = ref([]);
     const savedNoCabinDog = ref(null);
     const is1pmOrLater = ref(false);
+    const selectedReturnDogs = ref([]);
 
     const empColumns = computed(() => Math.max(1, Math.ceil(Math.sqrt((4 / 3) * (employees.value?.length ?? 0)))));
     const empRows = computed(() => Math.max(1, Math.ceil((employees.value?.length ?? 0) / empColumns.value)));
     const dogsOnBreak = computed(() => {
         if (!dogs.value) return [];
-        return dogs.value.filter(dog => dog.rest_starts_at !== null && !dog.checked_out_at);
+        return dogs.value.filter(dog => dog.active_rest_break !== null && !dog.checked_out_at);
     });
     const restColumns = computed(() => Math.ceil(Math.sqrt((16 / 9) * (dogsOnBreak.value.length + 1))));
     const restRows = computed(() => Math.ceil((dogsOnBreak.value.length + 1) / restColumns.value));
@@ -43,7 +49,7 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
     const restCardHeight = computed(() => (290 - (restRows.value - 1) * 10) / restRows.value);
     const dogsNotOnBreak = computed(() => {
         if (!dogs.value) return [];
-        return dogs.value.filter(dog => dog.rest_starts_at === null && dog.pet_id !== null && !dog.checked_out_at);
+        return dogs.value.filter(dog => dog.active_rest_break === null && dog.pet_id !== null && !dog.checked_out_at);
     });
     const dogsByCabin = computed(() => {
         const grouped = {};
@@ -61,15 +67,18 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
         const assignedNames = new Set(dogs.value.filter(d => d.pet_id === null).map(d => d.display_name));
         const eligible = dogs.value.filter(d => d.cabin_id && d.is_boarding && d.pet_id !== null && !d.checked_out_at && !assignedNames.has(d.display_name));
         const counts = {};
-        eligible.forEach(d => { counts[d.cabin_id] = (counts[d.cabin_id] || 0) + 1; });
+        eligible.forEach(d => {
+            counts[d.cabin_id] = (counts[d.cabin_id] || 0) + 1;
+        });
         return eligible.filter(d => counts[d.cabin_id] > 1);
     });
     const feedingCabinEnabled = computed(() => dogsWithCabinMates.value.length > 0);
     const markReturnedIsWalked = computed(() => {
         const dog = targets.value.dogsToAssign;
-        if (dog?.break_type?.behavior !== 'walks_only' || !dog?.rest_starts_at) return false;
-        const elapsed = (Date.now() - new Date(dog.rest_starts_at).getTime()) / 60000;
-        return elapsed >= dog.break_type.duration_minutes;
+        const rb = dog?.active_rest_break;
+        if (rb?.break_type?.behavior !== 'walks_only' || !rb?.started_at) return false;
+        const elapsed = (Date.now() - new Date(rb.started_at).getTime()) / 60000;
+        return elapsed >= rb.break_type.duration_minutes;
     });
     const breakStatus = computed(() => {
         const bt = breakTypes?.find(t => t.id === targets.value.break_type_id);
@@ -84,7 +93,9 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
         const id = employee.wiw_user_id;
         if (staffImageCache.value.has(id)) return;
         const img = new Image();
-        img.onload = () => { staffImageCache.value = new Set([...staffImageCache.value, id]); };
+        img.onload = () => {
+            staffImageCache.value = new Set([...staffImageCache.value, id]);
+        };
         img.src = `/images/staff/${id}.png`;
     }
 
@@ -99,6 +110,11 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
     function prevStep() {
         onInteraction?.();
         statusMessage.value = null;
+        if (step.value === 4) {
+            targets.value.reason_ids = [];
+            targets.value.show_reasons = false;
+        }
+        if (step.value === 3) selectedReturnDogs.value = [];
         if (step.value > 1) step.value--;
     }
 
@@ -128,14 +144,24 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
             const dummy = (dogsByCabin.value[cabin.id] ?? []).find(d => d.pet_id === null);
             if (dummy) {
                 todo.value = 'clearFeedingCabin';
-                targets.value = {...targets.value, cabin_id: cabin.id, cabin_short_name: cabin.short_name, dummy_display_name: dummy.display_name};
+                targets.value = {
+                    ...targets.value,
+                    cabin_id: cabin.id,
+                    cabin_short_name: cabin.short_name,
+                    dummy_display_name: dummy.display_name
+                };
                 nextStep();
                 return;
             }
             targets.value = {...targets.value, cabin_id: cabin.id, cabin_short_name: cabin.short_name};
             if (targets.value.dogsToAssign?.id) nextStep();
         } else if (todo.value === 'cleanCabin') {
-            targets.value = {wiw_user_id: wiwId.value, cabin_id: cabin.id, cabin_short_name: cabin.short_name, is_cleaned: statuses.value.hasOwnProperty(cabin.id)};
+            targets.value = {
+                wiw_user_id: wiwId.value,
+                cabin_id: cabin.id,
+                cabin_short_name: cabin.short_name,
+                is_cleaned: statuses.value.hasOwnProperty(cabin.id)
+            };
             nextStep();
         }
     }
@@ -157,6 +183,12 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
         targets.value.dogsToAssign = [...targets.value.dogsToAssign, ...boarders];
     }
 
+    function toggleReason(id) {
+        const idx = targets.value.reason_ids.indexOf(id);
+        if (idx === -1) targets.value.reason_ids.push(id);
+        else targets.value.reason_ids.splice(idx, 1);
+    }
+
     function handleBreakDogSelect(dog) {
         onInteraction?.();
         if (!dog.cabin_id) showNoCabinWarning.value = true;
@@ -164,8 +196,10 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
 
     function handleBreakDogUpdate(breakTypeId) {
         onInteraction?.();
+        const bt = breakTypes?.find(t => t.id === breakTypeId);
         targets.value.break_type_id = breakTypeId;
         targets.value.rest_minutes = null;
+        targets.value.show_reasons = bt?.behavior === 'countdown' || bt?.label === 'EOD';
         if (targets.value.dogsToAssign.length > 0) nextStep();
     }
 
@@ -178,6 +212,7 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
         onInteraction?.();
         targets.value.break_type_id = timerType.id;
         targets.value.rest_minutes = mins;
+        targets.value.show_reasons = true;
         if (targets.value.dogsToAssign.length > 0) nextStep();
     }
 
@@ -190,6 +225,7 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
         onInteraction?.();
         targets.value.break_type_id = timerType.id;
         targets.value.rest_minutes = mins;
+        targets.value.show_reasons = false;
         if (targets.value.dogsToAssign.length > 0) nextStep();
     }
 
@@ -204,6 +240,8 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
             cabin_id: 0,
             cabin_short_name: '',
             break_type_id: null,
+            reason_ids: [],
+            show_reasons: false,
         };
         todo.value = 'assignCabin';
     }
@@ -212,6 +250,27 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
         onInteraction?.();
         showNoCabinWarning.value = false;
         targets.value.dogsToAssign = targets.value.dogsToAssign.filter(d => d.cabin_id);
+    }
+
+    function toggleReturnDog(dog) {
+        const idx = selectedReturnDogs.value.findIndex(d => d.id === dog.id);
+        if (idx === -1) selectedReturnDogs.value.push(dog);
+        else selectedReturnDogs.value.splice(idx, 1);
+    }
+
+    function selectAllReturnDogs() {
+        if (selectedReturnDogs.value.length === dogsOnBreak.value.length) {
+            selectedReturnDogs.value = [];
+        } else {
+            selectedReturnDogs.value = [...dogsOnBreak.value];
+        }
+    }
+
+    function handleReturnSubmit() {
+        if (!selectedReturnDogs.value.length) return;
+        onInteraction?.();
+        todo.value = 'returnToYard';
+        nextStep();
     }
 
     function handleBreakDogDelete(dog) {
@@ -233,31 +292,50 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
     async function handleFinishAction(action) {
         onInteraction?.();
         if (action === 'Done' || action === 'More') {
-            const isClearFeeding = todo.value === 'clearFeedingCabin';
-            axios({
-                method: isClearFeeding ? 'DELETE' : 'POST',
-                url: isClearFeeding ? '/task/assignFeedingCabin' : `/task/${todo.value}`,
-                headers: {'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')},
-                data: targets.value,
-            }).then((response) => {
-                onSuccess?.();
-                statusMessage.value = response.data?.message;
-                statusClass.value = 'text-meadow';
-            }).catch((error) => {
-                if (error.response && error.response.status === 419) {
-                    if (confirm('Your session has expired due to inactivity. Would you like to reload the page?')) {
-                        window.location.reload();
-                    }
-                } else {
-                    statusMessage.value = `Error: ${error.response?.data?.message || 'Unable to complete action'}`;
+            if (todo.value === 'returnToYard') {
+                const dogs = [...selectedReturnDogs.value];
+                selectedReturnDogs.value = [];
+                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                statusMessage.value = `Returning ${dogs.length} dog${dogs.length !== 1 ? 's' : ''} to yard...`;
+                statusClass.value = 'text-greyhound';
+                Promise.all(dogs.map(dog =>
+                    axios.post(`/task/markReturned/${dog.id}`, {}, {headers: {'X-CSRF-TOKEN': token}})
+                )).then(() => {
+                    onSuccess?.();
+                    statusMessage.value = `${dogs.length} dog${dogs.length !== 1 ? 's' : ''} returned to yard`;
+                    statusClass.value = 'text-meadow';
+                }).catch(() => {
+                    statusMessage.value = 'Error returning dogs to yard';
                     statusClass.value = 'text-alerted';
-                }
-            });
-            statusMessage.value = `Processing ${action} action...`;
-            statusClass.value = 'text-greyhound';
+                });
+            } else {
+                const isClearFeeding = todo.value === 'clearFeedingCabin';
+                axios({
+                    method: isClearFeeding ? 'DELETE' : 'POST',
+                    url: isClearFeeding ? '/task/assignFeedingCabin' : `/task/${todo.value}`,
+                    headers: {'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')},
+                    data: targets.value,
+                }).then((response) => {
+                    onSuccess?.();
+                    statusMessage.value = response.data?.message;
+                    statusClass.value = 'text-meadow';
+                }).catch((error) => {
+                    if (error.response && error.response.status === 419) {
+                        if (confirm('Your session has expired due to inactivity. Would you like to reload the page?')) {
+                            window.location.reload();
+                        }
+                    } else {
+                        statusMessage.value = `Error: ${error.response?.data?.message || 'Unable to complete action'}`;
+                        statusClass.value = 'text-alerted';
+                    }
+                });
+                statusMessage.value = `Processing ${action} action...`;
+                statusClass.value = 'text-greyhound';
+            }
         }
-        targets.value = {...EMPTY_TARGETS};
-        if (todo.value.includes('markReturned')) todo.value = 'startBreak';
+        if (todo.value === 'returnToYard') selectedReturnDogs.value = [];
+        targets.value = emptyTargets();
+        if (todo.value.includes('markReturned') || todo.value === 'returnToYard') todo.value = 'startBreak';
         if (todo.value === 'clearFeedingCabin') todo.value = 'assignFeedingCabin';
         step.value = action === 'Done' ? 1 : 3;
         if (savedBreakDogs.value.length > 0 || savedNoCabinDog.value) {
@@ -270,18 +348,14 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
     }
 
     return {
-        dogs, employees, openYards, statuses, statusMessage, statusClass,
-        wiwId, todo, restMinutes, staffImageCache, targets, step,
-        showNoCabinWarning, savedBreakDogs, savedNoCabinDog, is1pmOrLater,
-        empColumns, empRows, restColumns, restRows, restGridStyle, restCardWidth, restCardHeight,
-        dogsOnBreak, dogsNotOnBreak, dogsByCabin, moveDogEnabled, feedingCabinEnabled,
-        dogsWithCabinMates, markReturnedIsWalked, breakStatus,
-        preloadStaffPhoto, preloadDogPhotos,
-        prevStep, nextStep,
-        handleEmployeeClick, handleTaskClick, handleTargetClick,
-        handleFeedingDogUpdate, handleAssignDogUpdate, addAllBoarders,
-        handleBreakDogSelect, handleBreakDogUpdate, handleTimerStart, handleRotateStart,
-        handleNoCabinAssign, handleNoCabinDismiss, handleBreakDogDelete,
-        handleYardChange, handleFinishAction,
+        dogs, employees, openYards, statuses, statusMessage, statusClass, wiwId, todo, restMinutes, staffImageCache,
+        targets, step, breakTypes, showNoCabinWarning, savedBreakDogs, savedNoCabinDog, is1pmOrLater,
+        selectedReturnDogs, empColumns, empRows, restColumns, restRows, restGridStyle, restCardWidth, restCardHeight,
+        dogsOnBreak, dogsNotOnBreak, dogsByCabin, moveDogEnabled, feedingCabinEnabled, dogsWithCabinMates,
+        markReturnedIsWalked, breakStatus, preloadStaffPhoto, preloadDogPhotos, prevStep, nextStep, handleEmployeeClick,
+        handleTaskClick, handleTargetClick, handleFeedingDogUpdate, handleAssignDogUpdate, addAllBoarders,
+        handleBreakDogSelect, handleBreakDogUpdate, handleTimerStart, handleRotateStart, handleNoCabinAssign,
+        handleNoCabinDismiss, handleBreakDogDelete, toggleReturnDog, selectAllReturnDogs, handleReturnSubmit,
+        toggleReason, handleYardChange, handleFinishAction,
     };
 }

@@ -39,7 +39,7 @@ trait ChoodTrait
 
     public function getDogs(bool $filterByCabinId = false, ?string $size = null, bool $includeCheckedOut = false): Collection
     {
-        $dogs = Dog::with('cabin', 'breakType', 'icons');
+        $dogs = Dog::with(['cabin', 'icons', 'activeRestBreak' => fn($q) => $q->with('breakType', 'reasons')]);
         if ($filterByCabinId) $dogs->whereNotNull('cabin_id');
         if ($size) {
             $dogs->whereIn('housing_code', HousingServiceCodes::housingValues());

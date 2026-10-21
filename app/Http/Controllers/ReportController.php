@@ -9,6 +9,7 @@ use App\Jobs\Report\FetchCheckinCardsJob;
 use App\Jobs\Report\GoFetchReports;
 use App\Models\Dog;
 use App\Models\Report;
+use App\Models\RestBreak;
 use App\Services\DepositReportBuilder;
 use App\Services\FetchDataService;
 use App\Services\JournalEntryTransformer;
@@ -254,6 +255,25 @@ class ReportController extends Controller
     public function journalIndex(): Response
     {
         return Inertia::render('JournalEntry/Index');
+    }
+
+    public function lobby(string $from = null, string $to = null): Response
+    {
+        $from = $from ? Carbon::parse($from)->startOfDay() : Carbon::today()->startOfDay();
+        $to = $to ? Carbon::parse($to)->endOfDay() : $from->copy()->endOfDay();
+
+        $breaks = RestBreak::with(['breakType', 'reasons', 'dog'])
+            ->whereHas('breakType', fn($q) => $q->where('is_reported', true))
+            ->whereBetween('started_at', [$from, $to])
+            ->orderBy('dog_name')
+            ->orderBy('started_at')
+            ->get();
+
+        return Inertia::render('Reports/RestBreaks', [
+            'breaks' => $breaks,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+        ]);
     }
 
     public function journalTransform(Request $request): JsonResponse

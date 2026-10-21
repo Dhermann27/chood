@@ -59,13 +59,14 @@ const maskColor = computed(() => {
 
 const breakTimeLeft = computed(() => {
     const dog = currentDog.value;
-    if (!dog?.rest_starts_at || !dog?.break_type) return null;
+    const rb = dog?.active_rest_break;
+    if (!rb?.started_at || !rb?.break_type) return null;
 
-    const bt = dog.break_type;
-    const start = new Date(dog.rest_starts_at);
+    const bt = rb.break_type;
+    const start = new Date(rb.started_at);
 
     if (bt.behavior === 'countdown') {
-        const duration = dog.rest_minutes ?? bt.duration_minutes;
+        const duration = rb.rest_minutes ?? bt.duration_minutes;
         const end = new Date(start.getTime() + duration * 60 * 1000);
         const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
         return {
@@ -139,7 +140,11 @@ watch(() => props.dogs, (newDogs, oldDogs) => {
 watch([() => props.cardHeight, currentDog], async ([newHeight]) => {
     await nextTick();
 
-    if (dogBanner.value) dogBanner.value.style.fontSize = `${newHeight * 0.05}px`;
+    if (dogBanner.value) {
+        dogBanner.value.style.fontSize = `${newHeight * 0.1}px`;
+        dogBanner.value.style.lineHeight = `${newHeight * 0.15}px`;
+        dogBanner.value.style.height = `${newHeight * 0.15}px`;
+    }
 
     if (dogName.value) {
         dogName.value.style.fontSize = `${newHeight * 0.18}px`;

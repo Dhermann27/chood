@@ -107,6 +107,7 @@ async function copyFullReport(e) {
                 <form @submit.prevent="handleSubmit" class="space-y-6">
                     <div>
                         <label for="date" class="block font-medium text-greyhound">Date</label>
+                        <!-- TODO: replace with @vuepic/vue-datepicker (already installed) to match RestBreaks.vue -->
                         <input v-model="date" type="date" id="date" required
                                class="w-full mt-1 px-4 py-2 border border-greyhound rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-caregiver focus:border-caregiver"/>
                     </div>

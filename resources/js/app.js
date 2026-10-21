@@ -7,21 +7,23 @@ import {resolvePageComponent} from 'laravel-vite-plugin/inertia-helpers';
 import {FontAwesomeIcon, FontAwesomeLayers, FontAwesomeLayersText} from '@fortawesome/vue-fontawesome';
 import {library} from '@fortawesome/fontawesome-svg-core';
 import {
-    faAdd, faAlarmClock, faArrowsUpDownLeftRight, faBadgeCheck, faBed, faBowlFood, faBroom, faCalendarDays,
-    faCircleExclamation, faClipboard, faClock, faCowbellCirclePlus, faDisplayChartUp, faDroplet, faEdit, faHandDots,
-    faHouseChimneyBlank, faHouseCircleCheck, faLeftRight, faMars, faMugSaucer, faPalette, faPaw, faPenNib, faPhone,
-    faPrescriptionBottlePill, faRotate, faRotateLeft, faRotateRight, faSheep, faSpinnerThird, faStar, faStethoscope,
-    faTrash, faTriangleExclamation, faTurkey, faUser, faUtensils, faVenus, faWeightHanging, faXmark,
+    faAdd, faAlarmClock, faArrowsUpDownLeftRight, faBadgeCheck, faBed, faBolt, faBowlFood, faBroom, faBullhorn,
+    faBurst, faCalendarDays, faCircleExclamation, faClipboard, faClock, faCowbellCirclePlus,
+    faDisplayChartUp, faDroplet, faEdit, faHandDots, faHouseChimneyBlank, faHouseCircleCheck, faKitMedical,
+    faLeafMaple, faLeftRight, faMars, faMugSaucer, faPalette, faPaw, faPenNib, faPhone, faPrescriptionBottlePill,
+    faRotate, faRotateLeft, faRotateRight, faSheep, faShield, faSpinnerThird, faStar, faStethoscope,
+    faTrash, faTriangleExclamation, faTurkey, faUser, faUserGroup, faUtensils, faVenus, faWeightHanging, faXmark,
 } from '@awesome.me/kit-ed8e499057/icons/classic/solid';
 import {faSquare} from '@awesome.me/kit-ed8e499057/icons/classic/regular';
 import {ZiggyVue} from '../../vendor/tightenco/ziggy/dist/index.esm.js';
 
 library.add(
-    faAdd, faAlarmClock, faArrowsUpDownLeftRight, faBadgeCheck, faBed, faBowlFood, faBroom, faCalendarDays,
-    faCircleExclamation, faClipboard, faClock, faCowbellCirclePlus, faDisplayChartUp, faDroplet, faEdit, faHandDots,
-    faHouseChimneyBlank, faHouseCircleCheck, faLeftRight, faMars, faMugSaucer, faPalette, faPaw, faPenNib, faPhone,
-    faPrescriptionBottlePill, faRotate, faRotateLeft, faRotateRight, faSheep, faSpinnerThird, faStar, faStethoscope,
-    faTrash, faTriangleExclamation, faTurkey, faUser, faUtensils, faVenus, faWeightHanging, faXmark,
+    faAdd, faAlarmClock, faArrowsUpDownLeftRight, faBadgeCheck, faBed, faBolt, faBowlFood, faBroom, faBullhorn,
+    faBurst, faCalendarDays, faCircleExclamation, faClipboard, faClock, faCowbellCirclePlus,
+    faDisplayChartUp, faDroplet, faEdit, faHandDots, faHouseChimneyBlank, faHouseCircleCheck, faKitMedical,
+    faLeafMaple, faLeftRight, faMars, faMugSaucer, faPalette, faPaw, faPenNib, faPhone, faPrescriptionBottlePill,
+    faRotate, faRotateLeft, faRotateRight, faSheep, faShield, faSpinnerThird, faStar, faStethoscope,
+    faTrash, faTriangleExclamation, faTurkey, faUser, faUserGroup, faUtensils, faVenus, faWeightHanging, faXmark,
     faSquare,
 );
 

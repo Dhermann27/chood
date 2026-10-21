@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Enums\YardCodes;
+use App\Models\BreakReason;
 use App\Models\BreakType;
+use App\Models\RestBreak;
 use App\Models\Cabin;
 use App\Models\CleaningStatus;
 use App\Models\Dog;
@@ -55,6 +57,7 @@ class TaskController extends Controller
             'gingrUrl' => config('services.gingr.uris.base'),
             'barkboardUrl' => config('services.barkboard.url'),
             'breakTypes' => BreakType::orderBy('display_order')->get(),
+            'breakReasons' => BreakReason::orderBy('display_order')->get(),
         ];
     }
 
@@ -204,32 +207,45 @@ class TaskController extends Controller
             'dogsToAssign.*.id' => 'required|exists:dogs,id',
             'break_type_id' => 'required|exists:break_types,id',
             'rest_minutes' => 'nullable|integer|min:1|max:480',
+            'reason_ids' => 'nullable|array',
+            'reason_ids.*' => 'exists:break_reasons,id',
         ]);
 
-        Dog::whereIn('id', collect($validatedData['dogsToAssign'])->pluck('id'))->update([
-            'rest_starts_at' => now()->startOfMinute(),
-            'break_type_id' => $validatedData['break_type_id'],
-            'rest_minutes' => $validatedData['rest_minutes'] ?? null,
-        ]);
+        $dogs = Dog::whereIn('id', collect($validatedData['dogsToAssign'])->pluck('id'))->get();
+        $reasonIds = $validatedData['reason_ids'] ?? [];
 
-        $names = implode(',', collect($request->input('dogsToAssign'))->pluck('firstname')->filter()->values()->toArray());
+        foreach ($dogs as $dog) {
+            RestBreak::where('pet_id', $dog->pet_id)->whereNull('ended_at')->update(['ended_at' => now()]);
+            $break = RestBreak::create([
+                'pet_id' => $dog->pet_id,
+                'dog_name' => $dog->display_name,
+                'break_type_id' => $validatedData['break_type_id'],
+                'rest_minutes' => $validatedData['rest_minutes'] ?? null,
+                'started_at' => now()->startOfMinute(),
+            ]);
+            if ($reasonIds) {
+                $break->reasons()->attach($reasonIds);
+            }
+        }
+
+        $names = implode(', ', $dogs->pluck('firstname')->filter()->values()->toArray());
         return response()->json(['message' => "Rest started for {$names}"]);
     }
 
     public function markReturned(string $dog_id): JsonResponse
     {
-        $dog = Dog::with('breakType')->findOrFail($dog_id);
+        $dog = Dog::with('activeRestBreak.breakType')->findOrFail($dog_id);
+        $activeBreak = $dog->activeRestBreak;
 
-        if ($dog->breakType?->behavior === 'walks_only' && $dog->rest_starts_at) {
-            $elapsed = $dog->rest_starts_at->diffInMinutes(now());
-            if ($elapsed >= $dog->breakType->duration_minutes) {
-                // Was showing "Time for Walk" — reset the timer
-                $dog->update(['rest_starts_at' => now()->startOfMinute()]);
+        if ($activeBreak?->breakType?->behavior === 'walks_only') {
+            $elapsed = $activeBreak->started_at->diffInMinutes(now());
+            if ($elapsed >= $activeBreak->breakType->duration_minutes) {
+                $activeBreak->update(['started_at' => now()->startOfMinute()]);
                 return response()->json(['message' => "Walk timer reset for {$dog->firstname}"]);
             }
         }
 
-        $dog->update(['rest_starts_at' => null, 'break_type_id' => null, 'rest_minutes' => null]);
+        $activeBreak?->update(['ended_at' => now()]);
         return response()->json(['message' => "Marked {$dog->firstname} as returned to yard"]);
     }
 

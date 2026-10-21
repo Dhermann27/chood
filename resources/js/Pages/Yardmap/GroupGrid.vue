@@ -24,15 +24,15 @@ const props = defineProps({
 const dogs = computed(() => props.dogsByGroup?.[props.groupKey] ?? []);
 const dinnerCount = computed(() => {
     if (!props.isDinnerTime) return 0;
-    return dogs.value.filter(d => d.is_boarding && !d.rest_starts_at && !d.checked_out_at && d.pet_id !== null).length;
+    return dogs.value.filter(d => d.is_boarding && !d.active_rest_break && !d.checked_out_at && d.pet_id !== null).length;
 });
 const activeCount = computed(() => {
-    const active = dogs.value.filter(d => !d.rest_starts_at && !d.checked_out_at);
+    const active = dogs.value.filter(d => !d.active_rest_break && !d.checked_out_at);
     if (!props.isDinnerTime) return active.length;
     return active.filter(d => !d.is_boarding).length;
 });
 const lsActiveCount = computed(() => {
-    const base = dogs.value.filter(d => d.size_letter === 'LS' && !d.rest_starts_at && !d.checked_out_at);
+    const base = dogs.value.filter(d => d.size_letter === 'LS' && !d.active_rest_break && !d.checked_out_at);
     if (!props.isDinnerTime) return base.length;
     return base.filter(d => !d.is_boarding).length;
 });

@@ -45,10 +45,22 @@ class DeploymentCommand extends Command
         ", 'Cleaning_status restored');
 
         $this->tryStatement("
-            INSERT INTO dogs (pet_id, cabin_id, rest_starts_at, break_type_id, rest_minutes, yard_id)
-            SELECT pet_id, cabin_id, rest_starts_at, break_type_id, rest_minutes, yard_id
+            INSERT INTO dogs (pet_id, cabin_id, yard_id)
+            SELECT pet_id, cabin_id, yard_id
             FROM {$db}.dogs WHERE pet_id IS NOT NULL
         ", 'Dogs restored');
+
+        $this->tryStatement("
+            INSERT INTO rest_breaks (id, pet_id, dog_name, break_type_id, rest_minutes, started_at, ended_at, created_at, updated_at)
+            SELECT id, pet_id, dog_name, break_type_id, rest_minutes, started_at, ended_at, created_at, updated_at
+            FROM {$db}.rest_breaks WHERE ended_at IS NULL
+        ", 'Active rest breaks restored');
+
+        $this->tryStatement("
+            INSERT INTO rest_break_reasons (rest_break_id, break_reason_id)
+            SELECT rest_break_id, break_reason_id FROM {$db}.rest_break_reasons
+            WHERE rest_break_id IN (SELECT id FROM rest_breaks)
+        ", 'Rest break reasons restored');
 
         $this->tryStatement("
             INSERT INTO employees (wiw_user_id, first_name, last_name, created_at, updated_at)

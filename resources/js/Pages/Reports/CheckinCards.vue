@@ -368,11 +368,13 @@ function printCards() {
                             <td class="writable" colspan="5"></td>
                         </tr>
                         <tr>
-                            <td colspan="6" class="footer-note">
-                                <span class="footer-item"><FontAwesomeIcon :icon="['far', 'square']"
-                                                                           class="checkbox-large"/> Notified of Sunday/Holiday Hours</span>
-                                <span class="footer-item"><FontAwesomeIcon :icon="['far', 'square']"
-                                                                           class="checkbox-large"/> Notified of Extended Checkout Time</span>
+                            <td colspan="6" class="footer-cell">
+                                <div class="footer-note">
+                                    <span class="footer-item"><FontAwesomeIcon :icon="['far', 'square']"
+                                                                               class="checkbox-large"/> Notified of Sunday/Holiday Hours</span>
+                                    <span class="footer-item"><FontAwesomeIcon :icon="['far', 'square']"
+                                                                               class="checkbox-large"/> Notified of Extended Checkout Time</span>
+                                </div>
                             </td>
                         </tr>
                         </tbody>
@@ -416,7 +418,7 @@ function printCards() {
 
     .card-half-sheet {
         width: 8in;
-        height: 5.20in;
+        height: 5.15in;
         box-sizing: border-box;
         padding-bottom: 0.1in;
         border-bottom: 1px dashed #58595B;
@@ -559,22 +561,25 @@ function printCards() {
         margin-right: 2px;
     }
 
-    .footer-note {
+    .footer-cell {
         font-family: 'FuturaBold', sans-serif;
-        font-size: 13pt;
+        font-size: 11pt;
         color: #58595B;
         padding-top: 3px;
-        white-space: nowrap;
+    }
+
+    .footer-note {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 16px;
+        justify-content: space-evenly;
+        width: 100%;
     }
 
     .footer-item {
         display: inline-flex;
         align-items: center;
         gap: 4px;
+        white-space: nowrap;
     }
 }
 </style>

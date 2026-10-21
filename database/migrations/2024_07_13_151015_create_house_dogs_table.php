@@ -29,9 +29,6 @@ return new class extends Migration {
             $table->dateTime('checkin')->nullable();
             $table->dateTime('checkout')->nullable();
             $table->dateTime('checked_out_at')->nullable();
-            $table->timestamp('rest_starts_at')->nullable();
-            $table->foreignId('break_type_id')->nullable()->constrained('break_types')->nullOnDelete();
-            $table->unsignedSmallInteger('rest_minutes')->nullable();
             $table->string('food_type')->nullable();
             $table->string('feeding_method')->nullable();
             $table->text('feeding_notes')->nullable();

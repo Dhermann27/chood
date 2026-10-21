@@ -52,6 +52,8 @@ Route::prefix('reports')->group(function () {
         Route::post('/fetch', [ReportController::class, 'fetchCheckin']);
         Route::get('/results/{id}', [ReportController::class, 'checkinResults']);
     });
+    Route::get('/restbreaks/{from?}/{to?}', [ReportController::class, 'lobby'])
+        ->where(['from' => '\d{4}-\d{2}-\d{2}', 'to' => '\d{4}-\d{2}-\d{2}']);
 });
 
 Route::prefix('supervisor')->group(function () {

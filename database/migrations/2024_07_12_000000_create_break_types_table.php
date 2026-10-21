@@ -14,6 +14,7 @@ return new class extends Migration {
             $table->string('short_label')->nullable();
             $table->unsignedSmallInteger('duration_minutes')->nullable();
             $table->enum('behavior', ['countdown', 'lunch', 'unlimited', 'walks_only']);
+            $table->boolean('is_reported')->default(true);
             $table->unsignedTinyInteger('display_order')->default(0);
         });
         DB::update('ALTER TABLE break_types AUTO_INCREMENT = 1000');

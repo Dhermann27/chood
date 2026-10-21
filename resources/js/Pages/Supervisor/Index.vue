@@ -1,15 +1,15 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
-import {ref} from 'vue';
+import {provide, ref} from 'vue';
 import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
 import Map from "@/Components/chood/Map.vue";
 import Multiselect from "vue-multiselect";
 import {ControlSchemes} from "@/controlSchemes.js";
-import DogCard from "@/Components/chood/DogCard.vue";
 import MoveDogs from "@/Pages/Task/MoveDogs.vue";
 import {useMapPolling} from "@/Composables/useMapPolling.js";
 import {useTaskFlow} from "@/Composables/useTaskFlow.js";
 import DogMultiselectOption from "@/Components/chood/DogMultiselectOption.vue";
+import BreakPanel from "@/Components/chood/BreakPanel.vue";
 import YardRotationTable from "@/Components/chood/YardRotationTable.vue";
 import BreakScheduleTable from "@/Components/chood/BreakScheduleTable.vue";
 
@@ -18,6 +18,7 @@ const props = defineProps({
     gingrUrl: String,
     barkboardUrl: String,
     breakTypes: Array,
+    breakReasons: Array,
     rotations: Array,
     yards: Array,
     yardPresets: Array,
@@ -42,17 +43,17 @@ const restartRef = {
     }
 };
 
-const {
-    dogs, employees, openYards, statuses, statusMessage, statusClass, todo, restMinutes, staffImageCache, targets, step,
-    showNoCabinWarning, is1pmOrLater, empColumns, empRows, restGridStyle, restCardWidth, restCardHeight, dogsOnBreak,
-    dogsNotOnBreak, dogsByCabin, moveDogEnabled, feedingCabinEnabled, dogsWithCabinMates, markReturnedIsWalked,
-    breakStatus, preloadStaffPhoto, preloadDogPhotos, prevStep, nextStep, handleEmployeeClick, handleTaskClick,
-    handleTargetClick, handleFeedingDogUpdate, handleAssignDogUpdate, addAllBoarders, handleBreakDogSelect,
-    handleBreakDogUpdate, handleTimerStart, handleRotateStart, handleNoCabinAssign, handleNoCabinDismiss,
-    handleBreakDogDelete, handleYardChange, handleFinishAction,
-} = useTaskFlow(props.breakTypes, {
+const flow = useTaskFlow(props.breakTypes, {
     onSuccess: () => restartRef.fn(),
 });
+provide('taskFlow', flow);
+const {
+    dogs, employees, openYards, statuses, statusMessage, statusClass, todo, staffImageCache, targets, step,
+    showNoCabinWarning, empColumns, empRows, dogsByCabin, moveDogEnabled, feedingCabinEnabled, dogsWithCabinMates,
+    markReturnedIsWalked, breakStatus, preloadStaffPhoto, preloadDogPhotos, prevStep, nextStep,
+    handleEmployeeClick, handleTaskClick, handleTargetClick, handleFeedingDogUpdate, handleAssignDogUpdate,
+    handleNoCabinAssign, handleNoCabinDismiss, selectedReturnDogs, toggleReason, handleYardChange, handleFinishAction,
+} = flow;
 
 const {restart: restartTask} = useMapPolling('/supervisor/data/', 10000, (data) => {
     dogs.value = data.dogs;
@@ -76,7 +77,6 @@ const {poll: pollMealmap} = useMapPolling('/api/mealmap/', 15000, (data) => {
     mealmapOpenYardsByRotation.value = data.openYardsByRotation ?? {};
     mealmapOverscheduled.value = data.overscheduled ?? {};
 });
-
 
 
 </script>
@@ -260,56 +260,7 @@ const {poll: pollMealmap} = useMapPolling('/api/mealmap/', 15000, (data) => {
             </template>
 
             <template v-else-if="todo === 'startBreak'">
-                <h3 class="text-xl font-subheader uppercase mb-4">Start a Break</h3>
-                <div class="flex items-start gap-2 w-2/3 mb-5">
-                    <multiselect
-                        class="dogsToAssign-multiselect border-2 bg-crimson placeholder:text-crimson"
-                        v-model="targets.dogsToAssign" multiple track-by="id" :options="dogsNotOnBreak"
-                        label="display_name"
-                        placeholder="Select Dog(s) (Required)" @select="handleBreakDogSelect">
-                        <template #tag="{ option, remove }">
-                            <span class="multiselect__tag" @mousedown.prevent="remove(option)">{{
-                                    option.display_name
-                                }}</span>
-                        </template>
-                        <template #option="{ option }">
-                            <DogMultiselectOption :option="option"/>
-                        </template>
-                    </multiselect>
-                    <button @click="addAllBoarders"
-                            class="bg-caregiver text-white px-4 py-3 rounded-xl shrink-0 text-xl">
-                        <FontAwesomeIcon :icon="['fas', 'bed']"/>
-                    </button>
-                </div>
-                <div class="flex gap-2 text-white text-xl flex-wrap">
-                    <button
-                        v-for="bt in breakTypes.filter(bt => bt.behavior === 'countdown' && bt.duration_minutes !== null)"
-                        :key="bt.id" class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-caregiver/80"
-                        @click="handleBreakDogUpdate(bt.id)">
-                        {{ bt.label }}
-                    </button>
-                    <input v-model="restMinutes" type="number" min="1" max="480" placeholder="Minutes"
-                           @keydown.enter="handleTimerStart" @blur="handleTimerStart"
-                           class="bg-caregiver py-2 px-4 rounded-2xl text-white placeholder-blue-200 w-36 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
-                    <button @click="handleRotateStart"
-                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-caregiver/80">
-                        Rotate
-                    </button>
-                    <button v-for="bt in breakTypes.filter(bt => bt.behavior !== 'countdown')" :key="bt.id"
-                            :disabled="bt.behavior === 'lunch' && is1pmOrLater"
-                            class="bg-caregiver py-2 px-4 rounded-2xl hover:bg-caregiver/80 disabled:opacity-50 disabled:cursor-not-allowed"
-                            @click="handleBreakDogUpdate(bt.id)">
-                        {{ bt.label }}
-                    </button>
-                </div>
-                <h3 class="text-xl font-subheader uppercase my-4">Mark dog as returned to yard</h3>
-                <div class="items-center justify-center p-1" :style="restGridStyle">
-                    <div v-for="(dog, index) in dogsOnBreak" :id="index"
-                         :style="{height: restCardHeight + 'px', width: restCardWidth + 'px'}">
-                        <DogCard :dogs="[dog]" @click="handleBreakDogDelete(dog)"
-                                 :card-width="restCardWidth" :card-height="restCardHeight"/>
-                    </div>
-                </div>
+                <BreakPanel/>
             </template>
 
             <template v-else-if="todo === 'moveDog'">
@@ -372,7 +323,23 @@ const {poll: pollMealmap} = useMapPolling('/api/mealmap/', 15000, (data) => {
                             right?
                         </template>
                         <template v-else-if="todo === 'startBreak'">
+                            <div v-if="targets.show_reasons" class="flex flex-wrap gap-2 justify-center mb-4">
+                                <template v-for="(reason, index) in breakReasons" :key="reason.id">
+                                    <div v-if="index === 4" class="w-full"></div>
+                                    <button @click="toggleReason(reason.id)"
+                                            :class="targets.reason_ids.includes(reason.id)
+                                                ? 'bg-caregiver text-white'
+                                                : 'bg-greyhound/20 text-greyhound'"
+                                            class="flex items-center gap-2 px-3 py-2 rounded-xl text-lg font-semibold">
+                                        <FontAwesomeIcon :icon="['fas', reason.icon]"/>
+                                        {{ reason.label }}
+                                    </button>
+                                </template>
+                            </div>
                             {{ targets.dogsToAssign.map(dog => dog.display_name).join(', ') }} {{ breakStatus }}, right?
+                        </template>
+                        <template v-else-if="todo === 'returnToYard'">
+                            Return {{ selectedReturnDogs.map(d => d.display_name).join(', ') }} to yard, right?
                         </template>
                         <template v-else-if="todo.includes('markReturned')">
                             {{ targets.dogsToAssign.display_name }}

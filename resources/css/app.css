@@ -32,6 +32,12 @@
     height: 100vh;
 }
 
+@media print {
+    #app {
+        height: auto;
+    }
+}
+
 .cabin, .cabin-double {
     border: 10px solid #373a36;
     overflow: hidden;

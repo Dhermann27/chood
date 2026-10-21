@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Dog extends Model
 {
@@ -21,12 +22,10 @@ class Dog extends Model
 
     protected $fillable = ['order_id', 'account_id', 'pet_id', 'firstname', 'lastname', 'display_name', 'gender',
         'photoUri', 'weight', 'yard_id', 'cabin_id', 'housing_code', 'checkin', 'checkout', 'checked_out_at',
-        'rest_starts_at', 'break_type_id', 'rest_minutes', 'food_type', 'feeding_method', 'feeding_notes',
-        'services_string', 'owner_id', 'color', 'breed',
+        'food_type', 'feeding_method', 'feeding_notes', 'services_string', 'owner_id', 'color', 'breed',
     ];
 
-    protected $casts = ['checkin' => 'datetime', 'checkout' => 'datetime',
-        'checked_out_at' => 'datetime', 'rest_starts_at' => 'datetime'];
+    protected $casts = ['checkin' => 'datetime', 'checkout' => 'datetime', 'checked_out_at' => 'datetime'];
 
     protected $appends = ['is_boarding', 'is_daycare', 'is_interview', 'size_letter', 'left_icons', 'right_icons'];
 
@@ -134,9 +133,9 @@ class Dog extends Model
         return $this->belongsTo(Cabin::class, 'cabin_id');
     }
 
-    public function breakType(): BelongsTo
+    public function activeRestBreak(): HasOne
     {
-        return $this->belongsTo(BreakType::class, 'break_type_id');
+        return $this->hasOne(RestBreak::class, 'pet_id', 'pet_id')->whereNull('ended_at');
     }
 
     public function feedings(): HasMany

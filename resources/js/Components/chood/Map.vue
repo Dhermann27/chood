@@ -6,7 +6,6 @@ import DogCard from "@/Components/chood/DogCard.vue";
 import AssignmentModal from "@/Components/chood/AssignmentModal.vue";
 import SectionCounts from "@/Components/chood/SectionCounts.vue";
 import {ControlSchemes} from "@/controlSchemes.js";
-import {checkoutReservationColor} from '@/utils.js';
 
 const props = defineProps({
     cabins: Array,
@@ -162,19 +161,9 @@ function cabinStyle(cabin) {
     const dogsInCabin = props.dogs?.[cabin.id] || [];
     const recentDog = recentCheckoutDog(dogsInCabin);
 
-    let borderColor = '#373a36';
-    let borderStyle = isCheckingOutTodayOrEarlier(dogsInCabin) ? 'dashed' : 'solid';
-
-    if (recentDog) {
-        borderColor = checkoutReservationColor(recentDog);
-        borderStyle = 'dashed';
-    } else if (hasCheckedOut(dogsInCabin)) {
-        borderColor = checkoutReservationColor(dogsInCabin.find(d => d.checked_out_at));
-    }
-
-    if (props.statuses?.[cabin.id]) {
-        borderColor = props.statuses[cabin.id] === 'deep' ? '#9E1B32' : '#FFDE17';
-    }
+    let borderColor = props.statuses?.[cabin.id]
+        ? props.statuses[cabin.id] === 'deep' ? '#9E1B32' : '#FFDE17' : '#373a36';
+    let borderStyle = (recentDog || isCheckingOutTodayOrEarlier(dogsInCabin)) ? 'dashed' : 'solid';
 
     return {
         gridRow: `${cabin.rho} / span ${cabin.rowspan}`,
