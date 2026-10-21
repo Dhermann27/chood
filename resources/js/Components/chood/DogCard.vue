@@ -68,12 +68,23 @@ const breakTimeLeft = computed(() => {
     if (bt.behavior === 'countdown') {
         const duration = rb.rest_minutes ?? bt.duration_minutes;
         const end = new Date(start.getTime() + duration * 60 * 1000);
-        const minutesLeft = Math.max(Math.ceil((end.getTime() - now.value) / (60 * 1000)), 0);
+        const minutesLeft = Math.ceil((end.getTime() - now.value) / (60 * 1000));
+        if (minutesLeft > 0) {
+            return {
+                minutesLeft,
+                percentElapsed: 1 - minutesLeft / duration,
+                percentRemaining: minutesLeft / duration,
+                expired: false,
+                overrun: false,
+            };
+        }
+        const minutesOver = Math.floor((now.value - end.getTime()) / (60 * 1000));
         return {
-            minutesLeft,
-            percentElapsed: 1 - minutesLeft / duration,
-            percentRemaining: minutesLeft / duration,
-            expired: minutesLeft === 0,
+            minutesLeft: `+${minutesOver}`,
+            percentElapsed: 1,
+            percentRemaining: 0,
+            expired: true,
+            overrun: true,
         };
     }
 
@@ -142,8 +153,8 @@ watch([() => props.cardHeight, currentDog], async ([newHeight]) => {
 
     if (dogBanner.value) {
         dogBanner.value.style.fontSize = `${newHeight * 0.1}px`;
-        dogBanner.value.style.lineHeight = `${newHeight * 0.15}px`;
-        dogBanner.value.style.height = `${newHeight * 0.15}px`;
+        dogBanner.value.style.lineHeight = `${newHeight * 0.12}px`;
+        dogBanner.value.style.height = `${newHeight * 0.12}px`;
     }
 
     if (dogName.value) {
@@ -218,7 +229,8 @@ onUnmounted(() => {
             </svg>
 
             <div class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                  <span ref="breakMinutesRemaining" class="text-white drop-shadow-xl leading-none text-center">
+                  <span ref="breakMinutesRemaining" class="drop-shadow-xl leading-none text-center"
+                        :class="breakTimeLeft?.overrun ? 'text-alerted overrun' : 'text-white'">
                     {{ breakTimeLeft?.minutesLeft }}
                   </span>
             </div>
@@ -259,3 +271,9 @@ onUnmounted(() => {
     </div>
 
 </template>
+
+<style scoped>
+.overrun {
+    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+}
+</style>

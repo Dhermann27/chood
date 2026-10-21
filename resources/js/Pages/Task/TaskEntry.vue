@@ -34,7 +34,7 @@ provide('taskFlow', flow);
 const {
     dogs, employees, openYards, statuses, statusMessage, statusClass, todo, staffImageCache, targets, step,
     showNoCabinWarning, empColumns, empRows, dogsByCabin, moveDogEnabled, feedingCabinEnabled, dogsWithCabinMates,
-    markReturnedIsWalked, breakStatus, preloadStaffPhoto, preloadDogPhotos, prevStep, nextStep,
+    markReturnedIsWalked, breakStatus, preloadStaffPhoto, preloadDogPhotos, resetFlow, prevStep, nextStep,
     handleEmployeeClick, handleTaskClick, handleTargetClick, handleFeedingDogUpdate, handleAssignDogUpdate,
     handleNoCabinAssign, handleNoCabinDismiss, selectedReturnDogs, toggleReason, handleYardChange, handleFinishAction,
 } = flow;
@@ -58,7 +58,7 @@ onMounted(() => {
     idleInterval = setInterval(() => {
         const idle = Date.now() - lastInteractionAt;
         if (step.value !== 1 && idle > 30000) {
-            statusMessage.value = null;
+            resetFlow();
             step.value = 1;
         }
         if (step.value === 1 && idle > 120000 && Date.now() - mountedAt >= 3600000) {

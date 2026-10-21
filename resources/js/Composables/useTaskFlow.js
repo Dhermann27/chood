@@ -107,6 +107,13 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
         });
     }
 
+    function resetFlow() {
+        targets.value = emptyTargets();
+        selectedReturnDogs.value = [];
+        todo.value = null;
+        statusMessage.value = null;
+    }
+
     function prevStep() {
         onInteraction?.();
         statusMessage.value = null;
@@ -352,7 +359,7 @@ export function useTaskFlow(breakTypes, {onInteraction, onSuccess} = {}) {
         targets, step, breakTypes, showNoCabinWarning, savedBreakDogs, savedNoCabinDog, is1pmOrLater,
         selectedReturnDogs, empColumns, empRows, restColumns, restRows, restGridStyle, restCardWidth, restCardHeight,
         dogsOnBreak, dogsNotOnBreak, dogsByCabin, moveDogEnabled, feedingCabinEnabled, dogsWithCabinMates,
-        markReturnedIsWalked, breakStatus, preloadStaffPhoto, preloadDogPhotos, prevStep, nextStep, handleEmployeeClick,
+        markReturnedIsWalked, breakStatus, preloadStaffPhoto, preloadDogPhotos, resetFlow, prevStep, nextStep, handleEmployeeClick,
         handleTaskClick, handleTargetClick, handleFeedingDogUpdate, handleAssignDogUpdate, addAllBoarders,
         handleBreakDogSelect, handleBreakDogUpdate, handleTimerStart, handleRotateStart, handleNoCabinAssign,
         handleNoCabinDismiss, handleBreakDogDelete, toggleReturnDog, selectAllReturnDogs, handleReturnSubmit,
