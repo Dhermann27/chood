@@ -14,6 +14,7 @@ const props = defineProps({
 const today = new Date().toISOString().slice(0, 10);
 const selectedDate = ref([props.from ?? today, props.to ?? today]);
 const copied = ref(false);
+const pendingDeleteId = ref(null);
 
 
 const byDog = computed(() => {
@@ -44,7 +45,7 @@ function intendedMinutes(rb) {
 
 function isOverrun(rb) {
     const intended = intendedMinutes(rb);
-    return intended !== null && actualMinutes(rb) > intended * 0.5;
+    return intended !== null && actualMinutes(rb) > intended * 1.5;
 }
 
 function goToToday() {
@@ -67,12 +68,22 @@ function onDateClose() {
     router.visit(path);
 }
 
+function confirmDelete(id) {
+    pendingDeleteId.value = id;
+}
+
+function deleteBreak() {
+    router.delete(`/reports/restbreaks/${pendingDeleteId.value}`, {preserveScroll: true});
+    pendingDeleteId.value = null;
+}
+
+function formatShortDate(dt) {
+    const d = new Date(dt);
+    return d.toLocaleDateString('en-US', {weekday: 'short', month: 'numeric', day: 'numeric'});
+}
+
 async function copyToClipboard() {
-    const [from, to] = selectedDate.value ?? [];
-    const heading = from === to || !to
-        ? 'Rest Breaks — ' + formatDateLabel(from)
-        : `Rest Breaks — ${formatDateLabel(from)} through ${formatDateLabel(to)}`;
-    const lines = [heading, ''];
+    const lines = [];
     byDog.value.forEach(([dogName, dogBreaks]) => {
         const lastName = dogBreaks[0]?.dog?.lastname;
         lines.push(lastName ? `${dogName} ${lastName}` : dogName);
@@ -133,11 +144,13 @@ async function copyToClipboard() {
                     <tr class="bg-caregiver/20 text-left text-greyhound font-semibold text-base">
                         <th class="px-3 py-3 w-14"></th>
                         <th class="px-3 py-3">Dog</th>
+                        <th v-if="from !== to" class="px-3 py-3">Date</th>
                         <th class="px-3 py-3">Type</th>
                         <th class="px-3 py-3">Started</th>
                         <th class="px-3 py-3">Ended</th>
                         <th class="px-3 py-3">Actual Length</th>
                         <th class="px-3 py-3">Reasons</th>
+                        <th class="px-3 py-3 w-10"></th>
                     </tr>
                     </thead>
                     <tbody>
@@ -158,6 +171,7 @@ async function copyToClipboard() {
                                 class="px-3 py-2 font-semibold text-base border-r border-greyhound/10">
                                 {{ dogName }}
                             </td>
+                            <td v-if="from !== to" class="px-3 py-2 font-mono">{{ formatShortDate(rb.started_at) }}</td>
                             <td class="px-3 py-2">{{ rb.break_type?.label ?? '—' }}</td>
                             <td class="px-3 py-2 font-mono">{{ formatTime(rb.started_at) }}</td>
                             <td class="px-3 py-2 font-mono"
@@ -178,10 +192,32 @@ async function copyToClipboard() {
                                         </span>
                                 </div>
                             </td>
+                            <td class="px-2 py-2 text-center">
+                                <button @click="confirmDelete(rb.id)"
+                                        class="text-greyhound/40 hover:text-crimson transition-colors">
+                                    <FontAwesomeIcon :icon="['fas', 'trash']"/>
+                                </button>
+                            </td>
                         </tr>
                     </template>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="pendingDeleteId" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 w-80 text-center shadow-xl">
+            <p class="text-xl mb-6">Delete this rest break?</p>
+            <div class="flex gap-3 justify-center">
+                <button @click="pendingDeleteId = null"
+                        class="px-6 py-3 rounded-xl bg-greyhound/20 text-greyhound text-lg">
+                    Cancel
+                </button>
+                <button @click="deleteBreak"
+                        class="px-6 py-3 rounded-xl bg-crimson text-white text-lg">
+                    Delete
+                </button>
             </div>
         </div>
     </div>

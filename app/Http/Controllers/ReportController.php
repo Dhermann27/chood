@@ -257,6 +257,13 @@ class ReportController extends Controller
         return Inertia::render('JournalEntry/Index');
     }
 
+    public function deleteBreak(RestBreak $restBreak): \Illuminate\Http\RedirectResponse
+    {
+        $restBreak->reasons()->detach();
+        $restBreak->delete();
+        return back();
+    }
+
     public function lobby(string $from = null, string $to = null): Response
     {
         $from = $from ? Carbon::parse($from)->startOfDay() : Carbon::today()->startOfDay();

@@ -54,6 +54,7 @@ Route::prefix('reports')->group(function () {
     });
     Route::get('/restbreaks/{from?}/{to?}', [ReportController::class, 'lobby'])
         ->where(['from' => '\d{4}-\d{2}-\d{2}', 'to' => '\d{4}-\d{2}-\d{2}']);
+    Route::delete('/restbreaks/{restBreak}', [ReportController::class, 'deleteBreak']);
 });
 
 Route::prefix('supervisor')->group(function () {

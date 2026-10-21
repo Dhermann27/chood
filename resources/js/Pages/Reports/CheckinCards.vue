@@ -387,29 +387,6 @@ function printCards() {
 </template>
 
 <style>
-@font-face {
-    font-family: 'ChunkFive';
-    src: url('/fonts/chunkfive.otf') format('opentype');
-    font-weight: normal;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'FuturaBold';
-    src: url('/fonts/FuturaBT-Bold.woff2') format('woff2'),
-    url('/fonts/FuturaBT-Bold.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'FuturaBook';
-    src: url('/fonts/Futura-Book.woff2') format('woff2'),
-    url('/fonts/Futura-Book.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-}
-
 @media print {
     @page {
         size: letter portrait;
