@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\CloseActiveBreaksJob;
 use App\Jobs\GoFetchBreedsJob;
 use App\Jobs\GoFetchListJob;
 use App\Jobs\GoFetchServiceListJob;
@@ -17,3 +18,4 @@ Schedule::job(new GoFetchBreedsJob())->daily();
 Schedule::job(new MarkCabinsForCleaningJob())->daily();
 Schedule::job(new GoFetchEmployeesJob())->daily();
 Schedule::job(new GoFetchShiftsJob())->daily();
+Schedule::job(new CloseActiveBreaksJob())->daily();

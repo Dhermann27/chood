@@ -7,6 +7,7 @@ use App\Models\Cabin;
 use App\Models\CleaningStatus;
 use App\Models\Dog;
 use App\Models\Feeding;
+use App\Models\RestBreak;
 use App\Models\Service;
 use App\Services\FetchDataService;
 use Carbon\Carbon;
@@ -100,6 +101,7 @@ class GoFetchListJob implements ShouldQueue, ShouldBeUnique
         Dog::whereIn('pet_id', $newlyGoneDogs->pluck('pet_id'))->update(['checked_out_at' => now()]);
         if ($newlyGoneDogs->isNotEmpty()) {
             $gonePetIds = $newlyGoneDogs->pluck('pet_id');
+            RestBreak::whereIn('pet_id', $gonePetIds)->whereNull('ended_at')->update(['ended_at' => now()]);
             Feeding::whereIn('pet_id', $gonePetIds)->where('is_task', 1)->delete();
         }
 

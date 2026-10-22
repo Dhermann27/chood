@@ -152,14 +152,14 @@ watch([() => props.cardHeight, currentDog], async ([newHeight]) => {
     await nextTick();
 
     if (dogBanner.value) {
-        dogBanner.value.style.fontSize = `${newHeight * 0.1}px`;
-        dogBanner.value.style.lineHeight = `${newHeight * 0.12}px`;
-        dogBanner.value.style.height = `${newHeight * 0.12}px`;
+        dogBanner.value.style.fontSize = `${newHeight * 0.07}px`;
+        dogBanner.value.style.lineHeight = `${newHeight * 0.09}px`;
+        dogBanner.value.style.height = `${newHeight * 0.09}px`;
     }
 
     if (dogName.value) {
         dogName.value.style.fontSize = `${newHeight * 0.18}px`;
-        dogName.value.style.height = `${newHeight * 0.25}px`;
+        dogName.value.style.height = `${newHeight * 0.21}px`;
 
         dogName.value.style.fontSize = getFittedFontSize(dogName.value, dogName.value.offsetWidth);
     }

@@ -44,6 +44,7 @@ function intendedMinutes(rb) {
 }
 
 function isOverrun(rb) {
+    if (rb.break_type?.behavior === 'walks_only') return false;
     const intended = intendedMinutes(rb);
     return intended !== null && actualMinutes(rb) > intended * 1.5;
 }
@@ -160,11 +161,7 @@ async function copyToClipboard() {
                             <td v-if="idx === 0" :rowspan="dogBreaks.length"
                                 class="p-1 border-r border-greyhound/10">
                                 <div style="width:70px;height:70px">
-                                    <DogCard v-if="rb.dog" :dogs="[rb.dog]" :card-height="70" :maxlength="6"/>
-                                    <div v-else
-                                         class="w-full h-full bg-greyhound/20 rounded flex items-center justify-center text-greyhound/50 text-xs">
-                                        ?
-                                    </div>
+                                    <DogCard v-if="rb.dog && !rb.dog.checked_out_at" :dogs="[rb.dog]" :card-height="70" :maxlength="6"/>
                                 </div>
                             </td>
                             <td v-if="idx === 0" :rowspan="dogBreaks.length"
